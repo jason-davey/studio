@@ -2,75 +2,130 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Add @font-face rules for URW DIN */
+/* You need to obtain the URW DIN font files (e.g., woff2 format) and place them */
+/* in the /public/fonts directory (or adjust the path accordingly). */
+/* These are placeholder rules; replace with your actual font file paths and weights. */
+@font-face {
+  font-family: 'URW DIN';
+  src: url('/fonts/URWDIN-Regular.woff2') format('woff2'); /* Placeholder path */
+  font-weight: 400; /* Regular */
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'URW DIN';
+  src: url('/fonts/URWDIN-Bold.woff2') format('woff2'); /* Placeholder path */
+  font-weight: 700; /* Bold */
+  font-style: normal;
+  font-display: swap;
+}
+
+/* You might need more @font-face rules for other weights/styles (Italic, Light, etc.) */
+
+
+/* Body font is now set via Tailwind config (theme.extend.fontFamily.sans) */
+/* and applied directly in layout.tsx */
+
 @layer base {
   :root {
-    --background: 0 0% 100%;
-    --foreground: 0 0% 3.9%;
-    --card: 0 0% 100%;
-    --card-foreground: 0 0% 3.9%;
-    --popover: 0 0% 100%;
-    --popover-foreground: 0 0% 3.9%;
-    --primary: 0 0% 9%;
-    --primary-foreground: 0 0% 98%;
-    --secondary: 0 0% 96.1%;
-    --secondary-foreground: 0 0% 9%;
-    --muted: 0 0% 96.1%;
-    --muted-foreground: 0 0% 45.1%;
-    --accent: 197 26% 75%; /* Updated from 0 0% 96.1% */
-    --accent-foreground: 0 0% 9%;
+    --background: 210 40% 98%; /* Default Light Background (Almost White) */
+    --foreground: 222.2 84% 4.9%; /* Default Dark Foreground */
+
+    --card: 0 0% 100%; /* White */
+    --card-foreground: 222.2 84% 4.9%; /* Dark Grey */
+
+    --popover: 0 0% 100%; /* White */
+    --popover-foreground: 222.2 84% 4.9%; /* Dark Grey */
+
+    --primary: 309 56% 35%; /* #912680 - Real Insurance Primary */
+    --primary-foreground: 0 0% 100%; /* White (for contrast with primary) */
+
+    --secondary: 59 98% 48%; /* #F0ED02 (Bright Yellow) - Real Insurance Secondary */
+    --secondary-foreground: 0 0% 20%; /* Dark Grey (for contrast with yellow secondary) */
+
+    --muted: 210 40% 96.1%; /* Muted background, e.g. for disabled states or subtle elements */
+    --muted-foreground: 215.4 16.3% 46.9%; /* Medium Grey for muted text */
+
+    --accent: 40 41% 71%; /* #D3BE96 (Beige/Gold) - Real Insurance Yellow */
+    --accent-foreground: 0 0% 20%; /* Dark Grey (for contrast with accent) */
+
     --destructive: 0 84.2% 60.2%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 89.8%;
-    --input: 0 0% 89.8%;
-    --ring: 0 0% 3.9%;
+
+    --cta: 154 54% 52%; /* #3cc78b - New CTA color */
+    --cta-foreground: 0 0% 100%; /* White for CTA */
+
+    --border: 214.3 31.8% 91.4%; /* Border color */
+    --input: 214.3 31.8% 91.4%; /* Input border */
+    --ring: 309 56% 35%; /* Primary color for focus rings */
+
     --chart-1: 12 76% 61%;
     --chart-2: 173 58% 39%;
     --chart-3: 197 37% 24%;
     --chart-4: 43 74% 66%;
     --chart-5: 27 87% 67%;
     --radius: 0.5rem;
-    --sidebar-background: 0 0% 98%;
-    --sidebar-foreground: 240 5.3% 26.1%;
-    --sidebar-primary: 240 5.9% 10%;
-    --sidebar-primary-foreground: 0 0% 98%;
-    --sidebar-accent: 240 4.8% 95.9%;
-    --sidebar-accent-foreground: 240 5.9% 10%;
-    --sidebar-border: 220 13% 91%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Sidebar Light Theme */
+    --sidebar-background: 0 0% 98%; /* Off-white/Very Light Grey */
+    --sidebar-foreground: 0 0% 20%; /* Dark Grey text */
+    --sidebar-primary: 309 56% 35%;
+    --sidebar-primary-foreground: 0 0% 100%; /* White text */
+    --sidebar-accent: 40 41% 85%; /* Lighter version of accent #D3BE96 for hover etc. */
+    --sidebar-accent-foreground: 0 0% 20%; /* Dark text on light accent */
+    --sidebar-border: 0 0% 85%; /* Light Grey border */
+    --sidebar-ring: 309 56% 35%; /* Primary for ring */
   }
+
   .dark {
-    --background: 0 0% 3.9%;
-    --foreground: 0 0% 98%;
-    --card: 0 0% 3.9%;
-    --card-foreground: 0 0% 98%;
-    --popover: 0 0% 3.9%;
-    --popover-foreground: 0 0% 98%;
-    --primary: 0 0% 98%;
-    --primary-foreground: 0 0% 9%;
-    --secondary: 0 0% 14.9%;
-    --secondary-foreground: 0 0% 98%;
-    --muted: 0 0% 14.9%;
-    --muted-foreground: 0 0% 63.9%;
-    --accent: 197 26% 30%; /* Updated from 0 0% 14.9% for dark theme consistency */
-    --accent-foreground: 0 0% 98%;
+    --background: 222.2 84% 4.9%; /* Dark Background */
+    --foreground: 210 40% 98%; /* Light Foreground */
+
+    --card: 222.2 84% 4.9%;
+    --card-foreground: 210 40% 98%;
+
+    --popover: 222.2 84% 4.9%;
+    --popover-foreground: 210 40% 98%;
+
+    --primary: 309 56% 45%; /* Adjusted from light #912680 for dark mode */
+    --primary-foreground: 0 0% 10%; /* Dark text for contrast */
+
+    --secondary: 59 80% 55%; /* Adjusted #F0ED02 (Bright Yellow) for dark mode */
+    --secondary-foreground: 0 0% 10%; /* Very Dark Grey/Black (for contrast with yellow secondary in dark mode) */
+
+    --muted: 217.2 32.6% 17.5%;
+    --muted-foreground: 215 20.2% 65.1%;
+
+    --accent: 40 41% 75%; /* Adjusted from light #D3BE96 for dark mode */
+    --accent-foreground: 0 0% 10%; /* Very Dark Grey/Black (accent is light in dark mode) */
+
     --destructive: 0 62.8% 30.6%;
     --destructive-foreground: 0 0% 98%;
-    --border: 0 0% 14.9%;
-    --input: 0 0% 14.9%;
-    --ring: 0 0% 83.1%;
+
+    --cta: 154 54% 52%; /* #3cc78b - New CTA color */
+    --cta-foreground: 0 0% 100%; /* White for CTA */
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 309 56% 45%; /* Dark primary for rings */
+
     --chart-1: 220 70% 50%;
     --chart-2: 160 60% 45%;
     --chart-3: 30 80% 55%;
     --chart-4: 280 65% 60%;
     --chart-5: 340 75% 55%;
-    --sidebar-background: 240 5.9% 10%;
-    --sidebar-foreground: 240 4.8% 95.9%;
-    --sidebar-primary: 224.3 76.3% 48%;
-    --sidebar-primary-foreground: 0 0% 100%;
-    --sidebar-accent: 240 3.7% 15.9%;
-    --sidebar-accent-foreground: 240 4.8% 95.9%;
-    --sidebar-border: 240 3.7% 15.9%;
-    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    /* Sidebar Dark Theme */
+    --sidebar-background: 0 0% 10%; /* Dark Grey */
+    --sidebar-foreground: 0 0% 95%; /* Light Grey text */
+    --sidebar-primary: 309 56% 45%;
+    --sidebar-primary-foreground: 0 0% 10%; /* Dark text */
+    --sidebar-accent: 40 41% 25%; /* Darker, muted version of new accent for hover */
+    --sidebar-accent-foreground: 0 0% 95%; /* Light text on dark accent */
+    --sidebar-border: 0 0% 15%; /* Dark Grey border */
+    --sidebar-ring: 309 56% 45%; /* Dark primary for ring */
   }
 }
 
@@ -79,7 +134,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    /* Removed font-family: Arial, Helvetica, sans-serif; to allow Geist font to apply */
+    /* Font is applied via tailwind config base */
+    @apply bg-background font-sans antialiased text-foreground;
   }
 }

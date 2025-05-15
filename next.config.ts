@@ -12,10 +12,16 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'placehold.co',
+        hostname: 'picsum.photos',
         port: '',
         pathname: '/**',
       },
+      {
+        protocol: 'https',
+        hostname: 'www.realinsurance.com.au',
+        port: '',
+        pathname: '/**',
+      }
     ],
   },
 };

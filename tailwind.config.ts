@@ -9,6 +9,11 @@ export default {
   ],
   theme: {
   	extend: {
+      fontFamily: {
+        din: ['URW DIN', 'sans-serif'], // Keep URW DIN definition
+        sans: ['URW DIN', 'sans-serif'], // Set default sans font to URW DIN
+        mono: ['URW DIN', 'monospace'], // Set default mono font to URW DIN (or a suitable monospace fallback if needed)
+      },
   		colors: {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
@@ -36,6 +41,10 @@ export default {
   				DEFAULT: 'hsl(var(--accent))',
   				foreground: 'hsl(var(--accent-foreground))'
   			},
+        cta: { // Added CTA color
+          DEFAULT: 'hsl(var(--cta))',
+          foreground: 'hsl(var(--cta-foreground))'
+        },
   			destructive: {
   				DEFAULT: 'hsl(var(--destructive))',
   				foreground: 'hsl(var(--destructive-foreground))'
