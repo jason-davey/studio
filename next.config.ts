@@ -3,8 +3,12 @@ import type {NextConfig} from 'next';
 const nextConfig: NextConfig = {
   /* config options here */
   typescript: {
+
     ignoreBuildErrors: true,
   },
+  allowedDevOrigins: [
+ '9000-firebase-studio-1747287487844.cluster-nzwlpk54dvagsxetkvxzbvslyi.cloudworkstations.dev',
+  ],
   eslint: {
     ignoreDuringBuilds: true,
   },
