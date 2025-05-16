@@ -1,17 +1,18 @@
 
 'use client';
 
-import { useState, type ChangeEvent, type FormEvent, useEffect } from 'react';
+import { useState, type ChangeEvent, type FormEvent, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2 } from 'lucide-react';
-import { useRouter } from 'next/navigation';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw } from 'lucide-react';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
 interface HeroConfig {
   headline: string;
@@ -26,7 +27,21 @@ interface ManagedHeroConfig extends HeroConfig {
 
 const LOCAL_STORAGE_KEY = 'heroConfigManager';
 
-// Moved ConfigForm outside of ABTestConfiguratorPage to prevent re-definition on parent re-render
+type AISuggestionState = {
+  loading: boolean;
+  suggestions: string[];
+  error: string | null;
+  popoverOpen: boolean;
+};
+
+const initialAISuggestionState: AISuggestionState = {
+  loading: false,
+  suggestions: [],
+  error: null,
+  popoverOpen: false,
+};
+
+
 const ConfigForm = ({
   version,
   headline, setHeadline,
@@ -43,14 +58,127 @@ const ConfigForm = ({
   generatedJson: string,
   configName: string, setConfigName: (val: string) => void,
   onSave: () => void,
-}) => (
+}) => {
+  const { toast } = useToast();
+  const [aiStateHeadline, setAiStateHeadline] = useState<AISuggestionState>(initialAISuggestionState);
+  const [aiStateSubHeadline, setAiStateSubHeadline] = useState<AISuggestionState>(initialAISuggestionState);
+  const [aiStateCtaText, setAiStateCtaText] = useState<AISuggestionState>(initialAISuggestionState);
+
+  const getAISuggestions = useCallback(async (
+    copyType: SuggestHeroCopyInput['copyType'],
+    currentValue: string,
+    setter: React.Dispatch<React.SetStateAction<AISuggestionState>>
+  ) => {
+    setter({ loading: true, suggestions: [], error: null, popoverOpen: true });
+    try {
+      const result = await suggestHeroCopy({
+        copyType,
+        currentText: currentValue,
+        count: 3,
+      });
+      if (result.suggestions && result.suggestions.length > 0) {
+        setter(prev => ({ ...prev, loading: false, suggestions: result.suggestions, error: null }));
+      } else {
+        setter(prev => ({ ...prev, loading: false, suggestions: [], error: 'No suggestions received. Try refining your input or try again.' }));
+      }
+    } catch (error) {
+      console.error(`Error fetching AI ${copyType} suggestions:`, error);
+      setter(prev => ({ ...prev, loading: false, suggestions: [], error: `Failed to get suggestions. Check console.`, popoverOpen: true }));
+      toast({
+        title: `AI Suggestion Error (${copyType})`,
+        description: "Could not fetch suggestions from the AI. Please try again later.",
+        variant: "destructive",
+      });
+    }
+  }, [toast]);
+
+  const handleApplySuggestion = (
+    suggestion: string,
+    fieldSetter: (val: string) => void,
+    aiSetter: React.Dispatch<React.SetStateAction<AISuggestionState>>
+  ) => {
+    fieldSetter(suggestion);
+    aiSetter(prev => ({ ...prev, popoverOpen: false }));
+  };
+
+  const renderAISuggestionPopover = (
+    targetValue: string,
+    copyType: SuggestHeroCopyInput['copyType'],
+    aiState: AISuggestionState,
+    aiStateSetter: React.Dispatch<React.SetStateAction<AISuggestionState>>,
+    fieldSetter: (val: string) => void
+  ) => (
+    <Popover open={aiState.popoverOpen} onOpenChange={(open) => aiStateSetter(prev => ({...prev, popoverOpen: open}))}>
+      <PopoverTrigger asChild>
+        <Button
+          type="button"
+          variant="outline"
+          size="sm"
+          className="ml-2 px-2 py-1 h-auto text-xs"
+          onClick={() => {
+            if (!aiState.popoverOpen || aiState.suggestions.length === 0 || aiState.error) { // Fetch if not open or no suggestions/error
+                 getAISuggestions(copyType, targetValue, aiStateSetter);
+            } else {
+                 aiStateSetter(prev => ({...prev, popoverOpen: true})); // Just open if already has suggestions
+            }
+          }}
+          title={`Suggest ${copyType} with AI`}
+        >
+          <Sparkles className="mr-1 h-3 w-3" /> AI
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-80 text-sm p-3" side="bottom" align="start">
+        {aiState.loading && <div className="flex items-center justify-center p-2"><Loader2 className="h-5 w-5 animate-spin mr-2" />Loading suggestions...</div>}
+        {aiState.error && !aiState.loading && (
+            <div className="text-destructive p-2">
+                <p>{aiState.error}</p>
+                <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, aiStateSetter)} className="p-0 h-auto mt-1 text-xs">
+                    <RefreshCcw className="mr-1 h-3 w-3" /> Try Again
+                </Button>
+            </div>
+        )}
+        {!aiState.loading && !aiState.error && aiState.suggestions.length > 0 && (
+          <ul className="space-y-2">
+            {aiState.suggestions.map((s, i) => (
+              <li key={i}>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="w-full justify-start text-left h-auto p-2 hover:bg-accent"
+                  onClick={() => handleApplySuggestion(s, fieldSetter, aiStateSetter)}
+                >
+                  {s}
+                </Button>
+              </li>
+            ))}
+             <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, aiStateSetter)} className="p-0 h-auto mt-2 text-xs text-muted-foreground">
+                <RefreshCcw className="mr-1 h-3 w-3" /> Regenerate
+            </Button>
+          </ul>
+        )}
+         {!aiState.loading && !aiState.error && aiState.suggestions.length === 0 && (
+             <div className="text-muted-foreground p-2">No suggestions available. Try providing some initial text or keywords.
+                <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, aiStateSetter)} className="p-0 h-auto mt-1 text-xs">
+                    <RefreshCcw className="mr-1 h-3 w-3" /> Try Again
+                </Button>
+             </div>
+         )}
+      </PopoverContent>
+    </Popover>
+  );
+
+
+  return (
   <Card className="mt-6">
     <CardHeader>
       <CardTitle className="text-xl font-semibold text-primary">Version {version} Content</CardTitle>
     </CardHeader>
     <CardContent className="space-y-6">
       <div>
-        <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
+          {renderAISuggestionPopover(headline, 'headline', aiStateHeadline, setAiStateHeadline, setHeadline)}
+        </div>
         <Input
           id={`headline${version}`}
           type="text"
@@ -61,7 +189,10 @@ const ConfigForm = ({
         />
       </div>
       <div>
-        <Label htmlFor={`subHeadline${version}`} className="text-base font-medium text-foreground">Sub-Headline</Label>
+        <div className="flex items-center justify-between">
+          <Label htmlFor={`subHeadline${version}`} className="text-base font-medium text-foreground">Sub-Headline</Label>
+          {renderAISuggestionPopover(subHeadline, 'subHeadline', aiStateSubHeadline, setAiStateSubHeadline, setSubHeadline)}
+        </div>
         <Input
           id={`subHeadline${version}`}
           type="text"
@@ -72,7 +203,10 @@ const ConfigForm = ({
         />
       </div>
       <div>
-        <Label htmlFor={`ctaText${version}`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
+        <div className="flex items-center justify-between">
+         <Label htmlFor={`ctaText${version}`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
+         {renderAISuggestionPopover(ctaText, 'ctaText', aiStateCtaText, setAiStateCtaText, setCtaText)}
+        </div>
         <Input
           id={`ctaText${version}`}
           type="text"
@@ -95,10 +229,10 @@ const ConfigForm = ({
             aria-label={`Generated JSON configuration for Version ${version}`}
           />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => handleCopyToClipboard(generatedJson, version)} variant="outline" size="sm">
+            <Button onClick={() => internalHandleCopyToClipboard(generatedJson, version, toast)} variant="outline" size="sm">
               <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
             </Button>
-            <Button onClick={() => handleDownloadJson(generatedJson, version)} variant="outline" size="sm">
+            <Button onClick={() => internalHandleDownloadJson(generatedJson, version, toast)} variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" /> Download JSON
             </Button>
           </div>
@@ -123,10 +257,11 @@ const ConfigForm = ({
       </div>
     </CardContent>
   </Card>
-);
+  );
+};
 
 // Helper function needs to be accessible by ConfigForm if it's defined outside
-const handleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
+const internalHandleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
   if (!jsonString || JSON.parse(jsonString).headline === "") {
     toastFn({
       title: `Nothing to Copy for Version ${version}`,
@@ -151,7 +286,7 @@ const handleCopyToClipboard = async (jsonString: string, version: string, toastF
   }
 };
 
-const handleDownloadJson = (jsonString: string, version: string, toastFn: Function) => {
+const internalHandleDownloadJson = (jsonString: string, version: string, toastFn: Function) => {
   if (!jsonString || JSON.parse(jsonString).headline === "") {
     toastFn({
       title: `Nothing to Download for Version ${version}`,
@@ -177,7 +312,6 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 export default function ABTestConfiguratorPage() {
-  const router = useRouter();
   const { toast } = useToast();
 
   // State for Version A
@@ -322,8 +456,8 @@ export default function ABTestConfiguratorPage() {
       const updatedConfigs = savedConfigs.map((config, index) => 
         index === existingConfigIndex 
         ? {
-            ...config, // Retain original ID and other potential properties
-            name, // name is the same
+            ...config, 
+            name, 
             headline: headline.trim(),
             subHeadline: subHeadline.trim(),
             ctaText: ctaText.trim(),
@@ -335,7 +469,7 @@ export default function ABTestConfiguratorPage() {
     } else {
       // Add new configuration
       const newConfig: ManagedHeroConfig = {
-        id: Date.now().toString(), // Simple unique ID
+        id: Date.now().toString(), 
         name,
         headline: headline.trim(),
         subHeadline: subHeadline.trim(),
@@ -345,7 +479,6 @@ export default function ABTestConfiguratorPage() {
       toast({ title: 'Configuration Saved!', description: `"${newConfig.name}" has been saved locally.` });
     }
 
-    // Clear the name input field after save/update
     if (version === 'A') setNameForConfigA('');
     if (version === 'B') setNameForConfigB('');
   };
@@ -383,7 +516,7 @@ export default function ABTestConfiguratorPage() {
         <CardHeader className="bg-muted/30 p-6 rounded-t-lg">
           <CardTitle className="text-2xl font-bold text-primary">A/B Test Hero Section Configurator & Manager</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Configure two versions (A and B) of hero section content. Save, manage, and load your configurations locally.
+            Configure two versions (A and B) of hero section content. Use AI suggestions, save, manage, and load your configurations locally.
             Then, preview both active versions side-by-side.
           </CardDescription>
         </CardHeader>
@@ -500,6 +633,4 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
-    
-
     
