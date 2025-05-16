@@ -20,7 +20,9 @@ export default function Header() {
         <div className="flex items-center space-x-4">
            {/* Updated button style to use new CTA color and made always visible */}
            <Button className="inline-flex bg-cta text-cta-foreground hover:bg-cta/90" size="sm" asChild>
-              <Link href="/landing-preview#quote-form">Get a Quote</Link> {/* Point to quote form on preview page */}
+              <Link href="/landing-preview#quote-form" legacyBehavior passHref>
+                <a>Get a Quote</a>
+              </Link> {/* Point to quote form on preview page */}
            </Button>
            {/* Mobile Menu Button (hamburger icon) removed */}
         </div>
@@ -28,5 +30,3 @@ export default function Header() {
     </header>
   );
 }
-
-    
