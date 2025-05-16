@@ -10,7 +10,7 @@ This Next.js application serves as a platform for managing and previewing conten
 - **A/B Test Content Configuration:** Allows users (e.g., marketing team) to define multiple text versions for the landing page's Hero Section (headline, sub-headline, CTA).
 - **AI-Assisted Content Generation:** Provides AI-powered suggestions for headlines, sub-headlines, and CTAs using Genkit and Google's Gemini model. Users can provide an optional "Campaign Focus / Keywords" to further tailor these suggestions.
 - **JSON Generation:** Automatically generates JSON output compatible with Firebase Remote Config for each content variation.
-- **Local Configuration Management:** Enables users to save, load, and manage different content configurations directly in their browser's local storage.
+- **Local Configuration Management:** Enables users to save, load, and manage different content configurations (including campaign focus) directly in their browser's local storage.
 - **Side-by-Side Preview:** Renders two selected content variations on a dedicated preview page for visual comparison.
 - **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Actual test setup and management occur in the Firebase console.
 - **AB Tasty Integration Point:** Includes a placeholder for integrating AB Tasty's JavaScript snippet for client-side A/B testing.
@@ -25,7 +25,7 @@ This Next.js application serves as a platform for managing and previewing conten
 - **A/B Test Management (Primary Method):** Firebase A/B Testing (via Firebase Console)
 - **Client-Side A/B Testing (Alternative/External):** Placeholder for AB Tasty
 - **Generative AI (Stack):** Genkit with Google AI (Gemini models) for content suggestions.
-  - Flow: `src/ai/flows/suggest-hero-copy-flow.ts` (now accepts optional `campaignFocus`)
+  - Flow: `src/ai/flows/suggest-hero-copy-flow.ts` (accepts optional `campaignFocus`)
 
 ## 2. Application Architecture
 
@@ -33,7 +33,7 @@ This Next.js application serves as a platform for managing and previewing conten
 - **Next.js App Router:** Used for routing and page structure (e.g., `/`, `/landing-preview`).
 - **Key Directories:**
     - `src/app/`: Contains page components and layouts.
-        - `page.tsx`: Main A/B Test Configurator & Manager tool with AI suggestions (now supports campaign focus input).
+        - `page.tsx`: Main A/B Test Configurator & Manager tool with AI suggestions (supports campaign focus input, and local storage for hero configurations including campaign focus).
         - `landing-preview/page.tsx`: Side-by-side preview page.
         - `layout.tsx`: Root layout, includes Toaster and AB Tasty script placeholder.
         - `globals.css`: Global styles, Tailwind directives, and ShadCN CSS theme variables (HSL).
@@ -49,7 +49,7 @@ This Next.js application serves as a platform for managing and previewing conten
     - `src/ai/`: Genkit related files.
         - `genkit.ts`: Genkit global instance initialization.
         - `dev.ts`: Entry point for Genkit development server, imports flows.
-        - `flows/suggest-hero-copy-flow.ts`: Genkit flow for generating hero section copy suggestions, now enhanced to consider an optional `campaignFocus` string.
+        - `flows/suggest-hero-copy-flow.ts`: Genkit flow for generating hero section copy suggestions, enhanced to consider an optional `campaignFocus` string.
 - **Styling:**
     - Tailwind CSS is the primary styling utility.
     - `src/app/globals.css` defines base styles, Tailwind layers, and CSS variables for the ShadCN theme.
@@ -69,7 +69,7 @@ This Next.js application serves as a platform for managing and previewing conten
 1.  **Content Configuration:** User defines content for "Version A" and "Version B" in the A/B Test Configurator tool (`/`).
     - **Campaign Focus (Optional):** User can input a campaign theme or keywords into a dedicated textarea for each version to tailor AI suggestions.
     - **AI Assistance:** User can click "✨ Suggest with AI" buttons to get AI-generated suggestions for headlines, sub-headlines, and CTAs. These suggestions will now be influenced by the provided campaign focus, if any.
-2.  **Local Management:** User can save these configurations (headline, sub-headline, CTA - campaign focus is not saved as part of the configuration, it's a transient input for AI) locally in their browser for later use.
+2.  **Local Management:** User can save these configurations (headline, sub-headline, CTA, and campaign focus) locally in their browser for later use.
 3.  **Preview:** User clicks "Render Pages for Preview" to view both active configurations side-by-side on `/landing-preview`.
 4.  **JSON Export:** User copies or downloads the generated JSON for each version.
 5.  **Firebase Setup:** User navigates to the Firebase Console and uses the copied JSON to define variants for the `heroConfig` parameter within an A/B Test.
@@ -91,13 +91,13 @@ This Next.js application serves as a platform for managing and previewing conten
     - **Real-time JSON Generation:** Displays generated JSON for each version.
     - **Copy & Download JSON:** Buttons for each version.
     - **Local Configuration Management:**
-        - Save/Load/Delete configurations using browser `localStorage` (key: `heroConfigManager`). Configurations store headline, sub-headline, and CTA text. Campaign focus is transient.
+        - Save/Load/Delete configurations using browser `localStorage` (key: `heroConfigManager`). Configurations store headline, sub-headline, CTA text, and the campaign focus.
     - **"Render Pages for Preview" Button:** Opens `/landing-preview` with current configurations.
     - **Guidance Footer:** Instructions and links for Firebase and `PLAYBOOK.md`.
 - **Key Components Used:** `ConfigForm` (refactored), `Card`, `Input`, `Label`, `Button`, `Textarea`, `Separator`, `Popover`, `useToast`, `Sparkles` icon.
 - **Data Structures:**
     - `HeroConfig`: `{ headline: string; subHeadline: string; ctaText: string; }` (This is the structure for the JSON output).
-    - `ManagedHeroConfig`: `{ id: string; name: string; headline: string; subHeadline: string; ctaText: string; }` (Structure for local storage; does not include campaignFocus).
+    - `ManagedHeroConfig`: `{ id: string; name: string; headline: string; subHeadline: string; ctaText: string; campaignFocus?: string; }` (Structure for local storage).
     - `SuggestHeroCopyInput` now includes `campaignFocus: string | undefined`.
 
 ### 3.2. Landing Preview Page (`src/app/landing-preview/page.tsx`)
@@ -105,8 +105,8 @@ This Next.js application serves as a platform for managing and previewing conten
 - **Functionality:**
     - Reads `configA` and `configB` JSON strings from URL query parameters.
     - Renders two `HeroSection` components.
-    - Falls back to defaults if parameters are missing/invalid.
-    - Includes other static landing page sections for context.
+    *   Falls back to defaults if parameters are missing/invalid.
+    *   Includes other static landing page sections for context.
 
 ### 3.3. Landing Page Components (`src/components/landing/`)
 - **`Header.tsx`:** Logo links to `/` (configurator). "Get a Quote" links to `#quote-form` on `/landing-preview`.
@@ -115,7 +115,7 @@ This Next.js application serves as a platform for managing and previewing conten
 
 ### 3.4. AI Flow (`src/ai/flows/suggest-hero-copy-flow.ts`)
 - **Purpose:** To generate hero section copy suggestions using an AI model.
-- **Input:** `SuggestHeroCopyInput` (copyType, currentText, productName, productDescription, count, campaignFocus). The new `campaignFocus` field allows the AI to tailor suggestions.
+- **Input:** `SuggestHeroCopyInput` (copyType, currentText, productName, productDescription, count, campaignFocus). The `campaignFocus` field allows the AI to tailor suggestions.
 - **Output:** `SuggestHeroCopyOutput` (array of suggestions).
 - **Technology:** Genkit, configured to use a Google AI model.
 - **Prompt:** Instructs the AI to act as a marketing copywriter, considering the product, copy type, and any provided `campaignFocus`.
@@ -144,12 +144,12 @@ This Next.js application serves as a platform for managing and previewing conten
 ## 6. Key Files & Directories
 - **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow.
 - **`TECHNICAL_SPEC.md`:** (This document).
-- **`src/app/page.tsx`:** A/B Test Configurator with AI.
+- **`src/app/page.tsx`:** A/B Test Configurator with AI and local configuration management.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit flow for AI suggestions.
 - Other files as previously listed.
 
 ## 7. Branding Guidelines Reference
-- As previously listed.
+- Defined in `PLAYBOOK.md`.
 
 ## 8. Known Issues / Future Considerations
 - **Client-Side Limitations for Firebase Management:** Still applies.
@@ -159,3 +159,5 @@ This Next.js application serves as a platform for managing and previewing conten
 - **Rate Limiting/Cost for AI:** If using paid AI models, consider usage limits and costs.
 - The `useRemoteConfigValue` hook is not currently used by the main landing page or preview page.
       
+
+    

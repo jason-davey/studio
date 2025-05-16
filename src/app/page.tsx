@@ -23,6 +23,7 @@ interface HeroConfig {
 interface ManagedHeroConfig extends HeroConfig {
   id: string;
   name: string;
+  campaignFocus?: string; // Added campaignFocus
 }
 
 const LOCAL_STORAGE_KEY = 'heroConfigManager';
@@ -48,7 +49,7 @@ const ConfigForm = ({
   headline, setHeadline,
   subHeadline, setSubHeadline,
   ctaText, setCtaText,
-  campaignFocus, setCampaignFocus, // New prop
+  campaignFocus, setCampaignFocus,
   generatedJson,
   configName, setConfigName,
   onSave
@@ -57,7 +58,7 @@ const ConfigForm = ({
   headline: string, setHeadline: (val: string) => void,
   subHeadline: string, setSubHeadline: (val: string) => void,
   ctaText: string, setCtaText: (val: string) => void,
-  campaignFocus: string, setCampaignFocus: (val: string) => void, // New prop
+  campaignFocus: string, setCampaignFocus: (val: string) => void,
   generatedJson: string,
   configName: string, setConfigName: (val: string) => void,
   onSave: () => void,
@@ -70,7 +71,7 @@ const ConfigForm = ({
   const getAISuggestions = useCallback(async (
     copyType: SuggestHeroCopyInput['copyType'],
     currentValue: string,
-    currentCampaignFocus: string, // New parameter
+    currentCampaignFocus: string,
     setter: React.Dispatch<React.SetStateAction<AISuggestionState>>
   ) => {
     setter({ loading: true, suggestions: [], error: null, popoverOpen: true });
@@ -78,7 +79,7 @@ const ConfigForm = ({
       const result = await suggestHeroCopy({
         copyType,
         currentText: currentValue,
-        campaignFocus: currentCampaignFocus, // Pass to the flow
+        campaignFocus: currentCampaignFocus,
         count: 3,
       });
       if (result.suggestions && result.suggestions.length > 0) {
@@ -122,7 +123,7 @@ const ConfigForm = ({
           className="ml-2 px-2 py-1 h-auto text-xs"
           onClick={() => {
             if (!aiState.popoverOpen || aiState.suggestions.length === 0 || aiState.error) {
-                 getAISuggestions(copyType, targetValue, campaignFocus, aiStateSetter); // Pass campaignFocus
+                 getAISuggestions(copyType, targetValue, campaignFocus, aiStateSetter);
             } else {
                  aiStateSetter(prev => ({...prev, popoverOpen: true}));
             }
@@ -189,7 +190,7 @@ const ConfigForm = ({
           className="mt-1 text-base"
           rows={2}
         />
-        <p className="text-xs text-muted-foreground mt-1">Helps AI tailor suggestions to your specific campaign or audience.</p>
+        <p className="text-xs text-muted-foreground mt-1">Helps AI tailor suggestions. Saved with this configuration.</p>
       </div>
 
       <Separator />
@@ -267,7 +268,7 @@ const ConfigForm = ({
             type="text"
             value={configName}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setConfigName(e.target.value)}
-            placeholder={`Enter name for this configuration (e.g., Spring Promo ${version})`}
+            placeholder={`Name for this config (e.g., Spring Promo ${version})`}
             className="text-base flex-grow"
           />
           <Button onClick={onSave} variant="outline" size="sm">
@@ -338,7 +339,7 @@ export default function ABTestConfiguratorPage() {
   const [headlineA, setHeadlineA] = useState<string>('');
   const [subHeadlineA, setSubHeadlineA] = useState<string>('');
   const [ctaTextA, setCtaTextA] = useState<string>('');
-  const [campaignFocusA, setCampaignFocusA] = useState<string>(''); // New state for Version A
+  const [campaignFocusA, setCampaignFocusA] = useState<string>('');
   const [generatedJsonA, setGeneratedJsonA] = useState<string>('');
   const [nameForConfigA, setNameForConfigA] = useState<string>('');
 
@@ -346,7 +347,7 @@ export default function ABTestConfiguratorPage() {
   const [headlineB, setHeadlineB] = useState<string>('');
   const [subHeadlineB, setSubHeadlineB] = useState<string>('');
   const [ctaTextB, setCtaTextB] = useState<string>('');
-  const [campaignFocusB, setCampaignFocusB] = useState<string>(''); // New state for Version B
+  const [campaignFocusB, setCampaignFocusB] = useState<string>('');
   const [generatedJsonB, setGeneratedJsonB] = useState<string>('');
   const [nameForConfigB, setNameForConfigB] = useState<string>('');
 
@@ -397,8 +398,6 @@ export default function ABTestConfiguratorPage() {
       const emptyConfig: HeroConfig = { headline: '', subHeadline: '', ctaText: '' };
       return JSON.stringify(emptyConfig, null, 2);
     }
-    // Note: campaignFocus is NOT part of the heroConfig JSON for Firebase.
-    // It's only used for AI suggestions.
     const config: HeroConfig = {
       headline: headline.trim(),
       subHeadline: subHeadline.trim(),
@@ -463,7 +462,7 @@ export default function ABTestConfiguratorPage() {
     const headline = version === 'A' ? headlineA : headlineB;
     const subHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
     const ctaText = version === 'A' ? ctaTextA : ctaTextB;
-    // campaignFocus is not saved as part of ManagedHeroConfig as it's for suggestion context only.
+    const campaignFocus = version === 'A' ? campaignFocusA : campaignFocusB;
 
     if (!name) {
       toast({ title: 'Configuration Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' });
@@ -485,6 +484,7 @@ export default function ABTestConfiguratorPage() {
             headline: headline.trim(),
             subHeadline: subHeadline.trim(),
             ctaText: ctaText.trim(),
+            campaignFocus: campaignFocus.trim(), // Save campaignFocus
           }
         : config
       );
@@ -497,6 +497,7 @@ export default function ABTestConfiguratorPage() {
         headline: headline.trim(),
         subHeadline: subHeadline.trim(),
         ctaText: ctaText.trim(),
+        campaignFocus: campaignFocus.trim(), // Save campaignFocus
       };
       setSavedConfigs(prev => [...prev, newConfig]);
       toast({ title: 'Configuration Saved!', description: `"${newConfig.name}" has been saved locally.` });
@@ -516,14 +517,14 @@ export default function ABTestConfiguratorPage() {
       setHeadlineA(configToLoad.headline);
       setSubHeadlineA(configToLoad.subHeadline);
       setCtaTextA(configToLoad.ctaText);
+      setCampaignFocusA(configToLoad.campaignFocus || ''); // Load campaignFocus
       setNameForConfigA(configToLoad.name); 
-      // campaignFocusA is not loaded, it's transient for suggestions. User can re-enter if needed.
     } else {
       setHeadlineB(configToLoad.headline);
       setSubHeadlineB(configToLoad.subHeadline);
       setCtaTextB(configToLoad.ctaText);
+      setCampaignFocusB(configToLoad.campaignFocus || ''); // Load campaignFocus
       setNameForConfigB(configToLoad.name);
-      // campaignFocusB is not loaded.
     }
     toast({ title: 'Configuration Loaded', description: `"${configToLoad.name}" loaded into Version ${version}.` });
   };
@@ -552,7 +553,7 @@ export default function ABTestConfiguratorPage() {
             headline={headlineA} setHeadline={setHeadlineA}
             subHeadline={subHeadlineA} setSubHeadline={setSubHeadlineA}
             ctaText={ctaTextA} setCtaText={setCtaTextA}
-            campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA} // Pass state for Version A
+            campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA}
             generatedJson={generatedJsonA}
             configName={nameForConfigA} setConfigName={setNameForConfigA}
             onSave={() => saveConfiguration('A')}
@@ -563,7 +564,7 @@ export default function ABTestConfiguratorPage() {
             headline={headlineB} setHeadline={setHeadlineB}
             subHeadline={subHeadlineB} setSubHeadline={setSubHeadlineB}
             ctaText={ctaTextB} setCtaText={setCtaTextB}
-            campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB} // Pass state for Version B
+            campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB}
             generatedJson={generatedJsonB}
             configName={nameForConfigB} setConfigName={setNameForConfigB}
             onSave={() => saveConfiguration('B')}
@@ -585,7 +586,7 @@ export default function ABTestConfiguratorPage() {
               <CardTitle className="text-xl font-semibold text-primary">Managed Hero Configurations (Saved Locally)</CardTitle>
               <CardDescription>
                 Load saved configurations into Version A or B forms above, or delete them.
-                These are stored in your browser's local storage.
+                These are stored in your browser's local storage. Campaign Focus is also saved.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-0">
@@ -613,6 +614,7 @@ export default function ABTestConfiguratorPage() {
                       <div className="flex-grow mb-3 sm:mb-0 min-w-0"> 
                         <p className="font-semibold text-foreground">{config.name}</p>
                         <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> 
+                        {config.campaignFocus && <p className="text-xs text-muted-foreground mt-1">Focus: {config.campaignFocus}</p>}
                       </div>
                       <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
                         <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
@@ -671,4 +673,6 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
+    
+
     
