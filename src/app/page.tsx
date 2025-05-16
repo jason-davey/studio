@@ -559,7 +559,7 @@ export default function ABTestConfiguratorPage() {
                 These are stored in your browser's local storage.
               </CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-0"> {/* Removed space-y-4 here */}
               {isLoadingConfigs && (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
@@ -570,23 +570,31 @@ export default function ABTestConfiguratorPage() {
                 <p className="text-muted-foreground text-center py-4">No configurations saved yet. Use the "Save Content" buttons above to save your work.</p>
               )}
               {!isLoadingConfigs && savedConfigs.length > 0 && (
-                <ul className="space-y-4">
-                  {savedConfigs.map(config => (
-                    <li key={config.id} className="p-4 border border-border rounded-lg shadow-sm bg-card flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-                      <div className="flex-grow">
+                <div className="border border-border rounded-lg overflow-hidden"> {/* Added border and overflow-hidden to container */}
+                  {savedConfigs.map((config, index) => (
+                    <div 
+                      key={config.id} 
+                      className={`
+                        flex flex-col sm:flex-row justify-between items-start sm:items-center 
+                        p-4 gap-3 
+                        ${index % 2 === 0 ? 'bg-card' : 'bg-muted/50'}
+                        ${index < savedConfigs.length - 1 ? 'border-b border-border' : ''}
+                      `}
+                    >
+                      <div className="flex-grow mb-3 sm:mb-0">
                         <p className="font-semibold text-foreground">{config.name}</p>
                         <p className="text-sm text-muted-foreground truncate" title={config.headline}>Headline: {config.headline}</p>
                       </div>
-                      <div className="w-full sm:w-auto flex flex-col sm:flex-row sm:flex-wrap gap-2 shrink-0 mt-3 sm:mt-0">
-                        <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm">Load to A</Button>
-                        <Button onClick={() => loadConfigIntoVersion(config.id, 'B')} variant="outline" size="sm">Load to B</Button>
-                        <Button onClick={() => deleteSavedConfig(config.id)} variant="destructive" size="sm">
+                      <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
+                        <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
+                        <Button onClick={() => loadConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
+                        <Button onClick={() => deleteSavedConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto">
                           <Trash2 /> Delete
                         </Button>
                       </div>
-                    </li>
+                    </div>
                   ))}
-                </ul>
+                </div>
               )}
             </CardContent>
           </Card>
@@ -598,7 +606,7 @@ export default function ABTestConfiguratorPage() {
                 <div className="flex items-start space-x-3">
                     <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary flex-shrink-0" />
                     <div>
-                        <p className="text-lg font-semibold text-foreground mb-2">Next Steps: Firebase & Playbook</p>
+                        <p className="text-lg font-semibold text-foreground mb-2">Ready to Start Your A/B Test in Firebase?</p>
                         <p className="mb-3">
                             After configuring, saving, loading, and previewing your content variations using this tool:
                         </p>
@@ -615,10 +623,10 @@ export default function ABTestConfiguratorPage() {
                                 </Button>
                             </li>
                             <li>
-                                <strong>Consult the Playbook:</strong> For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up parameters, goals, and targeting), please refer to the <strong>`PLAYBOOK.md`</strong> file. This crucial document is located in the root directory of this project and provides comprehensive guidance.
+                                <strong>Consult the Playbook:</strong> For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up parameters, goals, and targeting), please refer to the <strong>`PLAYBOOK.md`</strong> file. 
                                 <div className="mt-2 text-xs flex items-center text-muted-foreground">
                                   <BookOpen className="mr-2 h-4 w-4 text-primary" />
-                                  <span>You can open `PLAYBOOK.md` from your project files.</span>
+                                  <span>This crucial document is located in the root directory of this project and provides comprehensive guidance.</span>
                                 </div>
                             </li>
                         </ol>
@@ -636,4 +644,4 @@ export default function ABTestConfiguratorPage() {
 }
     
 
-    
+      
