@@ -7,9 +7,9 @@ This playbook guides you through using the in-app tools to create landing page c
 
 The application provides a 5-step guided workflow:
 
-1.  **Step 1: Review Recommendations (Optional):** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content.
-2.  **Step 2: Build & Preview Page:** See a preview of your landing page (initially the Hero section) based on the blueprint or default values.
-3.  **Step 3: Adjust Content:** Fine-tune the main content of your landing page (e.g., Hero section text).
+1.  **Step 1: Review Recommendations (Optional):** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections.
+2.  **Step 2: Build & Preview Page:** See a preview of your landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
+3.  **Step 3: Adjust Content:** Fine-tune the content of your landing page sections (e.g., Hero section text, Benefit descriptions, Testimonial quotes).
 4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions and manage configurations locally.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
 
@@ -45,36 +45,36 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 
 Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool.
 
-### 3.1. Step 1: Review Recommendations (Optional)
+### 3.1. Step 1: Review Recommendations
 - If you have a JSON file (a "Page Blueprint") from a URL scraping tool or other source with content recommendations:
     - Click "Upload File" and select your JSON file.
-    - The tool will attempt to parse it. If successful, its content will be used to pre-fill the Hero section in the subsequent steps.
+    - The tool will attempt to parse it. If successful, its content will be used to pre-fill the landing page content in the subsequent steps.
     - You'll see a preview of the loaded JSON.
     - Click "Proceed to Build".
-- If you don't have a blueprint, you can skip this step or the app might use default values.
+- If you don't have a blueprint, you can skip this step and the app might use default values or allow you to build from scratch in Step 3.
 
 ### 3.2. Step 2: Build & Preview Page
-- This step shows a preview of the Hero Section based on the blueprint loaded in Step 1 (or defaults).
+- This step shows a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint loaded in Step 1 (or defaults).
 - Review the preview.
 - Click "Proceed to Adjust".
 
 ### 3.3. Step 3: Adjust Content
-- Here, you can edit the Headline, Sub-Headline, CTA Text, and Unique Value Proposition for the Hero Section.
-- These changes will form the basis of "Version A" in your A/B test.
+- Here, you can edit the content for each section of the landing page (Page Info, Hero, Benefits, Testimonials, Trust Signals, Form Config) using the provided input fields.
+- These changes will form the basis of "Version A" for the Hero section in your A/B test.
 - Click "Configure A/B Test".
 
 ### 3.4. Step 4: Configure A/B Test
 This panel is where you define two versions (A and B) of Hero section content for your A/B test.
-- **Version A:** Will be pre-filled with the content you finalized in Step 3.
+- **Version A:** Will be pre-filled with the Hero content you finalized in Step 3.
 - **Version B:** Input alternative content for Headline, Sub-Headline, and CTA Text.
 - **Campaign Focus / Keywords (for A & B):** Optionally, provide text in the "Campaign Focus / Keywords" textarea for each version. This text will guide the AI when generating suggestions, making them more relevant.
-- **AI Content Suggestions (for A & B):** Use the "✨ Suggest with AI" buttons to get AI-generated ideas. These suggestions will be tailored if you've provided text in the "Campaign Focus" field.
-- **Local Configuration Management (for A/B Variants):**
+- **AI Content Suggestions (for A & B):** Use the "✨ Suggest with AI" buttons to get AI-generated ideas for Hero copy. These suggestions will be tailored if you've provided text in the "Campaign Focus" field.
+- **Local Configuration Management (for A/B Hero Variants):**
     - You can save the current state of Version A or B (headline, sub-headline, CTA, and campaign focus) locally.
     - Enter a name in "Save Version ... Content As:" and click "Save Content".
-    - Saved configurations appear in the "Managed A/B Hero Configurations" list, allowing you to load them back.
+    - Saved configurations appear in the "Managed A/B Hero Configurations" list, allowing you to load them back into the forms or delete them.
 - **JSON Generation:** The tool automatically generates the JSON string for `heroConfig` for Version A and B. You can **Copy** or **Download** this JSON. This is what you'll use in Firebase.
-- **Preview A/B Versions:** Click "Render A/B Versions for Preview". This opens the `/landing-preview` page with both Version A and B (as currently configured in the forms) displayed side-by-side.
+- **Preview A/B Versions:** Click "Render A/B Versions for Preview". This opens the `/landing-preview` page with both Hero Version A and B (as currently configured in the forms) displayed side-by-side.
 - Once satisfied, click "Proceed to Deployment Steps".
 
 ### 3.5. Step 5: Prepare for Deployment
@@ -141,11 +141,11 @@ You will define your variations when creating an A/B test (see Section 6). The A
 
 1.  **Hypothesize:** What do you want to improve?
 2.  **Use the In-App Tool (Steps 3 & 4):**
-    *   Adjust content in Step 3 if needed for your new baseline.
-    *   In Step 4, configure "Version A" (new baseline) and "Version B" (new experimental).
+    *   Adjust content in Step 3 as needed for your overall landing page. This will update what pre-fills "Version A" of the Hero.
+    *   In Step 4, configure "Version A" (new baseline for Hero) and "Version B" (new experimental Hero).
     *   Use AI suggestions and Campaign Focus as needed.
     *   Preview on `/landing-preview`.
-3.  **Download/Copy JSON:** For the version you want to use as your new experimental variant in Firebase, copy or download its JSON.
+3.  **Download/Copy JSON:** For the version you want to use as your new experimental variant in Firebase, copy or download its JSON from Step 4.
 4.  **A/B Test Setup:** In Firebase A/B Testing, create a new experiment or edit an existing one, pasting the new JSON for the relevant variant.
 
 ## 8. Branding Considerations for Test Variations
@@ -171,10 +171,10 @@ When designing new content variations for your A/B tests, ensure they align with
 - **A/B Test Not Starting/No Data:**
     *   Check activation event. Verify Firebase Analytics.
 - **Preview Page (`/landing-preview`) Not Showing Correct Content:**
-    *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `configA` and `configB`.
+    *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `configA` and `configB`. The preview page currently only shows Hero section variations.
 - **AI Suggestions Not Working:**
-    *   Check browser console. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus" for better results.
+    *   Check browser console. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus / Keywords" in Step 4 for better results.
 - **JSON Blueprint Upload Error (Step 1):**
-    *   Ensure the file is valid JSON and matches the expected `PageBlueprint` structure (see `src/types/recommendations.ts` for an idea, though this might evolve). Key fields like `pageName` and `heroConfig` are usually expected.
+    *   Ensure the file is valid JSON and matches the expected `PageBlueprint` structure (see `src/types/recommendations.ts`). Key fields like `pageName` and `heroConfig` are usually expected.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!

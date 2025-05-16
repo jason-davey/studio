@@ -9,13 +9,19 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIcon, Type, MessageSquare, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
+
 import HeroSection from '@/components/landing/HeroSection';
-import type { PageBlueprint, RecommendationHeroConfig } from '@/types/recommendations';
+import BenefitsSection from '@/components/landing/BenefitsSection';
+import TestimonialsSection from '@/components/landing/TestimonialsSection';
+import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
+import QuoteFormSection from '@/components/landing/QuoteFormSection';
+
+import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig } from '@/types/recommendations';
 
 // Types for A/B Test Configurator (Step 4)
 interface ABTestHeroConfig {
@@ -280,7 +286,6 @@ const ABTestConfigForm = ({
   );
 };
 
-// Helper function needs to be accessible by ABTestConfigForm
 const handleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
   if (!jsonString || JSON.parse(jsonString).headline === "") {
     toastFn({
@@ -331,7 +336,7 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 };
 
 
-// --- Main Page Component ---
+// --- Main Page Component (Landing Page Workflow) ---
 export default function LandingPageWorkflowPage() {
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
@@ -341,7 +346,20 @@ export default function LandingPageWorkflowPage() {
   const [fileError, setFileError] = useState<string | null>(null);
 
   // Step 2 & 3: Active Landing Page Data (derived from blueprint, editable in Step 3)
-  const [activeHeroConfig, setActiveHeroConfig] = useState<RecommendationHeroConfig | null>(null);
+  const initialBlueprintState: PageBlueprint = {
+    pageName: '',
+    targetUrl: '',
+    seoTitle: '',
+    executiveSummary: '',
+    keyRecommendationsSummary: '',
+    heroConfig: { headline: '', subHeadline: '', ctaText: '', uniqueValueProposition: '', heroImageUrl: '', heroImageAltText: ''},
+    benefits: [],
+    testimonials: [],
+    trustSignals: [],
+    formConfig: { headline: '', ctaText: '' }
+  };
+  const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
+
 
   // Step 4: A/B Test Configuration States
   const [headlineA, setHeadlineA] = useState<string>('');
@@ -364,8 +382,8 @@ export default function LandingPageWorkflowPage() {
   // --- Step 1 Logic ---
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
-    setUploadedBlueprint(null);
-    setActiveHeroConfig(null); // Reset active hero config
+    setUploadedBlueprint(null); // Reset previous blueprint
+    setActivePageBlueprint(initialBlueprintState); // Reset active blueprint to initial state
 
     const file = event.target.files?.[0];
     if (file) {
@@ -375,18 +393,29 @@ export default function LandingPageWorkflowPage() {
           try {
             const content = e.target?.result as string;
             const parsedJson = JSON.parse(content) as PageBlueprint;
-            // Basic validation for expected structure
-            if (parsedJson.pageName && parsedJson.heroConfig) {
+            if (parsedJson.pageName) { // Basic validation
               setUploadedBlueprint(parsedJson);
-              setActiveHeroConfig(parsedJson.heroConfig); // Populate active hero from blueprint
+              // Populate activePageBlueprint from the uploaded one, ensuring all fields exist with defaults
+              setActivePageBlueprint({
+                pageName: parsedJson.pageName || 'Untitled Page',
+                targetUrl: parsedJson.targetUrl || '',
+                seoTitle: parsedJson.seoTitle || '',
+                executiveSummary: parsedJson.executiveSummary || '',
+                keyRecommendationsSummary: parsedJson.keyRecommendationsSummary || '',
+                heroConfig: parsedJson.heroConfig || initialBlueprintState.heroConfig,
+                benefits: parsedJson.benefits || [],
+                testimonials: parsedJson.testimonials || [],
+                trustSignals: parsedJson.trustSignals || [],
+                formConfig: parsedJson.formConfig || initialBlueprintState.formConfig,
+              });
               toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
               setActiveAccordionItem('step-2'); // Move to next step
             } else {
-              throw new Error('Invalid blueprint structure. Missing pageName or heroConfig.');
+              throw new Error('Invalid blueprint structure. Missing pageName.');
             }
           } catch (error: any) {
             console.error('Error parsing JSON file:', error);
-            setFileError(`Error parsing JSON: ${error.message}. Please ensure it's a valid PageBlueprint JSON.`);
+            setFileError(`Error parsing JSON: ${error.message}. Ensure it's a valid PageBlueprint JSON.`);
             toast({ title: 'File Read Error', description: 'Could not parse the JSON file.', variant: 'destructive' });
           }
         };
@@ -403,22 +432,55 @@ export default function LandingPageWorkflowPage() {
     event.target.value = ''; // Reset file input
   };
 
-  // --- Step 3 Logic (Updating activeHeroConfig) ---
-  const handleHeroConfigChange = (field: keyof RecommendationHeroConfig, value: string) => {
-    setActiveHeroConfig(prev => prev ? { ...prev, [field]: value } : null);
+  // --- Step 3 Logic (Updating activePageBlueprint) ---
+  // Generic handler for top-level properties of activePageBlueprint
+  const handleSimpleBlueprintFieldChange = <K extends keyof PageBlueprint>(field: K, value: PageBlueprint[K]) => {
+    setActivePageBlueprint(prev => ({ ...prev, [field]: value }));
   };
-  
+
+  // Handler for nested objects like heroConfig, formConfig
+  const handleNestedObjectChange = <S extends 'heroConfig' | 'formConfig'>(
+    section: S,
+    field: keyof NonNullable<PageBlueprint[S]>,
+    value: string
+  ) => {
+    setActivePageBlueprint(prev => ({
+      ...prev,
+      [section]: {
+        ...prev[section],
+        [field]: value,
+      },
+    }));
+  };
+
+  // Handler for arrays of objects like benefits, testimonials, trustSignals
+  const handleArrayObjectChange = <S extends 'benefits' | 'testimonials' | 'trustSignals'>(
+    section: S,
+    index: number,
+    field: keyof NonNullable<PageBlueprint[S]>[number],
+    value: string
+  ) => {
+    setActivePageBlueprint(prev => {
+      const newArray = [...(prev[section] || [])];
+      if (newArray[index]) {
+        newArray[index] = {
+          ...newArray[index],
+          [field]: value,
+        };
+      }
+      return { ...prev, [section]: newArray as any }; // Type assertion needed due to complex generic
+    });
+  };
+
+
   // --- Step 4 Logic (A/B Test Configurator) ---
   useEffect(() => {
-    // Pre-populate Version A of A/B test if activeHeroConfig is available
-    if (activeHeroConfig && activeAccordionItem === 'step-4') {
-      setHeadlineA(activeHeroConfig.headline || '');
-      setSubHeadlineA(activeHeroConfig.subHeadline || '');
-      setCtaTextA(activeHeroConfig.ctaText || '');
-      // Optionally clear campaign focus or keep previous
-      // setCampaignFocusA(''); 
+    if (activePageBlueprint.heroConfig && activeAccordionItem === 'step-4') {
+      setHeadlineA(activePageBlueprint.heroConfig.headline || '');
+      setSubHeadlineA(activePageBlueprint.heroConfig.subHeadline || '');
+      setCtaTextA(activePageBlueprint.heroConfig.ctaText || '');
     }
-  }, [activeHeroConfig, activeAccordionItem]);
+  }, [activePageBlueprint.heroConfig, activeAccordionItem]);
 
   useEffect(() => {
     setIsLoadingABTestConfigs(true);
@@ -493,13 +555,13 @@ export default function LandingPageWorkflowPage() {
     if (existingConfigIndex !== -1) {
       const updatedConfigs = savedABTestConfigs.map((config, index) => 
         index === existingConfigIndex 
-        ? { ...config, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() }
+        ? { ...config, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || '' }
         : config
       );
       setSavedABTestConfigs(updatedConfigs);
       toast({ title: 'A/B Config Updated!', description: `"${name}" updated.` });
     } else {
-      const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() };
+      const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || '' };
       setSavedABTestConfigs(prev => [...prev, newConfig]);
       toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
     }
@@ -534,7 +596,7 @@ export default function LandingPageWorkflowPage() {
         <Card>
           <CardHeader>
             <CardTitle>Upload Page Blueprint JSON</CardTitle>
-            <CardDescription>Upload the JSON file containing recommendations from the URL scraping tool. This will form the base for your new landing page.</CardDescription>
+            <CardDescription>Upload the JSON file containing recommendations for your landing page. This blueprint will populate the content for subsequent steps.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <Input type="file" accept=".json" onChange={handleFileUpload} className="text-base" />
@@ -555,27 +617,37 @@ export default function LandingPageWorkflowPage() {
     {
       value: "step-2",
       title: "Step 2: Build & Preview Page",
-      icon: <Eye className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !activeHeroConfig,
+      icon: <Palette className="mr-2 h-5 w-5 text-primary" />,
+      disabled: !uploadedBlueprint,
       content: (
         <Card>
           <CardHeader>
-            <CardTitle>Preview Landing Page (Hero Section)</CardTitle>
-            <CardDescription>This is a preview of the Hero section based on the loaded blueprint. You can adjust it in the next step.</CardDescription>
+            <CardTitle>Preview Landing Page</CardTitle>
+            <CardDescription>This is a preview of the landing page based on the loaded blueprint. You can adjust the content in the next step.</CardDescription>
           </CardHeader>
           <CardContent>
-            {!activeHeroConfig && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
-            {activeHeroConfig && (
-              <>
+            {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
+            {activePageBlueprint?.pageName && (
+              <div className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
                 <HeroSection 
-                  headline={activeHeroConfig.headline}
-                  subHeadline={activeHeroConfig.subHeadline}
-                  ctaText={activeHeroConfig.ctaText}
+                  headline={activePageBlueprint.heroConfig?.headline}
+                  subHeadline={activePageBlueprint.heroConfig?.subHeadline}
+                  ctaText={activePageBlueprint.heroConfig?.ctaText}
                 />
-                <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6">
-                  Proceed to Adjust <ChevronRight className="ml-2 h-4 w-4" />
+                <BenefitsSection benefits={activePageBlueprint.benefits} />
+                <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
+                <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
+                 {activePageBlueprint.formConfig && (
+                    <div className="text-center my-4 py-8 bg-background"> {/* Added bg-background for consistency */}
+                        <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline || "Get Your Personalized Quote"}</h3>
+                    </div>
+                 )}
+                <QuoteFormSection /> 
+
+                <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
+                  Proceed to Adjust Content <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
-              </>
+              </div>
             )}
           </CardContent>
         </Card>
@@ -584,37 +656,115 @@ export default function LandingPageWorkflowPage() {
     {
       value: "step-3",
       title: "Step 3: Adjust Content",
-      icon: <Edit3 className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !activeHeroConfig,
+      icon: <Edit className="mr-2 h-5 w-5 text-primary" />,
+      disabled: !uploadedBlueprint,
       content: (
         <Card>
           <CardHeader>
-            <CardTitle>Adjust Hero Section Content</CardTitle>
-            <CardDescription>Fine-tune the content for the Hero section. Changes here will update the active page blueprint and can be used as Version A in A/B testing.</CardDescription>
+            <CardTitle>Adjust Landing Page Content</CardTitle>
+            <CardDescription>Fine-tune the content for each section of your landing page. Changes here update the active blueprint that pre-fills A/B Test Version A.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {!activeHeroConfig && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
-            {activeHeroConfig && (
+          <CardContent className="space-y-6">
+            {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
+            {activePageBlueprint?.pageName && (
               <>
-                <div>
-                  <Label htmlFor="adjustHeadline" className="text-base font-medium">Headline</Label>
-                  <Input id="adjustHeadline" value={activeHeroConfig.headline || ''} onChange={(e) => handleHeroConfigChange('headline', e.target.value)} className="mt-1 text-base" />
-                </div>
-                <div>
-                  <Label htmlFor="adjustSubHeadline" className="text-base font-medium">Sub-Headline</Label>
-                  <Input id="adjustSubHeadline" value={activeHeroConfig.subHeadline || ''} onChange={(e) => handleHeroConfigChange('subHeadline', e.target.value)} className="mt-1 text-base" />
-                </div>
-                <div>
-                  <Label htmlFor="adjustCtaText" className="text-base font-medium">CTA Text</Label>
-                  <Input id="adjustCtaText" value={activeHeroConfig.ctaText || ''} onChange={(e) => handleHeroConfigChange('ctaText', e.target.value)} className="mt-1 text-base" />
-                </div>
-                <div>
-                  <Label htmlFor="adjustUVP" className="text-base font-medium">Unique Value Proposition (UVP for Hero)</Label>
-                  <Textarea id="adjustUVP" value={activeHeroConfig.uniqueValueProposition || ''} onChange={(e) => handleHeroConfigChange('uniqueValueProposition', e.target.value)} className="mt-1 text-base" rows={2} />
-                </div>
-                <div className="flex justify-between items-center mt-6">
-                    <p className="text-sm text-green-600 flex items-center"><CheckCircle className="h-4 w-4 mr-1"/> Content updated.</p>
-                    <Button onClick={() => setActiveAccordionItem('step-4')}>
+                <Card className="bg-muted/50 p-1"> {/* General Page Info */}
+                  <CardHeader><CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5" /> Page Information</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div><Label htmlFor="bpPageName">Page Name</Label><Input id="bpPageName" value={activePageBlueprint.pageName} onChange={(e) => handleSimpleBlueprintFieldChange('pageName', e.target.value)} /></div>
+                    <div><Label htmlFor="bpSeoTitle">SEO Title</Label><Input id="bpSeoTitle" value={activePageBlueprint.seoTitle || ''} onChange={(e) => handleSimpleBlueprintFieldChange('seoTitle', e.target.value)} /></div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-muted/50 p-1"> {/* Hero Config */}
+                  <CardHeader><CardTitle className="text-lg flex items-center"><ImageIcon className="mr-2 h-5 w-5" /> Hero Section</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div><Label htmlFor="heroHeadline">Headline</Label><Input id="heroHeadline" value={activePageBlueprint.heroConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'headline', e.target.value)} /></div>
+                    <div><Label htmlFor="heroSubHeadline">Sub-Headline</Label><Input id="heroSubHeadline" value={activePageBlueprint.heroConfig?.subHeadline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'subHeadline', e.target.value)} /></div>
+                    <div><Label htmlFor="heroCtaText">CTA Text</Label><Input id="heroCtaText" value={activePageBlueprint.heroConfig?.ctaText || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'ctaText', e.target.value)} /></div>
+                    <div><Label htmlFor="heroUVP">Unique Value Proposition</Label><Textarea id="heroUVP" value={activePageBlueprint.heroConfig?.uniqueValueProposition || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'uniqueValueProposition', e.target.value)} rows={2}/></div>
+                    <div><Label htmlFor="heroImageUrl">Image URL</Label><Input id="heroImageUrl" value={activePageBlueprint.heroConfig?.heroImageUrl || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'heroImageUrl', e.target.value)} /></div>
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-muted/50 p-1"> {/* Benefits */}
+                  <CardHeader><CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle></CardHeader>
+                  <CardContent className="space-y-4">
+                    {activePageBlueprint.benefits?.map((benefit, index) => (
+                      <Card key={`benefit-${index}`} className="p-3 bg-card shadow-sm">
+                        <Label className="font-semibold text-md">Benefit {index + 1}</Label>
+                        <div className="space-y-2 mt-1">
+                          <div><Label htmlFor={`benefitTitle${index}`}>Title</Label><Input id={`benefitTitle${index}`} value={benefit.title} onChange={(e) => handleArrayObjectChange('benefits', index, 'title', e.target.value)} /></div>
+                          <div><Label htmlFor={`benefitDesc${index}`}>Description</Label><Textarea id={`benefitDesc${index}`} value={benefit.description} onChange={(e) => handleArrayObjectChange('benefits', index, 'description', e.target.value)} rows={2}/></div>
+                          <div><Label htmlFor={`benefitIcon${index}`}>Icon (Lucide Name)</Label><Input id={`benefitIcon${index}`} value={benefit.icon || ''} onChange={(e) => handleArrayObjectChange('benefits', index, 'icon', e.target.value)} /></div>
+                        </div>
+                      </Card>
+                    ))}
+                  </CardContent>
+                </Card>
+
+                <Card className="bg-muted/50 p-1"> {/* Testimonials */}
+                    <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquare className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {activePageBlueprint.testimonials?.map((testimonial, index) => (
+                            <Card key={`testimonial-${index}`} className="p-3 bg-card shadow-sm">
+                                <Label className="font-semibold text-md">Testimonial {index + 1}</Label>
+                                <div className="space-y-2 mt-1">
+                                    <div><Label htmlFor={`testimonialName${index}`}>Name</Label><Input id={`testimonialName${index}`} value={testimonial.name} onChange={(e) => handleArrayObjectChange('testimonials',index, 'name', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialLocation${index}`}>Location</Label><Input id={`testimonialLocation${index}`} value={testimonial.location || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'location', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialQuote${index}`}>Quote</Label><Textarea id={`testimonialQuote${index}`} value={testimonial.quote} onChange={(e) => handleArrayObjectChange('testimonials',index, 'quote', e.target.value)} rows={3}/></div>
+                                    <div><Label htmlFor={`testimonialAvatarUrl${index}`}>Avatar Image URL</Label><Input id={`testimonialAvatarUrl${index}`} value={testimonial.avatarImageUrl || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'avatarImageUrl', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialInitial${index}`}>Avatar Initial</Label><Input id={`testimonialInitial${index}`} value={testimonial.avatarInitial || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'avatarInitial', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialSince${index}`}>Protected Since</Label><Input id={`testimonialSince${index}`} value={testimonial.since || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'since', e.target.value)} /></div>
+                                </div>
+                            </Card>
+                        ))}
+                    </CardContent>
+                </Card>
+
+                 <Card className="bg-muted/50 p-1"> {/* Trust Signals */}
+                    <CardHeader><CardTitle className="text-lg flex items-center"><AwardIcon className="mr-2 h-5 w-5"/> Trust Signals Section</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {activePageBlueprint.trustSignals?.map((signal, index) => (
+                            <Card key={`trust-${index}`} className="p-3 bg-card shadow-sm">
+                                <Label className="font-semibold text-md">Trust Signal {index + 1}</Label>
+                                <div className="space-y-2 mt-1">
+                                    <div><Label htmlFor={`trustSignalText${index}`}>Text</Label><Input id={`trustSignalText${index}`} value={signal.text} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'text', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalDetails${index}`}>Details</Label><Input id={`trustSignalDetails${index}`} value={signal.details || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'details', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalSource${index}`}>Source</Label><Input id={`trustSignalSource${index}`} value={signal.source || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'source', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalImageUrl${index}`}>Image URL</Label><Input id={`trustSignalImageUrl${index}`} value={signal.imageUrl || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'imageUrl', e.target.value)} /></div>
+                                    <div>
+                                        <Label htmlFor={`trustSignalType${index}`}>Type</Label>
+                                        <select 
+                                            id={`trustSignalType${index}`} 
+                                            value={signal.type} 
+                                            onChange={(e) => handleArrayObjectChange('trustSignals', index, 'type', e.target.value as RecommendationTrustSignal['type'])}
+                                            className="w-full mt-1 p-2 border border-input rounded-md text-base"
+                                        >
+                                            <option value="award">Award</option>
+                                            <option value="rating">Rating</option>
+                                            <option value="statistic">Statistic</option>
+                                            <option value="badge">Badge</option>
+                                            <option value="text">Text</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </Card>
+                        ))}
+                    </CardContent>
+                </Card>
+
+                <Card className="bg-muted/50 p-1"> {/* Form Config */}
+                  <CardHeader><CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle></CardHeader>
+                  <CardContent className="space-y-3">
+                    <div><Label htmlFor="formHeadline">Form Headline</Label><Input id="formHeadline" value={activePageBlueprint.formConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'headline', e.target.value)} /></div>
+                    <div><Label htmlFor="formCtaText">Form CTA Text</Label><Input id="formCtaText" value={activePageBlueprint.formConfig?.ctaText || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'ctaText', e.target.value)} /></div>
+                  </CardContent>
+                </Card>
+
+                <div className="flex justify-between items-center mt-6 pt-4 border-t">
+                    <p className="text-sm text-green-600 flex items-center"><CheckCircle className="h-4 w-4 mr-1"/> Blueprint content updated.</p>
+                    <Button onClick={() => setActiveAccordionItem('step-4')} className="w-full sm:w-auto">
                     Configure A/B Test <ChevronRight className="ml-2 h-4 w-4" />
                     </Button>
                 </div>
@@ -628,19 +778,19 @@ export default function LandingPageWorkflowPage() {
       value: "step-4",
       title: "Step 4: Configure A/B Test",
       icon: <Settings className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !activeHeroConfig,
+      disabled: !uploadedBlueprint,
       content: (
         <Card>
           <CardHeader>
             <CardTitle>A/B Test Hero Section Configurator</CardTitle>
             <CardDescription>
-              Configure two versions (A and B) of hero section content. Version A is pre-filled from your adjusted content.
-              Use AI suggestions, save, manage, and load your configurations locally. Then, preview both active versions.
+              Configure two versions (A and B) of hero section content. Version A is pre-filled from your adjusted Hero content in Step 3.
+              Use AI suggestions, save, manage, and load your Hero configurations locally. Then, preview both active versions.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!activeHeroConfig && <p className="text-muted-foreground">Adjust content in Step 3 before configuring A/B tests.</p>}
-            {activeHeroConfig && (
+            {!activePageBlueprint?.heroConfig && <p className="text-muted-foreground">Adjust content in Step 3 before configuring A/B tests.</p>}
+            {activePageBlueprint?.heroConfig && (
               <>
                 <ABTestConfigForm
                   version="A"
@@ -665,7 +815,7 @@ export default function LandingPageWorkflowPage() {
                 <div className="mt-8 pt-6 border-t border-border text-center">
                   <Button 
                     onClick={handleRenderABTestPreview} 
-                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm whitespace-normal sm:px-6 md:px-8 md:py-3 md:text-base md:whitespace-nowrap"
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm sm:px-4 sm:py-2 md:px-6 md:py-3 md:text-base"
                   >
                     <Eye className="mr-2 h-5 w-5" /> Render A/B Versions for Preview
                   </Button>
@@ -674,7 +824,7 @@ export default function LandingPageWorkflowPage() {
                 <Card className="mt-6">
                   <CardHeader>
                     <CardTitle className="text-xl font-semibold">Managed A/B Hero Configurations (Local)</CardTitle>
-                    <CardDescription>Load saved A/B configurations into Version A or B forms, or delete them.</CardDescription>
+                    <CardDescription>Load saved A/B configurations into Version A or B forms, or delete them. Includes campaign focus.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-0">
                     {isLoadingABTestConfigs && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin" /> Loading...</div>}
@@ -712,7 +862,7 @@ export default function LandingPageWorkflowPage() {
       value: "step-5",
       title: "Step 5: Prepare for Deployment",
       icon: <Rocket className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !generatedJsonA || !generatedJsonB, // Or some other validation from Step 4
+      disabled: !generatedJsonA || !generatedJsonB, 
       content: (
         <Card>
           <CardHeader>
@@ -741,11 +891,11 @@ export default function LandingPageWorkflowPage() {
                                 </Button>
                             </li>
                             <li>
-                                <strong>Consult the Playbook:</strong> For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up parameters, goals, and targeting), please refer to the <strong>`PLAYBOOK.md`</strong> file. 
-                                <div className="mt-2 text-xs flex items-center text-muted-foreground">
-                                  <BookOpen className="mr-2 h-4 w-4 text-primary" />
-                                  <span>This crucial document is located in the root directory of this project and provides comprehensive guidance.</span>
+                                <div className="flex items-center">
+                                  <BookOpen className="mr-2 h-4 w-4 text-primary shrink-0" />
+                                  <strong>Consult the Playbook:</strong>
                                 </div>
+                                <span className="ml-6">For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up parameters, goals, and targeting), please refer to the <strong>`PLAYBOOK.md`</strong> file. This crucial document is located in the root directory of this project and provides comprehensive guidance.</span>
                             </li>
                         </ol>
                         <p className="mt-4 text-xs italic">
@@ -766,7 +916,7 @@ export default function LandingPageWorkflowPage() {
         <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center">
           <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
-            Follow these steps to build, adjust, and A/B test your landing page content.
+            Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
