@@ -581,9 +581,9 @@ export default function ABTestConfiguratorPage() {
                         ${index < savedConfigs.length - 1 ? 'border-b border-border' : ''}
                       `}
                     >
-                      <div className="flex-grow mb-3 sm:mb-0 min-w-0"> {/* Added min-w-0 HERE */}
+                      <div className="flex-grow mb-3 sm:mb-0 min-w-0">
                         <p className="font-semibold text-foreground">{config.name}</p>
-                        <p className="text-sm text-muted-foreground truncate" title={config.headline}>Headline: {config.headline}</p>
+                        <p className="text-sm text-muted-foreground">Headline: {config.headline}</p>
                       </div>
                       <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
                         <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
@@ -642,4 +642,6 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
+    
+
     
