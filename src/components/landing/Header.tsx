@@ -6,7 +6,7 @@ export default function Header() {
   return (
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10 flex justify-between items-center"> {/* Increased py from py-3 to py-10 */}
-        <Link href="/" className="flex items-center">
+        <Link href="/landing-preview" className="flex items-center"> {/* Updated href to point to landing-preview */}
           {/* Logo - Placed in public/resources */}
           <Image
             src="/resources/logo.png" // Path is relative to the 'public' directory

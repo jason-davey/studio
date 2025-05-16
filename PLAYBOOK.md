@@ -35,13 +35,13 @@ A/B testing (or split testing) is a method of comparing two or more versions of 
 
 ## 3. Setting up Landing Page Variations in Code
 
-The application is set up to allow variations in the Hero Section of the landing page.
+The application is set up to allow variations in the Hero Section of the landing page. The main page of the application (`/`) is now an A/B Test Configurator tool. The previous side-by-side A/B test preview page is available at `/landing-preview`.
 
 ### 3.1. How it Works
 - **`src/lib/firebase.ts`**: Initializes the Firebase app and Remote Config. It sets default values for Remote Config parameters.
 - **`src/hooks/useRemoteConfigValue.ts`**: This custom React hook fetches a specified parameter's value from Firebase Remote Config. It handles loading states and uses default values if the fetch fails or if the app is running server-side.
-- **`src/app/page.tsx`**: The main landing page component uses `useRemoteConfigValue` to fetch a configuration object for the hero section (parameter key: `heroConfig`).
-- **`src/components/landing/HeroSection.tsx`**: This component now accepts props (`headline`, `subHeadline`, `ctaText`) that are dynamically set based on the `heroConfig` fetched from Remote Config.
+- **`/landing-preview` page (formerly `src/app/page.tsx`)**: This page shows a side-by-side preview of different HeroSection configurations. It can be used for visual review.
+- **`src/components/landing/HeroSection.tsx`**: This component now accepts props (`headline`, `subHeadline`, `ctaText`) that can be dynamically set based on the `heroConfig` fetched from Remote Config (for live A/B tests) or set manually (for the preview page).
 
 ### 3.2. Current Configurable Elements
 The `heroConfig` parameter in Remote Config should be a JSON string with the following structure:
@@ -55,10 +55,10 @@ The `heroConfig` parameter in Remote Config should be a JSON string with the fol
 
 ### 3.3. Creating New Variations
 To test different Hero Section content:
-1.  You don't need to change the Next.js code if you're just changing the text content for `headline`, `subHeadline`, or `ctaText`. You will define these variations in Firebase Remote Config (see next section).
+1.  You don't need to change the Next.js code if you're just changing the text content for `headline`, `subHeadline`, or `ctaText`. You will define these variations using the A/B Test Configurator tool (see section 4.3.1) and then use the generated JSON in Firebase Remote Config.
 2.  If you want to test more structural changes or different components, you would:
     *   Modify `HeroSection.tsx` or create new components.
-    *   Update `src/app/page.tsx` to conditionally render these based on a different Remote Config parameter or a more complex `heroConfig` structure.
+    *   Update the `/landing-preview` page to conditionally render these or adjust how `heroConfig` is used if its structure changes.
 
 ## 4. Configuring Firebase Remote Config
 
@@ -95,20 +95,22 @@ However, you *could* add conditional values for testing or specific user segment
 ### 4.3.1. Using the A/B Test Configurator Tool (Recommended)
 To simplify creating the JSON for your `heroConfig` variations, your application includes an **A/B Test Configurator tool**.
 
-1.  **Access the Tool:** Open your web browser and navigate to `/admin/ab-test-configurator` on your application's domain (e.g., `http://localhost:9002/admin/ab-test-configurator` if running locally, or `https://your-app-domain.com/admin/ab-test-configurator` if deployed).
-2.  **Fill in the Content:**
-    *   **Variant Name:** Give your variant a descriptive name (e.g., "Variant A - Bold Headline"). This is for your reference.
+1.  **Access the Tool:** Open your web browser and navigate to the root URL of your application (e.g., `http://localhost:9002/` if running locally, or `https://your-app-domain.com/` if deployed). This page is the A/B Test Configurator.
+2.  **(Optional) Load Current Config:** Click the "Load Current 'heroConfig' from Firebase" button to populate the form with the currently active or default configuration from Remote Config. This is useful if you want to edit an existing configuration.
+3.  **Fill in the Content:**
+    *   **Configuration Name:** Give your configuration a descriptive name (e.g., "Variant A - Bold Headline"). This is for your reference.
     *   **Headline:** Enter the main headline text for this variant.
     *   **Sub-Headline:** Enter the supporting sub-headline text.
     *   **Call to Action (CTA) Text:** Enter the text for the CTA button.
-3.  **Generate JSON:** Click the "Generate JSON" button.
-4.  **Copy JSON:** The tool will display the generated JSON string. Click the "Copy JSON" button.
-5.  **Paste in Firebase:** You can now paste this copied JSON string into the "Value" field for your `heroConfig` parameter in Firebase Remote Config (either as the default value or for a specific variant in an A/B test, as described in sections 4.2, 4.3, and 6.2).
+4.  **Generated JSON:** The tool will automatically display the generated JSON string in the text area as you type.
+5.  **Copy JSON:** Click the "Copy JSON" button.
+6.  **Paste in Firebase:** You can now paste this copied JSON string into the "Value" field for your `heroConfig` parameter in Firebase Remote Config (either as the default value or for a specific variant in an A/B test, as described in sections 4.2, 4.3, and 6.2).
+7.  **(Conceptual) Save to Firebase:** The "Update Firebase Remote Config (Conceptual)" button logs the JSON to the console and shows a message explaining that a backend setup is required to make this save directly to Firebase. For now, rely on copying the JSON to the Firebase Console.
 
 This tool helps ensure the JSON is correctly formatted and makes it easier for non-technical team members to prepare content for A/B tests.
 
 ### 4.4. Publish Changes
-- After defining your parameter and any initial values, click **"Publish changes"** in the Remote Config dashboard. Changes might take a few minutes to propagate.
+- After defining your parameter and any initial values in the Firebase Console, click **"Publish changes"** in the Remote Config dashboard. Changes might take a few minutes to propagate.
 
 ## 5. Deploying Your App
 - Ensure your Next.js application (with the Firebase SDK and Remote Config logic) is deployed to Firebase Hosting or your preferred hosting platform.
@@ -159,7 +161,7 @@ This is where you define your experiment to test different `heroConfig` values.
 ## 7. Iterating and Adding New Variations
 
 1.  **Hypothesize:** What do you want to improve? What change might achieve that?
-2.  **Generate JSON:** Use the A/B Test Configurator Tool (`/admin/ab-test-configurator`) to create the JSON for your new `heroConfig` variation.
+2.  **Generate JSON:** Use the A/B Test Configurator Tool (now at the root `/` path) to create the JSON for your new `heroConfig` variation.
 3.  **Code (if needed):** If your new variation requires structural changes beyond text, update your Next.js components.
 4.  **Remote Config/A/B Test:**
     *   If just updating a variant's content, you might edit an existing A/B test in Firebase and paste the new JSON.
