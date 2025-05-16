@@ -26,6 +26,156 @@ interface ManagedHeroConfig extends HeroConfig {
 
 const LOCAL_STORAGE_KEY = 'heroConfigManager';
 
+// Moved ConfigForm outside of ABTestConfiguratorPage to prevent re-definition on parent re-render
+const ConfigForm = ({
+  version,
+  headline, setHeadline,
+  subHeadline, setSubHeadline,
+  ctaText, setCtaText,
+  generatedJson,
+  configName, setConfigName,
+  onSave
+}: {
+  version: string,
+  headline: string, setHeadline: (val: string) => void,
+  subHeadline: string, setSubHeadline: (val: string) => void,
+  ctaText: string, setCtaText: (val: string) => void,
+  generatedJson: string,
+  configName: string, setConfigName: (val: string) => void,
+  onSave: () => void,
+}) => (
+  <Card className="mt-6">
+    <CardHeader>
+      <CardTitle className="text-xl font-semibold text-primary">Version {version} Content</CardTitle>
+    </CardHeader>
+    <CardContent className="space-y-6">
+      <div>
+        <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
+        <Input
+          id={`headline${version}`}
+          type="text"
+          value={headline}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setHeadline(e.target.value)}
+          placeholder={`Enter headline for Version ${version}`}
+          className="mt-1 text-base"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`subHeadline${version}`} className="text-base font-medium text-foreground">Sub-Headline</Label>
+        <Input
+          id={`subHeadline${version}`}
+          type="text"
+          value={subHeadline}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setSubHeadline(e.target.value)}
+          placeholder={`Enter sub-headline for Version ${version}`}
+          className="mt-1 text-base"
+        />
+      </div>
+      <div>
+        <Label htmlFor={`ctaText${version}`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
+        <Input
+          id={`ctaText${version}`}
+          type="text"
+          value={ctaText}
+          onChange={(e: ChangeEvent<HTMLInputElement>) => setCtaText(e.target.value)}
+          placeholder={`Enter CTA text for Version ${version}`}
+          className="mt-1 text-base"
+        />
+      </div>
+      
+      {generatedJson && (JSON.parse(generatedJson).headline !== "" || JSON.parse(generatedJson).subHeadline !== "" || JSON.parse(generatedJson).ctaText !== "") && (
+        <div className="mt-6 pt-4 border-t border-border space-y-3">
+          <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version}</Label>
+          <Textarea
+            id={`generatedJson${version}`}
+            value={generatedJson}
+            readOnly
+            rows={6}
+            className="font-mono text-sm bg-muted/50 border-border p-3 rounded-md"
+            aria-label={`Generated JSON configuration for Version ${version}`}
+          />
+          <div className="flex flex-wrap gap-2">
+            <Button onClick={() => handleCopyToClipboard(generatedJson, version)} variant="outline" size="sm">
+              <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
+            </Button>
+            <Button onClick={() => handleDownloadJson(generatedJson, version)} variant="outline" size="sm">
+              <Download className="mr-2 h-4 w-4" /> Download JSON
+            </Button>
+          </div>
+        </div>
+      )}
+
+      <div className="mt-6 pt-4 border-t border-border space-y-3">
+        <Label htmlFor={`configName${version}`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
+        <div className="flex gap-2">
+          <Input
+            id={`configName${version}`}
+            type="text"
+            value={configName}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setConfigName(e.target.value)}
+            placeholder={`Enter name for this configuration (e.g., Spring Promo ${version})`}
+            className="text-base flex-grow"
+          />
+          <Button onClick={onSave} variant="outline" size="sm">
+            <Save className="mr-2 h-4 w-4" /> Save Content
+          </Button>
+        </div>
+      </div>
+    </CardContent>
+  </Card>
+);
+
+// Helper function needs to be accessible by ConfigForm if it's defined outside
+const handleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
+  if (!jsonString || JSON.parse(jsonString).headline === "") {
+    toastFn({
+      title: `Nothing to Copy for Version ${version}`,
+      description: 'Please fill in the content fields for this version.',
+      variant: 'destructive',
+    });
+    return;
+  }
+  try {
+    await navigator.clipboard.writeText(jsonString);
+    toastFn({
+      title: `Copied to Clipboard (Version ${version})!`,
+      description: 'The JSON configuration has been copied.',
+    });
+  } catch (err) {
+    console.error(`Failed to copy Version ${version} JSON: `, err);
+    toastFn({
+      title: `Copy Failed (Version ${version})`,
+      description: 'Could not copy the JSON to clipboard. Please copy it manually.',
+      variant: 'destructive',
+    });
+  }
+};
+
+const handleDownloadJson = (jsonString: string, version: string, toastFn: Function) => {
+  if (!jsonString || JSON.parse(jsonString).headline === "") {
+    toastFn({
+      title: `Nothing to Download for Version ${version}`,
+      description: 'Please fill in the content fields for this version.',
+      variant: 'destructive',
+    });
+    return;
+  }
+  const blob = new Blob([jsonString], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `heroConfig-Version${version}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  toastFn({
+    title: `JSON Downloaded (Version ${version})!`,
+    description: `heroConfig-Version${version}.json has been downloaded.`,
+  });
+};
+
+
 export default function ABTestConfiguratorPage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -107,54 +257,6 @@ export default function ABTestConfiguratorPage() {
     setGeneratedJsonB(generateJson(headlineB, subHeadlineB, ctaTextB));
   }, [headlineB, subHeadlineB, ctaTextB]);
 
-  const handleCopyToClipboard = async (jsonString: string, version: string) => {
-    if (!jsonString || JSON.parse(jsonString).headline === "") {
-      toast({
-        title: `Nothing to Copy for Version ${version}`,
-        description: 'Please fill in the content fields for this version.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      await navigator.clipboard.writeText(jsonString);
-      toast({
-        title: `Copied to Clipboard (Version ${version})!`,
-        description: 'The JSON configuration has been copied.',
-      });
-    } catch (err) {
-      console.error(`Failed to copy Version ${version} JSON: `, err);
-      toast({
-        title: `Copy Failed (Version ${version})`,
-        description: 'Could not copy the JSON to clipboard. Please copy it manually.',
-        variant: 'destructive',
-      });
-    }
-  };
-
-  const handleDownloadJson = (jsonString: string, version: string) => {
-    if (!jsonString || JSON.parse(jsonString).headline === "") {
-      toast({
-        title: `Nothing to Download for Version ${version}`,
-        description: 'Please fill in the content fields for this version.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    const blob = new Blob([jsonString], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `heroConfig-Version${version}.json`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    toast({
-      title: `JSON Downloaded (Version ${version})!`,
-      description: `heroConfig-Version${version}.json has been downloaded.`,
-    });
-  };
 
   const handleRenderPreview = () => {
     let configAIsValid = false;
@@ -274,104 +376,6 @@ export default function ABTestConfiguratorPage() {
     toast({ title: 'Configuration Deleted', description: `"${configToDelete?.name || 'Configuration'}" has been deleted.`, variant: 'default' });
   };
 
-
-  const ConfigForm = ({
-    version,
-    headline, setHeadline,
-    subHeadline, setSubHeadline,
-    ctaText, setCtaText,
-    generatedJson,
-    configName, setConfigName,
-    onSave
-  }: {
-    version: string,
-    headline: string, setHeadline: (val: string) => void,
-    subHeadline: string, setSubHeadline: (val: string) => void,
-    ctaText: string, setCtaText: (val: string) => void,
-    generatedJson: string,
-    configName: string, setConfigName: (val: string) => void,
-    onSave: () => void,
-  }) => (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle className="text-xl font-semibold text-primary">Version {version} Content</CardTitle>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div>
-          <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
-          <Input
-            id={`headline${version}`}
-            type="text"
-            value={headline}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setHeadline(e.target.value)}
-            placeholder={`Enter headline for Version ${version}`}
-            className="mt-1 text-base"
-          />
-        </div>
-        <div>
-          <Label htmlFor={`subHeadline${version}`} className="text-base font-medium text-foreground">Sub-Headline</Label>
-          <Input
-            id={`subHeadline${version}`}
-            type="text"
-            value={subHeadline}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setSubHeadline(e.target.value)}
-            placeholder={`Enter sub-headline for Version ${version}`}
-            className="mt-1 text-base"
-          />
-        </div>
-        <div>
-          <Label htmlFor={`ctaText${version}`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
-          <Input
-            id={`ctaText${version}`}
-            type="text"
-            value={ctaText}
-            onChange={(e: ChangeEvent<HTMLInputElement>) => setCtaText(e.target.value)}
-            placeholder={`Enter CTA text for Version ${version}`}
-            className="mt-1 text-base"
-          />
-        </div>
-        
-        {generatedJson && (JSON.parse(generatedJson).headline !== "" || JSON.parse(generatedJson).subHeadline !== "" || JSON.parse(generatedJson).ctaText !== "") && (
-          <div className="mt-6 pt-4 border-t border-border space-y-3">
-            <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version}</Label>
-            <Textarea
-              id={`generatedJson${version}`}
-              value={generatedJson}
-              readOnly
-              rows={6}
-              className="font-mono text-sm bg-muted/50 border-border p-3 rounded-md"
-              aria-label={`Generated JSON configuration for Version ${version}`}
-            />
-            <div className="flex flex-wrap gap-2">
-              <Button onClick={() => handleCopyToClipboard(generatedJson, version)} variant="outline" size="sm">
-                <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
-              </Button>
-              <Button onClick={() => handleDownloadJson(generatedJson, version)} variant="outline" size="sm">
-                <Download className="mr-2 h-4 w-4" /> Download JSON
-              </Button>
-            </div>
-          </div>
-        )}
-
-        <div className="mt-6 pt-4 border-t border-border space-y-3">
-          <Label htmlFor={`configName${version}`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
-          <div className="flex gap-2">
-            <Input
-              id={`configName${version}`}
-              type="text"
-              value={configName}
-              onChange={(e: ChangeEvent<HTMLInputElement>) => setConfigName(e.target.value)}
-              placeholder={`Enter name for this configuration (e.g., Spring Promo ${version})`}
-              className="text-base flex-grow"
-            />
-            <Button onClick={onSave} variant="outline" size="sm">
-              <Save className="mr-2 h-4 w-4" /> Save Content
-            </Button>
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
