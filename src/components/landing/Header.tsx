@@ -18,12 +18,12 @@ export default function Header() {
           />
         </Link>
         <div className="flex items-center space-x-4">
-           {/* Updated button style to use new CTA color and made always visible */}
-           <Button className="inline-flex bg-cta text-cta-foreground hover:bg-cta/90" size="sm" asChild>
-              <Link href="/landing-preview#quote-form" legacyBehavior passHref>
-                <a>Get a Quote</a>
-              </Link> {/* Point to quote form on preview page */}
-           </Button>
+           {/* Updated button structure for asChild with Link */}
+           <Link href="/landing-preview#quote-form" passHref legacyBehavior>
+             <Button className="inline-flex bg-cta text-cta-foreground hover:bg-cta/90" size="sm" asChild>
+               <a>Get a Quote</a>
+             </Button>
+           </Link>
            {/* Mobile Menu Button (hamburger icon) removed */}
         </div>
       </div>
