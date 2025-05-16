@@ -19,6 +19,7 @@ const SuggestHeroCopyInputSchema = z.object({
   productName: z.string().default('SecureTomorrow Life Insurance').describe('The name of the product or service.'),
   productDescription: z.string().default('Provides financial security for families. Offers The Real Reward™: 10% cash back after the first year and a free legal will. Focuses on simple application and flexible cover.').describe('A brief description of the product or service.'),
   count: z.number().default(3).describe('The number of suggestions to generate.'),
+  campaignFocus: z.string().optional().describe('Optional campaign focus, theme, or keywords to guide the AI suggestions (e.g., "young families," "holiday promotion," "easy application process").'),
 });
 export type SuggestHeroCopyInput = z.infer<typeof SuggestHeroCopyInputSchema>;
 
@@ -39,10 +40,13 @@ const prompt = ai.definePrompt({
 Product Description: {{productDescription}}
 
 The user needs suggestions for a {{copyType}}.
+{{#if campaignFocus}}
+The current campaign focus or keywords are: "{{campaignFocus}}". Please heavily tailor your suggestions to align with this focus. This might describe a target audience, a specific product feature to highlight, a seasonal promotion, or key marketing keywords.
+{{/if}}
 {{#if currentText}}
-They have provided the following current text or keywords as inspiration: "{{currentText}}". Please generate suggestions that are variations or improvements on this, or inspired by it.
+They have provided the following current text or keywords as inspiration: "{{currentText}}". Generate suggestions that are variations or improvements on this, or inspired by it, while also considering the campaign focus if provided.
 {{else}}
-Please generate fresh suggestions for a {{copyType}}.
+Please generate fresh suggestions for a {{copyType}}{{#if campaignFocus}}, keeping the campaign focus "{{campaignFocus}}" in mind{{/if}}.
 {{/if}}
 
 Generate {{count}} distinct suggestions. Each suggestion should be suitable for a hero section.
@@ -62,9 +66,6 @@ const suggestHeroCopyFlow = ai.defineFlow(
     outputSchema: SuggestHeroCopyOutputSchema,
   },
   async (input) => {
-    // Adjust prompt for specific copy types for potentially better results if needed in future
-    // For now, the main prompt handles it with conditional guidance.
-
     const {output} = await prompt(input);
     if (!output) {
         return { suggestions: [] };
@@ -72,3 +73,4 @@ const suggestHeroCopyFlow = ai.defineFlow(
     return output;
   }
 );
+

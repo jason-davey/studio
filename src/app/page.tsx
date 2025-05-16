@@ -48,6 +48,7 @@ const ConfigForm = ({
   headline, setHeadline,
   subHeadline, setSubHeadline,
   ctaText, setCtaText,
+  campaignFocus, setCampaignFocus, // New prop
   generatedJson,
   configName, setConfigName,
   onSave
@@ -56,6 +57,7 @@ const ConfigForm = ({
   headline: string, setHeadline: (val: string) => void,
   subHeadline: string, setSubHeadline: (val: string) => void,
   ctaText: string, setCtaText: (val: string) => void,
+  campaignFocus: string, setCampaignFocus: (val: string) => void, // New prop
   generatedJson: string,
   configName: string, setConfigName: (val: string) => void,
   onSave: () => void,
@@ -68,6 +70,7 @@ const ConfigForm = ({
   const getAISuggestions = useCallback(async (
     copyType: SuggestHeroCopyInput['copyType'],
     currentValue: string,
+    currentCampaignFocus: string, // New parameter
     setter: React.Dispatch<React.SetStateAction<AISuggestionState>>
   ) => {
     setter({ loading: true, suggestions: [], error: null, popoverOpen: true });
@@ -75,6 +78,7 @@ const ConfigForm = ({
       const result = await suggestHeroCopy({
         copyType,
         currentText: currentValue,
+        campaignFocus: currentCampaignFocus, // Pass to the flow
         count: 3,
       });
       if (result.suggestions && result.suggestions.length > 0) {
@@ -117,10 +121,10 @@ const ConfigForm = ({
           size="sm"
           className="ml-2 px-2 py-1 h-auto text-xs"
           onClick={() => {
-            if (!aiState.popoverOpen || aiState.suggestions.length === 0 || aiState.error) { // Fetch if not open or no suggestions/error
-                 getAISuggestions(copyType, targetValue, aiStateSetter);
+            if (!aiState.popoverOpen || aiState.suggestions.length === 0 || aiState.error) {
+                 getAISuggestions(copyType, targetValue, campaignFocus, aiStateSetter); // Pass campaignFocus
             } else {
-                 aiStateSetter(prev => ({...prev, popoverOpen: true})); // Just open if already has suggestions
+                 aiStateSetter(prev => ({...prev, popoverOpen: true}));
             }
           }}
           title={`Suggest ${copyType} with AI`}
@@ -133,7 +137,7 @@ const ConfigForm = ({
         {aiState.error && !aiState.loading && (
             <div className="text-destructive p-2">
                 <p>{aiState.error}</p>
-                <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, aiStateSetter)} className="p-0 h-auto mt-1 text-xs">
+                <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, campaignFocus, aiStateSetter)} className="p-0 h-auto mt-1 text-xs">
                     <RefreshCcw className="mr-1 h-3 w-3" /> Try Again
                 </Button>
             </div>
@@ -152,14 +156,14 @@ const ConfigForm = ({
                 </Button>
               </li>
             ))}
-             <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, aiStateSetter)} className="p-0 h-auto mt-2 text-xs text-muted-foreground">
+             <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, campaignFocus, aiStateSetter)} className="p-0 h-auto mt-2 text-xs text-muted-foreground">
                 <RefreshCcw className="mr-1 h-3 w-3" /> Regenerate
             </Button>
           </ul>
         )}
          {!aiState.loading && !aiState.error && aiState.suggestions.length === 0 && (
              <div className="text-muted-foreground p-2">No suggestions available. Try providing some initial text or keywords.
-                <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, aiStateSetter)} className="p-0 h-auto mt-1 text-xs">
+                <Button variant="link" size="sm" onClick={() => getAISuggestions(copyType, targetValue, campaignFocus, aiStateSetter)} className="p-0 h-auto mt-1 text-xs">
                     <RefreshCcw className="mr-1 h-3 w-3" /> Try Again
                 </Button>
              </div>
@@ -175,6 +179,21 @@ const ConfigForm = ({
       <CardTitle className="text-xl font-semibold text-primary">Version {version} Content</CardTitle>
     </CardHeader>
     <CardContent className="space-y-6">
+      <div>
+        <Label htmlFor={`campaignFocus${version}`} className="text-base font-medium text-foreground">Campaign Focus / Keywords (Optional)</Label>
+        <Textarea
+          id={`campaignFocus${version}`}
+          value={campaignFocus}
+          onChange={(e: ChangeEvent<HTMLTextAreaElement>) => setCampaignFocus(e.target.value)}
+          placeholder="e.g., 'young families', 'quick approval', 'summer discount', 'keyword1 keyword2'"
+          className="mt-1 text-base"
+          rows={2}
+        />
+        <p className="text-xs text-muted-foreground mt-1">Helps AI tailor suggestions to your specific campaign or audience.</p>
+      </div>
+
+      <Separator />
+
       <div>
         <div className="flex items-center justify-between">
           <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
@@ -319,6 +338,7 @@ export default function ABTestConfiguratorPage() {
   const [headlineA, setHeadlineA] = useState<string>('');
   const [subHeadlineA, setSubHeadlineA] = useState<string>('');
   const [ctaTextA, setCtaTextA] = useState<string>('');
+  const [campaignFocusA, setCampaignFocusA] = useState<string>(''); // New state for Version A
   const [generatedJsonA, setGeneratedJsonA] = useState<string>('');
   const [nameForConfigA, setNameForConfigA] = useState<string>('');
 
@@ -326,6 +346,7 @@ export default function ABTestConfiguratorPage() {
   const [headlineB, setHeadlineB] = useState<string>('');
   const [subHeadlineB, setSubHeadlineB] = useState<string>('');
   const [ctaTextB, setCtaTextB] = useState<string>('');
+  const [campaignFocusB, setCampaignFocusB] = useState<string>(''); // New state for Version B
   const [generatedJsonB, setGeneratedJsonB] = useState<string>('');
   const [nameForConfigB, setNameForConfigB] = useState<string>('');
 
@@ -356,7 +377,7 @@ export default function ABTestConfiguratorPage() {
 
   // Persist savedConfigs to localStorage whenever it changes
   useEffect(() => {
-    if(!isLoadingConfigs) { // Avoid writing initial empty/default state if still loading
+    if(!isLoadingConfigs) { 
       try {
         localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedConfigs));
       } catch (error) {
@@ -376,6 +397,8 @@ export default function ABTestConfiguratorPage() {
       const emptyConfig: HeroConfig = { headline: '', subHeadline: '', ctaText: '' };
       return JSON.stringify(emptyConfig, null, 2);
     }
+    // Note: campaignFocus is NOT part of the heroConfig JSON for Firebase.
+    // It's only used for AI suggestions.
     const config: HeroConfig = {
       headline: headline.trim(),
       subHeadline: subHeadline.trim(),
@@ -440,6 +463,7 @@ export default function ABTestConfiguratorPage() {
     const headline = version === 'A' ? headlineA : headlineB;
     const subHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
     const ctaText = version === 'A' ? ctaTextA : ctaTextB;
+    // campaignFocus is not saved as part of ManagedHeroConfig as it's for suggestion context only.
 
     if (!name) {
       toast({ title: 'Configuration Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' });
@@ -453,7 +477,6 @@ export default function ABTestConfiguratorPage() {
     const existingConfigIndex = savedConfigs.findIndex(c => c.name === name);
 
     if (existingConfigIndex !== -1) {
-      // Update existing configuration
       const updatedConfigs = savedConfigs.map((config, index) => 
         index === existingConfigIndex 
         ? {
@@ -468,7 +491,6 @@ export default function ABTestConfiguratorPage() {
       setSavedConfigs(updatedConfigs);
       toast({ title: 'Configuration Updated!', description: `"${name}" has been updated successfully.` });
     } else {
-      // Add new configuration
       const newConfig: ManagedHeroConfig = {
         id: Date.now().toString(), 
         name,
@@ -495,11 +517,13 @@ export default function ABTestConfiguratorPage() {
       setSubHeadlineA(configToLoad.subHeadline);
       setCtaTextA(configToLoad.ctaText);
       setNameForConfigA(configToLoad.name); 
+      // campaignFocusA is not loaded, it's transient for suggestions. User can re-enter if needed.
     } else {
       setHeadlineB(configToLoad.headline);
       setSubHeadlineB(configToLoad.subHeadline);
       setCtaTextB(configToLoad.ctaText);
-      setNameForConfigB(configToLoad.name); 
+      setNameForConfigB(configToLoad.name);
+      // campaignFocusB is not loaded.
     }
     toast({ title: 'Configuration Loaded', description: `"${configToLoad.name}" loaded into Version ${version}.` });
   };
@@ -517,8 +541,8 @@ export default function ABTestConfiguratorPage() {
         <CardHeader className="bg-muted/30 p-6 rounded-t-lg">
           <CardTitle className="text-2xl font-bold text-primary">A/B Test Hero Section Configurator & Manager</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Configure two versions (A and B) of hero section content. Use AI suggestions, save, manage, and load your configurations locally.
-            Then, preview both active versions side-by-side.
+            Configure two versions (A and B) of hero section content. Use AI suggestions (optionally guided by campaign focus/keywords), 
+            save, manage, and load your configurations locally. Then, preview both active versions side-by-side.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -528,6 +552,7 @@ export default function ABTestConfiguratorPage() {
             headline={headlineA} setHeadline={setHeadlineA}
             subHeadline={subHeadlineA} setSubHeadline={setSubHeadlineA}
             ctaText={ctaTextA} setCtaText={setCtaTextA}
+            campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA} // Pass state for Version A
             generatedJson={generatedJsonA}
             configName={nameForConfigA} setConfigName={setNameForConfigA}
             onSave={() => saveConfiguration('A')}
@@ -538,6 +563,7 @@ export default function ABTestConfiguratorPage() {
             headline={headlineB} setHeadline={setHeadlineB}
             subHeadline={subHeadlineB} setSubHeadline={setSubHeadlineB}
             ctaText={ctaTextB} setCtaText={setCtaTextB}
+            campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB} // Pass state for Version B
             generatedJson={generatedJsonB}
             configName={nameForConfigB} setConfigName={setNameForConfigB}
             onSave={() => saveConfiguration('B')}
@@ -562,7 +588,7 @@ export default function ABTestConfiguratorPage() {
                 These are stored in your browser's local storage.
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-0"> {/* Removed space-y-4 here */}
+            <CardContent className="space-y-0">
               {isLoadingConfigs && (
                 <div className="flex items-center justify-center py-4">
                   <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
@@ -573,7 +599,7 @@ export default function ABTestConfiguratorPage() {
                 <p className="text-muted-foreground text-center py-4">No configurations saved yet. Use the "Save Content" buttons above to save your work.</p>
               )}
               {!isLoadingConfigs && savedConfigs.length > 0 && (
-                <div className="border border-border rounded-lg overflow-hidden"> {/* Added border and overflow-hidden to container */}
+                <div className="border border-border rounded-lg overflow-hidden">
                   {savedConfigs.map((config, index) => (
                     <div 
                       key={config.id} 
@@ -584,9 +610,9 @@ export default function ABTestConfiguratorPage() {
                         ${index < savedConfigs.length - 1 ? 'border-b border-border' : ''}
                       `}
                     >
-                      <div className="flex-grow mb-3 sm:mb-0 min-w-0"> {/* Added min-w-0 here */}
+                      <div className="flex-grow mb-3 sm:mb-0 min-w-0"> 
                         <p className="font-semibold text-foreground">{config.name}</p>
-                        <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> {/* Removed truncate, added break-words */}
+                        <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> 
                       </div>
                       <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
                         <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
