@@ -581,7 +581,7 @@ export default function ABTestConfiguratorPage() {
                         ${index < savedConfigs.length - 1 ? 'border-b border-border' : ''}
                       `}
                     >
-                      <div className="flex-grow mb-3 sm:mb-0">
+                      <div className="flex-grow mb-3 sm:mb-0 min-w-0"> {/* Added min-w-0 HERE */}
                         <p className="font-semibold text-foreground">{config.name}</p>
                         <p className="text-sm text-muted-foreground truncate" title={config.headline}>Headline: {config.headline}</p>
                       </div>
@@ -643,5 +643,3 @@ export default function ABTestConfiguratorPage() {
   );
 }
     
-
-      
