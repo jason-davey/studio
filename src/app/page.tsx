@@ -8,8 +8,9 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 
 interface HeroConfig {
   headline: string;
@@ -40,10 +41,6 @@ export default function ABTestConfiguratorPage() {
       const emptyConfig: HeroConfig = { headline: '', subHeadline: '', ctaText: '' };
       return JSON.stringify(emptyConfig, null, 2);
     }
-    // Only show missing fields toast if some are filled but not all critical ones for a *meaningful* config.
-    // For now, if anything is filled, we generate, assuming the user might be mid-edit.
-    // The preview will just show what's there.
-
     const config: HeroConfig = {
       headline: headline.trim(),
       subHeadline: subHeadline.trim(),
@@ -61,10 +58,10 @@ export default function ABTestConfiguratorPage() {
   }, [headlineB, subHeadlineB, ctaTextB]);
 
   const handleCopyToClipboard = async (jsonString: string, version: string) => {
-    if (!jsonString) {
+    if (!jsonString || JSON.parse(jsonString).headline === "") { // Check if JSON is empty or just placeholder
       toast({
         title: `Nothing to Copy for Version ${version}`,
-        description: 'Please generate the JSON first.',
+        description: 'Please fill in the content fields for this version.',
         variant: 'destructive',
       });
       return;
@@ -86,10 +83,10 @@ export default function ABTestConfiguratorPage() {
   };
 
   const handleDownloadJson = (jsonString: string, version: string) => {
-    if (!jsonString) {
+    if (!jsonString || JSON.parse(jsonString).headline === "") { // Check if JSON is empty or just placeholder
       toast({
         title: `Nothing to Download for Version ${version}`,
-        description: 'Please generate the JSON first.',
+        description: 'Please fill in the content fields for this version.',
         variant: 'destructive',
       });
       return;
@@ -110,30 +107,40 @@ export default function ABTestConfiguratorPage() {
   };
 
   const handleRenderPreview = () => {
-    if (!generatedJsonA || !generatedJsonB) {
+    let configAIsValid = false;
+    let configBIsValid = false;
+
+    try {
+        const configAData = JSON.parse(generatedJsonA) as HeroConfig;
+        if(configAData.headline && configAData.subHeadline && configAData.ctaText) configAIsValid = true;
+    } catch (e) {/* ignore parsing error, handled by validity check */}
+
+    try {
+        const configBData = JSON.parse(generatedJsonB) as HeroConfig;
+        if(configBData.headline && configBData.subHeadline && configBData.ctaText) configBIsValid = true;
+    } catch (e) {/* ignore parsing error, handled by validity check */}
+
+
+    if (!configAIsValid || !configBIsValid) {
          toast({
-            title: 'Configuration Incomplete',
-            description: 'Please ensure both Version A and Version B have content before previewing.',
+            title: 'Configuration Incomplete for Preview',
+            description: 'Please ensure all fields (Headline, Sub-Headline, CTA Text) are filled for both Version A and Version B before previewing.',
             variant: 'destructive',
         });
         return;
     }
     try {
-        // Ensure valid JSON before parsing for URL
-        const configAData = JSON.parse(generatedJsonA) as HeroConfig;
-        const configBData = JSON.parse(generatedJsonB) as HeroConfig;
-
         const query = new URLSearchParams();
-        query.set('configA', JSON.stringify(configAData));
-        query.set('configB', JSON.stringify(configBData));
+        query.set('configA', generatedJsonA); // Pass the string directly
+        query.set('configB', generatedJsonB); // Pass the string directly
         router.push(`/landing-preview?${query.toString()}`);
     } catch (error) {
         toast({
             title: 'Error Preparing Preview',
-            description: 'Could not parse one of the JSON configurations. Please check your inputs.',
+            description: 'Could not prepare the preview link. Please check your inputs.',
             variant: 'destructive',
         });
-        console.error("Error parsing JSON for preview: ", error);
+        console.error("Error preparing preview link: ", error);
     }
   };
 
@@ -220,8 +227,7 @@ export default function ABTestConfiguratorPage() {
           <CardTitle className="text-2xl font-bold text-primary">A/B Test Hero Section Configurator</CardTitle>
           <CardDescription className="text-muted-foreground">
             Configure two versions (A and B) of the hero section content.
-            Generate, copy, or download the JSON for use in Firebase A/B Testing.
-            Then, preview both versions side-by-side.
+            Generate, copy, or download the JSON for each. Then, preview both versions side-by-side.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
@@ -249,25 +255,34 @@ export default function ABTestConfiguratorPage() {
           </div>
 
         </CardContent>
-        <CardFooter className="mt-6 bg-muted/30 p-6 border-t border-border rounded-b-lg">
-            <div className="flex items-start space-x-3 text-sm text-muted-foreground">
-                <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
-                <div>
-                    <p className="font-semibold text-foreground">How to use the generated JSON:</p>
-                    <ol className="list-decimal list-inside space-y-1.5 mt-2">
-                        <li>Modify the fields for Version A and Version B above. The JSON will update automatically.</li>
-                        <li>Copy or download the JSON for the version you want to use in Firebase.</li>
-                        <li>Go to your Firebase project in the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Firebase Console</a>.</li>
-                        <li>Navigate to <strong>Remote Config</strong> (usually under "Engage" or "Build").</li>
-                        <li>
-                            When setting up the `{REMOTE_CONFIG_KEY_BASE}` parameter's default value or a variant value in an A/B test (e.g., `heroConfigVariantA`, `heroConfigVariantB` or just `heroConfig` if you manage variants directly):
-                            <ul className="list-disc list-inside pl-5 space-y-0.5 mt-0.5">
-                                <li>Paste the copied/downloaded JSON into the "Value" field in the Firebase Console for the respective variant.</li>
-                            </ul>
-                        </li>
-                        <li>Use the "Render Pages for Preview" button to see both configured versions side-by-side before deploying or starting a test.</li>
-                        <li>For more detailed step-by-step instructions on setting up A/B tests in Firebase, please refer to the <strong>`PLAYBOOK.md`</strong> file.</li>
-                    </ol>
+        <CardFooter className="bg-muted/30 p-6 border-t border-border rounded-b-lg">
+            <div className="flex flex-col space-y-4 text-sm text-muted-foreground">
+                <div className="flex items-start space-x-3">
+                    <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary flex-shrink-0" />
+                    <div>
+                        <p className="text-lg font-semibold text-foreground mb-2">Ready to Start Your A/B Test in Firebase?</p>
+                        <p className="mb-3">
+                            You've configured your content variations and previewed them. The next step is to set up your A/B test in the Firebase console.
+                        </p>
+                        <ol className="list-decimal list-inside space-y-1.5 mb-4">
+                            <li>Ensure you have <strong>copied or downloaded the JSON</strong> for both Version A and Version B using the buttons above.</li>
+                            <li>Click the button below to go to the Firebase Console.</li>
+                            <li>In Firebase, navigate to the <strong>A/B Testing</strong> section (usually under "Engage").</li>
+                            <li>Create a new experiment targeting the Remote Config parameter <strong>`{REMOTE_CONFIG_KEY_BASE}`</strong>.</li>
+                            <li>Use the JSON you prepared for your Baseline and Variant values.</li>
+                        </ol>
+                        
+                        <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
+                            <Link href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer">
+                                <ExternalLink className="mr-2 h-5 w-5" /> Go to Firebase Console
+                            </Link>
+                        </Button>
+
+                        <p className="mt-4 text-xs">
+                            For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up goals and targeting),
+                            please refer to the <strong>`PLAYBOOK.md`</strong> file located in the root of this project.
+                        </p>
+                    </div>
                 </div>
             </div>
         </CardFooter>
@@ -275,5 +290,4 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
-
     
