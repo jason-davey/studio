@@ -576,11 +576,11 @@ export default function ABTestConfiguratorPage() {
                         <p className="font-semibold text-foreground">{config.name}</p>
                         <p className="text-sm text-muted-foreground truncate" title={config.headline}>Headline: {config.headline}</p>
                       </div>
-                      <div className="flex flex-wrap gap-2 shrink-0 mt-2 sm:mt-0">
+                      <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 shrink-0 mt-3 sm:mt-0">
                         <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm">Load to A</Button>
                         <Button onClick={() => loadConfigIntoVersion(config.id, 'B')} variant="outline" size="sm">Load to B</Button>
                         <Button onClick={() => deleteSavedConfig(config.id)} variant="destructive" size="sm">
-                          <Trash2 className="mr-1 h-4 w-4 sm:mr-2" /> Delete
+                          <Trash2 className="h-4 w-4" /> Delete
                         </Button>
                       </div>
                     </li>
@@ -633,4 +633,6 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
+    
+
     
