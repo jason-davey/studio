@@ -8,7 +8,7 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen } from 'lucide-react'; // Added BookOpen
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
@@ -133,7 +133,11 @@ export default function ABTestConfiguratorPage() {
         const query = new URLSearchParams();
         query.set('configA', generatedJsonA); // Pass the string directly
         query.set('configB', generatedJsonB); // Pass the string directly
-        router.push(`/landing-preview?${query.toString()}`);
+        
+        // Open in a new tab for better UX
+        const previewUrl = `/landing-preview?${query.toString()}`;
+        window.open(previewUrl, '_blank');
+
     } catch (error) {
         toast({
             title: 'Error Preparing Preview',
@@ -260,27 +264,33 @@ export default function ABTestConfiguratorPage() {
                 <div className="flex items-start space-x-3">
                     <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary flex-shrink-0" />
                     <div>
-                        <p className="text-lg font-semibold text-foreground mb-2">Ready to Start Your A/B Test in Firebase?</p>
+                        <p className="text-lg font-semibold text-foreground mb-2">Next Steps: Firebase & Playbook</p>
                         <p className="mb-3">
-                            You've configured your content variations and previewed them. The next step is to set up your A/B test in the Firebase console.
+                            After configuring and previewing your content variations using this tool:
                         </p>
-                        <ol className="list-decimal list-inside space-y-1.5 mb-4">
-                            <li>Ensure you have <strong>copied or downloaded the JSON</strong> for both Version A and Version B using the buttons above.</li>
-                            <li>Click the button below to go to the Firebase Console.</li>
-                            <li>In Firebase, navigate to the <strong>A/B Testing</strong> section (usually under "Engage").</li>
-                            <li>Create a new experiment targeting the Remote Config parameter <strong>`{REMOTE_CONFIG_KEY_BASE}`</strong>.</li>
-                            <li>Use the JSON you prepared for your Baseline and Variant values.</li>
+                        <ol className="list-decimal list-inside space-y-2 mb-4">
+                            <li>
+                                <strong>Prepare JSON:</strong> Ensure you have copied or downloaded the JSON for both Version A and Version B using the buttons within each version's card above. These JSON strings are what you'll use in Firebase.
+                            </li>
+                            <li>
+                                <strong>Go to Firebase:</strong> Click the button below to navigate to the Firebase Console where you will set up and manage your A/B test.
+                                <Button asChild size="sm" className="mt-2 bg-primary hover:bg-primary/90 text-primary-foreground w-full sm:w-auto">
+                                    <Link href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer">
+                                        <ExternalLink className="mr-2 h-4 w-4" /> Go to Firebase Console
+                                    </Link>
+                                </Button>
+                            </li>
+                            <li>
+                                <strong>Consult the Playbook:</strong> For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up parameters, goals, and targeting), please refer to the <strong>`PLAYBOOK.md`</strong> file. This crucial document is located in the root directory of this project and provides comprehensive guidance.
+                                <div className="mt-2 text-xs flex items-center text-muted-foreground">
+                                  <BookOpen className="mr-2 h-4 w-4 text-primary" />
+                                  <span>You can open `PLAYBOOK.md` from your project files.</span>
+                                </div>
+                            </li>
                         </ol>
                         
-                        <Button asChild size="lg" className="bg-primary hover:bg-primary/90 text-primary-foreground">
-                            <Link href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer">
-                                <ExternalLink className="mr-2 h-5 w-5" /> Go to Firebase Console
-                            </Link>
-                        </Button>
-
-                        <p className="mt-4 text-xs">
-                            For detailed, step-by-step instructions on creating the A/B test in Firebase (including setting up goals and targeting),
-                            please refer to the <strong>`PLAYBOOK.md`</strong> file located in the root of this project.
+                        <p className="mt-4 text-xs italic">
+                           Remember, this tool helps you prepare the content variations. The actual A/B test (targeting users, measuring results) is run and managed within the Firebase A/B Testing platform.
                         </p>
                     </div>
                 </div>
