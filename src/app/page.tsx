@@ -198,12 +198,13 @@ export default function ABTestConfiguratorPage() {
   };
 
   const saveConfiguration = (version: 'A' | 'B') => {
-    const name = version === 'A' ? nameForConfigA : nameForConfigB;
+    const configNameValue = version === 'A' ? nameForConfigA : nameForConfigB;
+    const name = configNameValue.trim();
     const headline = version === 'A' ? headlineA : headlineB;
     const subHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
     const ctaText = version === 'A' ? ctaTextA : ctaTextB;
 
-    if (!name.trim()) {
+    if (!name) {
       toast({ title: 'Configuration Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' });
       return;
     }
@@ -212,16 +213,37 @@ export default function ABTestConfiguratorPage() {
       return;
     }
 
-    const newConfig: ManagedHeroConfig = {
-      id: Date.now().toString(), // Simple unique ID
-      name: name.trim(),
-      headline: headline.trim(),
-      subHeadline: subHeadline.trim(),
-      ctaText: ctaText.trim(),
-    };
+    const existingConfigIndex = savedConfigs.findIndex(c => c.name === name);
 
-    setSavedConfigs(prev => [...prev, newConfig]);
-    toast({ title: 'Configuration Saved!', description: `"${newConfig.name}" has been saved locally.` });
+    if (existingConfigIndex !== -1) {
+      // Update existing configuration
+      const updatedConfigs = savedConfigs.map((config, index) => 
+        index === existingConfigIndex 
+        ? {
+            ...config, // Retain original ID and other potential properties
+            name, // name is the same
+            headline: headline.trim(),
+            subHeadline: subHeadline.trim(),
+            ctaText: ctaText.trim(),
+          }
+        : config
+      );
+      setSavedConfigs(updatedConfigs);
+      toast({ title: 'Configuration Updated!', description: `"${name}" has been updated successfully.` });
+    } else {
+      // Add new configuration
+      const newConfig: ManagedHeroConfig = {
+        id: Date.now().toString(), // Simple unique ID
+        name,
+        headline: headline.trim(),
+        subHeadline: subHeadline.trim(),
+        ctaText: ctaText.trim(),
+      };
+      setSavedConfigs(prev => [...prev, newConfig]);
+      toast({ title: 'Configuration Saved!', description: `"${newConfig.name}" has been saved locally.` });
+    }
+
+    // Clear the name input field after save/update
     if (version === 'A') setNameForConfigA('');
     if (version === 'B') setNameForConfigB('');
   };
@@ -236,12 +258,12 @@ export default function ABTestConfiguratorPage() {
       setHeadlineA(configToLoad.headline);
       setSubHeadlineA(configToLoad.subHeadline);
       setCtaTextA(configToLoad.ctaText);
-      setNameForConfigA(configToLoad.name); // Optionally prefill name if they want to re-save
+      setNameForConfigA(configToLoad.name); 
     } else {
       setHeadlineB(configToLoad.headline);
       setSubHeadlineB(configToLoad.subHeadline);
       setCtaTextB(configToLoad.ctaText);
-      setNameForConfigB(configToLoad.name); // Optionally prefill name
+      setNameForConfigB(configToLoad.name); 
     }
     toast({ title: 'Configuration Loaded', description: `"${configToLoad.name}" loaded into Version ${version}.` });
   };
@@ -474,4 +496,6 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
+    
+
     
