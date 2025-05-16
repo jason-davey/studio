@@ -17,6 +17,14 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en">
+      <head>
+        {/*
+          AB Tasty Script Placeholder:
+          Paste your AB Tasty JavaScript snippet here.
+          It should typically be placed as early as possible in the <head>.
+          Consult your AB Tasty documentation for the exact placement and script.
+        */}
+      </head>
       {/* Apply font-sans (which is now URW DIN) directly to the body */}
       {/* Removed explicit font-din class and Geist variables */}
       <body className="font-sans antialiased"> {/* Added font-sans */}
