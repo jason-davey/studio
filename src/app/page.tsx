@@ -8,8 +8,8 @@ import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, DownloadCloud, Save } from 'lucide-react';
-import { remoteConfigInstance, getValue, fetchAndActivate } from '@/lib/firebase';
+import { ClipboardCopy, Info, Download, Eye } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 interface HeroConfig {
   headline: string;
@@ -17,270 +17,256 @@ interface HeroConfig {
   ctaText: string;
 }
 
-const REMOTE_CONFIG_KEY = 'heroConfig';
+const REMOTE_CONFIG_KEY_BASE = 'heroConfig'; // Base name for Firebase
 
 export default function ABTestConfiguratorPage() {
-  const [variantName, setVariantName] = useState<string>('Loaded Config');
-  const [headline, setHeadline] = useState<string>('');
-  const [subHeadline, setSubHeadline] = useState<string>('');
-  const [ctaText, setCtaText] = useState<string>('');
-  const [generatedJson, setGeneratedJson] = useState<string>('');
+  const router = useRouter();
   const { toast } = useToast();
 
-  const populateForm = (config: HeroConfig, name?: string) => {
-    setHeadline(config.headline || '');
-    setSubHeadline(config.subHeadline || '');
-    setCtaText(config.ctaText || '');
-    if (name) {
-      setVariantName(name);
-    }
-  };
+  // State for Version A
+  const [headlineA, setHeadlineA] = useState<string>('');
+  const [subHeadlineA, setSubHeadlineA] = useState<string>('');
+  const [ctaTextA, setCtaTextA] = useState<string>('');
+  const [generatedJsonA, setGeneratedJsonA] = useState<string>('');
 
-  const loadCurrentRemoteConfig = async () => {
-    if (!remoteConfigInstance) {
-      toast({
-        title: 'Firebase Error',
-        description: 'Remote Config is not initialized. Cannot load configuration.',
-        variant: 'destructive',
-      });
-      return;
-    }
-    try {
-      await fetchAndActivate(remoteConfigInstance); // Ensure we have the latest
-      const remoteValue = getValue(remoteConfigInstance, REMOTE_CONFIG_KEY);
-      if (remoteValue.getSource() !== 'static') {
-        const config = JSON.parse(remoteValue.asString()) as HeroConfig;
-        populateForm(config, `Current ${REMOTE_CONFIG_KEY}`);
-        setGeneratedJson(JSON.stringify(config, null, 2)); // Also update generated JSON
-        toast({
-          title: 'Config Loaded',
-          description: `Successfully loaded current '${REMOTE_CONFIG_KEY}' from Firebase.`,
-        });
-      } else {
-         const defaultConfig = remoteConfigInstance.defaultConfig[REMOTE_CONFIG_KEY] as string;
-         if (defaultConfig) {
-            const config = JSON.parse(defaultConfig) as HeroConfig;
-            populateForm(config, `Default ${REMOTE_CONFIG_KEY}`);
-            setGeneratedJson(JSON.stringify(config, null, 2));
-            toast({
-              title: 'Default Config Loaded',
-              description: `Loaded default '${REMOTE_CONFIG_KEY}' as no remote value was found.`,
-            });
-         } else {
-            toast({
-              title: 'Not Found',
-              description: `No remote or default value found for '${REMOTE_CONFIG_KEY}'.`,
-              variant: 'destructive',
-            });
-         }
-      }
-    } catch (error) {
-      console.error('Error loading remote config:', error);
-      toast({
-        title: 'Load Error',
-        description: `Failed to load '${REMOTE_CONFIG_KEY}'. Check console for details.`,
-        variant: 'destructive',
-      });
-    }
-  };
+  // State for Version B
+  const [headlineB, setHeadlineB] = useState<string>('');
+  const [subHeadlineB, setSubHeadlineB] = useState<string>('');
+  const [ctaTextB, setCtaTextB] = useState<string>('');
+  const [generatedJsonB, setGeneratedJsonB] = useState<string>('');
 
-  // Optionally load config on initial mount
-  // useEffect(() => {
-  //   loadCurrentRemoteConfig();
-  // }, []);
-
-  const handleGenerateJson = (e?: FormEvent) => {
-    e?.preventDefault();
+  const generateJson = (headline: string, subHeadline: string, ctaText: string): string => {
     if (!headline.trim() && !subHeadline.trim() && !ctaText.trim()) {
-      // Allow generating empty JSON if all fields are empty, for clearing.
-       const emptyConfig: HeroConfig = { headline: '', subHeadline: '', ctaText: '' };
-       setGeneratedJson(JSON.stringify(emptyConfig, null, 2));
-       toast({
-        title: 'JSON Generated (Empty)',
-        description: 'Generated JSON for an empty configuration.',
-      });
-      return;
+      const emptyConfig: HeroConfig = { headline: '', subHeadline: '', ctaText: '' };
+      return JSON.stringify(emptyConfig, null, 2);
     }
-    if (!headline.trim() || !subHeadline.trim() || !ctaText.trim()) {
-      toast({
-        title: 'Missing Fields',
-        description: 'Please fill in all content fields (Headline, Sub-Headline, CTA Text) to generate the JSON, or leave all empty to generate an empty config.',
-        variant: 'destructive',
-      });
-      // setGeneratedJson(''); // Don't clear if some fields are filled
-      return;
-    }
+    // Only show missing fields toast if some are filled but not all critical ones for a *meaningful* config.
+    // For now, if anything is filled, we generate, assuming the user might be mid-edit.
+    // The preview will just show what's there.
 
     const config: HeroConfig = {
       headline: headline.trim(),
       subHeadline: subHeadline.trim(),
       ctaText: ctaText.trim(),
     };
-    setGeneratedJson(JSON.stringify(config, null, 2));
-     toast({
-        title: 'JSON Generated!',
-        description: 'You can now copy the JSON or attempt to save it.',
-      });
+    return JSON.stringify(config, null, 2);
   };
-  
-  // Trigger generation when form fields change
+
   useEffect(() => {
-    handleGenerateJson();
-  }, [headline, subHeadline, ctaText]);
+    setGeneratedJsonA(generateJson(headlineA, subHeadlineA, ctaTextA));
+  }, [headlineA, subHeadlineA, ctaTextA]);
 
+  useEffect(() => {
+    setGeneratedJsonB(generateJson(headlineB, subHeadlineB, ctaTextB));
+  }, [headlineB, subHeadlineB, ctaTextB]);
 
-  const handleCopyToClipboard = async () => {
-    if (!generatedJson) {
+  const handleCopyToClipboard = async (jsonString: string, version: string) => {
+    if (!jsonString) {
       toast({
-        title: 'Nothing to Copy',
+        title: `Nothing to Copy for Version ${version}`,
         description: 'Please generate the JSON first.',
         variant: 'destructive',
       });
       return;
     }
     try {
-      await navigator.clipboard.writeText(generatedJson);
+      await navigator.clipboard.writeText(jsonString);
       toast({
-        title: 'Copied to Clipboard!',
+        title: `Copied to Clipboard (Version ${version})!`,
         description: 'The JSON configuration has been copied.',
       });
     } catch (err) {
-      console.error('Failed to copy: ', err);
+      console.error(`Failed to copy Version ${version} JSON: `, err);
       toast({
-        title: 'Copy Failed',
+        title: `Copy Failed (Version ${version})`,
         description: 'Could not copy the JSON to clipboard. Please copy it manually.',
         variant: 'destructive',
       });
     }
   };
 
-  const handleConceptualSave = () => {
-    if (!generatedJson) {
+  const handleDownloadJson = (jsonString: string, version: string) => {
+    if (!jsonString) {
       toast({
-        title: 'Nothing to Save',
+        title: `Nothing to Download for Version ${version}`,
         description: 'Please generate the JSON first.',
         variant: 'destructive',
       });
       return;
     }
-    console.log(`Attempting to update Remote Config parameter '${REMOTE_CONFIG_KEY}' with value:`, generatedJson);
-    console.warn("Publishing changes to Firebase Remote Config requires a backend implementation using the Firebase Admin SDK. This action is currently conceptual. To make this live, you would typically send this JSON to a secure backend endpoint that calls admin.remoteConfig().publishTemplate().");
+    const blob = new Blob([jsonString], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `heroConfig-Version${version}.json`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
     toast({
-      title: 'Conceptual Save',
-      description: (
-        <div>
-          <p>JSON logged to console for parameter '{REMOTE_CONFIG_KEY}'.</p>
-          <p className="mt-2 text-xs">
-            <strong>Next Steps:</strong> A backend function using the Firebase Admin SDK is needed to actually publish this to Firebase Remote Config.
-          </p>
-        </div>
-      ),
-      duration: 9000, // Longer duration for more info
+      title: `JSON Downloaded (Version ${version})!`,
+      description: `heroConfig-Version${version}.json has been downloaded.`,
     });
   };
 
+  const handleRenderPreview = () => {
+    if (!generatedJsonA || !generatedJsonB) {
+         toast({
+            title: 'Configuration Incomplete',
+            description: 'Please ensure both Version A and Version B have content before previewing.',
+            variant: 'destructive',
+        });
+        return;
+    }
+    try {
+        // Ensure valid JSON before parsing for URL
+        const configAData = JSON.parse(generatedJsonA) as HeroConfig;
+        const configBData = JSON.parse(generatedJsonB) as HeroConfig;
+
+        const query = new URLSearchParams();
+        query.set('configA', JSON.stringify(configAData));
+        query.set('configB', JSON.stringify(configBData));
+        router.push(`/landing-preview?${query.toString()}`);
+    } catch (error) {
+        toast({
+            title: 'Error Preparing Preview',
+            description: 'Could not parse one of the JSON configurations. Please check your inputs.',
+            variant: 'destructive',
+        });
+        console.error("Error parsing JSON for preview: ", error);
+    }
+  };
+
+  const ConfigForm = ({
+    version,
+    headline, setHeadline,
+    subHeadline, setSubHeadline,
+    ctaText, setCtaText,
+    generatedJson,
+  }: {
+    version: string,
+    headline: string, setHeadline: (val: string) => void,
+    subHeadline: string, setSubHeadline: (val: string) => void,
+    ctaText: string, setCtaText: (val: string) => void,
+    generatedJson: string
+  }) => (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle className="text-xl font-semibold text-primary">Version {version}</CardTitle>
+      </CardHeader>
+      <CardContent className="space-y-6">
+        <div>
+          <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
+          <Input
+            id={`headline${version}`}
+            type="text"
+            value={headline}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setHeadline(e.target.value)}
+            placeholder={`Enter headline for Version ${version}`}
+            className="mt-1 text-base"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`subHeadline${version}`} className="text-base font-medium text-foreground">Sub-Headline</Label>
+          <Input
+            id={`subHeadline${version}`}
+            type="text"
+            value={subHeadline}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setSubHeadline(e.target.value)}
+            placeholder={`Enter sub-headline for Version ${version}`}
+            className="mt-1 text-base"
+          />
+        </div>
+        <div>
+          <Label htmlFor={`ctaText${version}`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
+          <Input
+            id={`ctaText${version}`}
+            type="text"
+            value={ctaText}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setCtaText(e.target.value)}
+            placeholder={`Enter CTA text for Version ${version}`}
+            className="mt-1 text-base"
+          />
+        </div>
+        {generatedJson && (
+          <div className="mt-6 pt-4 border-t border-border space-y-3">
+            <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version}</Label>
+            <Textarea
+              id={`generatedJson${version}`}
+              value={generatedJson}
+              readOnly
+              rows={6}
+              className="font-mono text-sm bg-muted/50 border-border p-3 rounded-md"
+              aria-label={`Generated JSON configuration for Version ${version}`}
+            />
+            <div className="flex flex-wrap gap-2">
+              <Button onClick={() => handleCopyToClipboard(generatedJson, version)} variant="outline" size="sm">
+                <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
+              </Button>
+              <Button onClick={() => handleDownloadJson(generatedJson, version)} variant="outline" size="sm">
+                <Download className="mr-2 h-4 w-4" /> Download JSON
+              </Button>
+            </div>
+          </div>
+        )}
+      </CardContent>
+    </Card>
+  );
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
-      <Card className="max-w-2xl mx-auto shadow-lg rounded-lg">
+      <Card className="max-w-3xl mx-auto shadow-lg rounded-lg">
         <CardHeader className="bg-muted/30 p-6 rounded-t-lg">
           <CardTitle className="text-2xl font-bold text-primary">A/B Test Hero Section Configurator</CardTitle>
           <CardDescription className="text-muted-foreground">
-            Configure the content for the '{REMOTE_CONFIG_KEY}' Remote Config parameter.
+            Configure two versions (A and B) of the hero section content.
+            Generate, copy, or download the JSON for use in Firebase A/B Testing.
+            Then, preview both versions side-by-side.
           </CardDescription>
         </CardHeader>
         <CardContent className="p-6">
-          <Button onClick={loadCurrentRemoteConfig} variant="outline" className="mb-6 w-full sm:w-auto">
-            <DownloadCloud className="mr-2 h-4 w-4" /> Load Current '{REMOTE_CONFIG_KEY}' from Firebase
-          </Button>
           
-          <form onSubmit={(e) => e.preventDefault()} className="space-y-6"> {/* Changed form submission */}
-            <div>
-              <Label htmlFor="variantName" className="text-base font-medium text-foreground">Configuration Name (for your reference)</Label>
-              <Input
-                id="variantName"
-                type="text"
-                value={variantName}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setVariantName(e.target.value)}
-                placeholder="e.g., Variant A - New Offer"
-                className="mt-1 text-base"
-              />
-            </div>
-            <div>
-              <Label htmlFor="headline" className="text-base font-medium text-foreground">Headline</Label>
-              <Input
-                id="headline"
-                type="text"
-                value={headline}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setHeadline(e.target.value)}
-                placeholder="Enter the main headline"
-                className="mt-1 text-base"
-              />
-            </div>
-            <div>
-              <Label htmlFor="subHeadline" className="text-base font-medium text-foreground">Sub-Headline</Label>
-              <Input
-                id="subHeadline"
-                type="text"
-                value={subHeadline}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setSubHeadline(e.target.value)}
-                placeholder="Enter the supporting sub-headline"
-                className="mt-1 text-base"
-              />
-            </div>
-            <div>
-              <Label htmlFor="ctaText" className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
-              <Input
-                id="ctaText"
-                type="text"
-                value={ctaText}
-                onChange={(e: ChangeEvent<HTMLInputElement>) => setCtaText(e.target.value)}
-                placeholder="Enter the text for the CTA button"
-                className="mt-1 text-base"
-              />
-            </div>
-            {/* Removed Generate JSON button as it's triggered on field change */}
-          </form>
+          <ConfigForm
+            version="A"
+            headline={headlineA} setHeadline={setHeadlineA}
+            subHeadline={subHeadlineA} setSubHeadline={setSubHeadlineA}
+            ctaText={ctaTextA} setCtaText={setCtaTextA}
+            generatedJson={generatedJsonA}
+          />
 
-          {generatedJson && (
-            <div className="mt-8 pt-6 border-t border-border space-y-3">
-              <Label htmlFor="generatedJson" className="text-base font-medium text-foreground">Generated JSON for '{variantName}'</Label>
-              <Textarea
-                id="generatedJson"
-                value={generatedJson}
-                readOnly
-                rows={8}
-                className="font-mono text-sm bg-muted/50 border-border p-3 rounded-md"
-                aria-label="Generated JSON configuration"
-              />
-              <div className="flex flex-wrap gap-2">
-                <Button onClick={handleCopyToClipboard} variant="outline" size="sm">
-                  <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
-                </Button>
-                <Button onClick={handleConceptualSave} variant="default" size="sm" className="bg-primary hover:bg-primary/90">
-                  <Save className="mr-2 h-4 w-4" /> Update Firebase Remote Config (Conceptual)
-                </Button>
-              </div>
-            </div>
-          )}
+          <ConfigForm
+            version="B"
+            headline={headlineB} setHeadline={setHeadlineB}
+            subHeadline={subHeadlineB} setSubHeadline={setSubHeadlineB}
+            ctaText={ctaTextB} setCtaText={setCtaTextB}
+            generatedJson={generatedJsonB}
+          />
+
+          <div className="mt-8 pt-6 border-t border-border text-center">
+            <Button onClick={handleRenderPreview} size="lg" className="bg-green-600 hover:bg-green-700 text-white">
+              <Eye className="mr-2 h-5 w-5" /> Render Pages for Preview
+            </Button>
+          </div>
+
         </CardContent>
         <CardFooter className="mt-6 bg-muted/30 p-6 border-t border-border rounded-b-lg">
             <div className="flex items-start space-x-3 text-sm text-muted-foreground">
                 <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary" />
                 <div>
-                    <p className="font-semibold text-foreground">How to use this JSON:</p>
+                    <p className="font-semibold text-foreground">How to use the generated JSON:</p>
                     <ol className="list-decimal list-inside space-y-1.5 mt-2">
+                        <li>Modify the fields for Version A and Version B above. The JSON will update automatically.</li>
+                        <li>Copy or download the JSON for the version you want to use in Firebase.</li>
                         <li>Go to your Firebase project in the <a href="https://console.firebase.google.com/" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Firebase Console</a>.</li>
-                        <li>Navigate to <strong>Remote Config</strong> (usually under the "Engage" or "Build" section).</li>
+                        <li>Navigate to <strong>Remote Config</strong> (usually under "Engage" or "Build").</li>
                         <li>
-                            When setting up the '{REMOTE_CONFIG_KEY}' parameter's default value or a variant value in an A/B test:
+                            When setting up the `{REMOTE_CONFIG_KEY_BASE}` parameter's default value or a variant value in an A/B test (e.g., `heroConfigVariantA`, `heroConfigVariantB` or just `heroConfig` if you manage variants directly):
                             <ul className="list-disc list-inside pl-5 space-y-0.5 mt-0.5">
-                                <li>Copy the generated JSON from above.</li>
-                                <li>Paste it into the "Value" field in the Firebase Console.</li>
+                                <li>Paste the copied/downloaded JSON into the "Value" field in the Firebase Console for the respective variant.</li>
                             </ul>
                         </li>
-                        <li>The "Update Firebase Remote Config (Conceptual)" button logs the JSON and explains that a backend is needed for a real update.</li>
-                        <li>For more detailed step-by-step instructions on setting up A/B tests, please refer to the <strong>`PLAYBOOK.md`</strong> file.</li>
+                        <li>Use the "Render Pages for Preview" button to see both configured versions side-by-side before deploying or starting a test.</li>
+                        <li>For more detailed step-by-step instructions on setting up A/B tests in Firebase, please refer to the <strong>`PLAYBOOK.md`</strong> file.</li>
                     </ol>
                 </div>
             </div>
@@ -289,3 +275,5 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
+
+    

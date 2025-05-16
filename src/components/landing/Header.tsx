@@ -1,3 +1,4 @@
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -6,7 +7,7 @@ export default function Header() {
   return (
     <header className="bg-white shadow-md">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-10 flex justify-between items-center"> {/* Increased py from py-3 to py-10 */}
-        <Link href="/landing-preview" className="flex items-center"> {/* Updated href to point to landing-preview */}
+        <Link href="/" className="flex items-center"> {/* Updated href to point to the main configurator page */}
           {/* Logo - Placed in public/resources */}
           <Image
             src="/resources/logo.png" // Path is relative to the 'public' directory
@@ -19,7 +20,7 @@ export default function Header() {
         <div className="flex items-center space-x-4">
            {/* Updated button style to use new CTA color and made always visible */}
            <Button className="inline-flex bg-cta text-cta-foreground hover:bg-cta/90" size="sm" asChild>
-              <Link href="#quote-form">Get a Quote</Link>
+              <Link href="/landing-preview#quote-form">Get a Quote</Link> {/* Point to quote form on preview page */}
            </Button>
            {/* Mobile Menu Button (hamburger icon) removed */}
         </div>
@@ -27,3 +28,5 @@ export default function Header() {
     </header>
   );
 }
+
+    
