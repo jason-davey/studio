@@ -4,21 +4,26 @@
 ## 1. Introduction
 
 ### 1.1. Purpose of the Application
-This Next.js application serves as a platform for managing and previewing content variations for the SecureTomorrow landing page, primarily focused on A/B testing the Hero Section. It provides tools to configure content, generate necessary configurations for Firebase A/B testing, preview variations, and leverage AI for content suggestions (optionally guided by user-provided campaign themes/keywords).
+This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content, configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords).
 
 ### 1.2. High-Level Functionality
-- **A/B Test Content Configuration:** Allows users (e.g., marketing team) to define multiple text versions for the landing page's Hero Section (headline, sub-headline, CTA).
-- **AI-Assisted Content Generation:** Provides AI-powered suggestions for headlines, sub-headlines, and CTAs using Genkit and Google's Gemini model. Users can provide an optional "Campaign Focus / Keywords" to further tailor these suggestions.
-- **JSON Generation:** Automatically generates JSON output compatible with Firebase Remote Config for each content variation.
-- **Local Configuration Management:** Enables users to save, load, and manage different content configurations (including campaign focus) directly in their browser's local storage.
-- **Side-by-Side Preview:** Renders two selected content variations on a dedicated preview page for visual comparison.
+- **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy).
+- **Recommendation Ingestion (Step 1):** Allows users to upload a JSON file (`PageBlueprint`) containing recommendations for landing page content.
+- **Page Preview (Step 2):** Displays a preview of the landing page (initially focused on the Hero Section) based on the ingested or adjusted blueprint.
+- **Content Adjustment (Step 3):** Enables users to fine-tune the content of the landing page blueprint (e.g., Hero section text).
+- **A/B Test Content Configuration (Step 4):** Allows users (e.g., marketing team) to define two text versions for A/B testing (e.g., Hero Section headline, sub-headline, CTA). Version A is pre-filled from Step 3.
+- **AI-Assisted Content Generation (Step 4):** Provides AI-powered suggestions for A/B test copy using Genkit and Google's Gemini model. Users can provide an optional "Campaign Focus / Keywords" to further tailor these suggestions.
+- **JSON Generation (Step 4):** Automatically generates JSON output compatible with Firebase Remote Config for each A/B test content variation.
+- **Local Configuration Management (Step 4):** Enables users to save, load, and manage different A/B test content configurations (including campaign focus) directly in their browser's local storage.
+- **Side-by-Side A/B Preview (Step 4):** Renders two selected A/B content variations on a dedicated preview page (`/landing-preview`) for visual comparison.
+- **Deployment Guidance (Step 5):** Provides instructions for using the generated JSON in Firebase.
 - **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Actual test setup and management occur in the Firebase console.
 - **AB Tasty Integration Point:** Includes a placeholder for integrating AB Tasty's JavaScript snippet for client-side A/B testing.
 
 ### 1.3. Key Technologies Used
 - **Frontend Framework:** Next.js (with App Router)
 - **UI Library:** React
-- **UI Components:** ShadCN UI (Button, Card, Input, Label, Textarea, Popover, Toast, etc.)
+- **UI Components:** ShadCN UI (Accordion, Button, Card, Input, Label, Textarea, Popover, Toast, etc.)
 - **Styling:** Tailwind CSS
 - **State Management:** React Hooks (useState, useEffect, useCallback, useContext for Toast)
 - **A/B Test Content Delivery (Primary Method):** Firebase Remote Config
@@ -30,11 +35,13 @@ This Next.js application serves as a platform for managing and previewing conten
 ## 2. Application Architecture
 
 ### 2.1. Frontend Structure
-- **Next.js App Router:** Used for routing and page structure (e.g., `/`, `/landing-preview`).
+- **Next.js App Router:** Used for routing and page structure.
+    - `/` (root): Main workflow application (`src/app/page.tsx`) with the 5-step accordion.
+    - `/landing-preview`: Side-by-side A/B test preview page.
 - **Key Directories:**
     - `src/app/`: Contains page components and layouts.
-        - `page.tsx`: Main A/B Test Configurator & Manager tool with AI suggestions (supports campaign focus input, and local storage for hero configurations including campaign focus).
-        - `landing-preview/page.tsx`: Side-by-side preview page.
+        - `page.tsx`: Main 5-step workflow application.
+        - `landing-preview/page.tsx`: Side-by-side A/B test preview page.
         - `layout.tsx`: Root layout, includes Toaster and AB Tasty script placeholder.
         - `globals.css`: Global styles, Tailwind directives, and ShadCN CSS theme variables (HSL).
     - `src/components/`: Reusable UI components.
@@ -44,90 +51,116 @@ This Next.js application serves as a platform for managing and previewing conten
         - `firebase.ts`: Firebase SDK initialization and Remote Config setup.
         - `utils.ts`: General utility functions (e.g., `cn` for classnames).
     - `src/hooks/`: Custom React hooks.
-        - `useRemoteConfigValue.ts`: Hook to fetch values from Firebase Remote Config (not currently used by main pages but available).
+        - `useRemoteConfigValue.ts`: Hook to fetch values from Firebase Remote Config.
         - `useToast.ts`: Hook for displaying toast notifications.
     - `src/ai/`: Genkit related files.
         - `genkit.ts`: Genkit global instance initialization.
         - `dev.ts`: Entry point for Genkit development server, imports flows.
-        - `flows/suggest-hero-copy-flow.ts`: Genkit flow for generating hero section copy suggestions, enhanced to consider an optional `campaignFocus` string.
+        - `flows/suggest-hero-copy-flow.ts`: Genkit flow for generating hero section copy suggestions.
+    - `src/types/`: TypeScript type definitions.
+        - `recommendations.ts`: Defines the `PageBlueprint` interface for the JSON recommendations.
 - **Styling:**
     - Tailwind CSS is the primary styling utility.
     - `src/app/globals.css` defines base styles, Tailwind layers, and CSS variables for the ShadCN theme.
     - Font: URW DIN (defined via `@font-face` in `globals.css` and applied via `tailwind.config.ts`).
 
-### 2.2. Firebase Integration
-- **Initialization:** `src/lib/firebase.ts` handles Firebase app initialization.
-- **Remote Config:**
-    - The application prepares JSON for `heroConfig` parameter.
-    - Actual A/B test setup and management occur in the Firebase Console.
+### 2.2. Data Flow & State Management
+- **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds the `PageBlueprint` data loaded from the JSON in Step 1. This data is used in Step 2 (Build/Preview) and can be modified in Step 3 (Adjust).
+- **A/B Test Configurations (Step 4):**
+    - Hero content from `activePageBlueprint` (after Step 3 adjustments) pre-fills "Version A".
+    - "Version B" is configured by the user.
+    - AI suggestions, campaign focus, and local storage management (`heroConfigManager`) are handled within this step for A/B test variations.
+- **Firebase Integration:**
+    - Initialization: `src/lib/firebase.ts`.
+    - Remote Config: The application prepares JSON for `heroConfig` parameter (from Step 4). Actual A/B test setup occurs in Firebase Console.
 - **Genkit/AI:**
     - Uses `ai.defineFlow` and `ai.definePrompt` for the `suggestHeroCopyFlow`.
-    - The flow is called from the client-side component `src/app/page.tsx`.
-    - The `suggestHeroCopyFlow` input now includes an optional `campaignFocus` field to allow users to guide AI suggestions with specific themes or keywords.
+    - The flow is called from the client-side component in Step 4.
 
-### 2.3. A/B Testing Workflow
-1.  **Content Configuration:** User defines content for "Version A" and "Version B" in the A/B Test Configurator tool (`/`).
-    - **Campaign Focus (Optional):** User can input a campaign theme or keywords into a dedicated textarea for each version to tailor AI suggestions.
-    - **AI Assistance:** User can click "✨ Suggest with AI" buttons to get AI-generated suggestions for headlines, sub-headlines, and CTAs. These suggestions will now be influenced by the provided campaign focus, if any.
-2.  **Local Management:** User can save these configurations (headline, sub-headline, CTA, and campaign focus) locally in their browser for later use.
-3.  **Preview:** User clicks "Render Pages for Preview" to view both active configurations side-by-side on `/landing-preview`.
-4.  **JSON Export:** User copies or downloads the generated JSON for each version.
-5.  **Firebase Setup:** User navigates to the Firebase Console and uses the copied JSON to define variants for the `heroConfig` parameter within an A/B Test.
-    - Detailed steps are in `PLAYBOOK.md`.
-6.  **Live Test:** Managed via Firebase.
-- **AB Tasty:** If AB Tasty is used, its script (added to `layout.tsx`) would override content changes for tests managed by that platform.
+### 2.3. Workflow Overview
+1.  **Step 1: Review Recommendations:**
+    - User uploads a `PageBlueprint` JSON file.
+    - Application parses and stores this blueprint.
+2.  **Step 2: Build & Preview Page:**
+    - Application renders a preview of the landing page (initially Hero Section) based on the `activePageBlueprint`.
+3.  **Step 3: Adjust Content:**
+    - User edits the content of the `activePageBlueprint` (e.g., Hero Section text) via input fields.
+4.  **Step 4: Configure A/B Test:**
+    - "Version A" is pre-filled using the (adjusted) Hero content from `activePageBlueprint`.
+    - User configures "Version B", uses AI suggestions (with optional campaign focus).
+    - User can save/load/manage A/B variations locally.
+    - User can preview "Version A" vs "Version B" on `/landing-preview`.
+    - User copies/downloads JSON for Firebase.
+5.  **Step 5: Prepare for Deployment:**
+    - User is guided to take the generated JSON to the Firebase Console.
+    - `PLAYBOOK.md` provides detailed Firebase setup instructions.
+- **AB Tasty:** If used, its script (added to `layout.tsx`) would override content for tests managed by that platform.
 
-## 3. Core Features & Functionality
+## 3. Core Features & Functionality (by Step)
 
-### 3.1. A/B Test Configurator & Manager (`src/app/page.tsx`)
+### 3.1. Step 1: Review Recommendations
+- **Purpose:** To ingest initial landing page content and structure from an external tool.
+- **Features:**
+    - File input for JSON (`PageBlueprint` format).
+    - JSON parsing and basic validation.
+    - Display of loaded blueprint name and raw JSON.
+    - Stores data in `activePageBlueprint` state.
+
+### 3.2. Step 2: Build & Preview Page
+- **Purpose:** To visualize the landing page based on the current blueprint.
+- **Features:**
+    - Renders `HeroSection` component using `activePageBlueprint.heroConfig`.
+    - (Future: Could render other sections like Benefits, Testimonials based on blueprint).
+
+### 3.3. Step 3: Adjust Content
+- **Purpose:** To allow fine-tuning of the landing page content derived from the blueprint.
+- **Features:**
+    - Input fields for `activePageBlueprint.heroConfig` (headline, subHeadline, ctaText, uniqueValueProposition).
+    - Changes update the `activePageBlueprint` state in real-time.
+    - (Future: AI content suggestions could be integrated here as well).
+
+### 3.4. Step 4: Configure A/B Test (formerly main A/B Test Configurator)
 - **Purpose:** To create, manage (locally), get AI suggestions for, and prepare Hero Section content variations for A/B testing.
 - **Features:**
-    - **Dual Version Input:** Separate forms for "Version A" and "Version B".
-    - **Campaign Focus Input:** Each version form includes a textarea for optional campaign themes or keywords to guide AI suggestions.
-    - **AI Content Suggestions:**
-        - "✨ Suggest with AI" buttons next to Headline, Sub-Headline, and CTA Text inputs.
-        - Calls `suggestHeroCopy` Genkit flow, passing the `campaignFocus` text.
-        - Displays suggestions in a popover, allowing users to apply them.
-    - **Real-time JSON Generation:** Displays generated JSON for each version.
-    - **Copy & Download JSON:** Buttons for each version.
-    - **Local Configuration Management:**
-        - Save/Load/Delete configurations using browser `localStorage` (key: `heroConfigManager`). Configurations store headline, sub-headline, CTA text, and the campaign focus.
-    - **"Render Pages for Preview" Button:** Opens `/landing-preview` with current configurations.
-    - **Guidance Footer:** Instructions and links for Firebase and `PLAYBOOK.md`.
-- **Key Components Used:** `ConfigForm` (refactored), `Card`, `Input`, `Label`, `Button`, `Textarea`, `Separator`, `Popover`, `useToast`, `Sparkles` icon.
+    - Dual Version Input (A & B) using `ABTestConfigForm`. Version A pre-filled from `activePageBlueprint`.
+    - Campaign Focus Input for AI tailoring.
+    - AI Content Suggestions (calling `suggestHeroCopy` Genkit flow).
+    - Real-time JSON Generation for A/B variants.
+    - Copy & Download JSON for A/B variants.
+    - Local Configuration Management for A/B variants (`localStorage` key: `heroConfigManager`).
+    - "Render Pages for Preview" Button: Opens `/landing-preview` with current A/B configurations.
+- **Key Components Used:** `ABTestConfigForm`, `Card`, `Input`, `Label`, `Button`, `Textarea`, `Separator`, `Popover`, `useToast`, `Sparkles` icon.
 - **Data Structures:**
-    - `HeroConfig`: `{ headline: string; subHeadline: string; ctaText: string; }` (This is the structure for the JSON output).
-    - `ManagedHeroConfig`: `{ id: string; name: string; headline: string; subHeadline: string; ctaText: string; campaignFocus?: string; }` (Structure for local storage).
-    - `SuggestHeroCopyInput` now includes `campaignFocus: string | undefined`.
+    - `ABTestHeroConfig`: For JSON output for Firebase.
+    - `ManagedABTestHeroConfig`: For local storage of A/B variants.
 
-### 3.2. Landing Preview Page (`src/app/landing-preview/page.tsx`)
-- **Purpose:** To display two versions of the Hero Section side-by-side.
-- **Functionality:**
-    - Reads `configA` and `configB` JSON strings from URL query parameters.
-    - Renders two `HeroSection` components.
-    *   Falls back to defaults if parameters are missing/invalid.
-    *   Includes other static landing page sections for context.
+### 3.5. Step 5: Prepare for Deployment
+- **Purpose:** To guide the user on using the generated A/B test JSON with Firebase.
+- **Features:**
+    - Instructional text.
+    - Link to Firebase Console.
+    - Prominent reference to `PLAYBOOK.md`.
 
-### 3.3. Landing Page Components (`src/components/landing/`)
-- **`Header.tsx`:** Logo links to `/` (configurator). "Get a Quote" links to `#quote-form` on `/landing-preview`.
-- **`HeroSection.tsx`:** Accepts `headline`, `subHeadline`, `ctaText`.
-- Other components: `BenefitsSection`, `TestimonialsSection`, `AwardsSection`, `QuoteFormSection`, `Footer`.
+### 3.6. Landing Preview Page (`src/app/landing-preview/page.tsx`)
+- **Purpose:** To display two versions of the Hero Section side-by-side for A/B test comparison.
+- **Functionality:** Reads `configA` and `configB` JSON strings from URL query parameters.
 
-### 3.4. AI Flow (`src/ai/flows/suggest-hero-copy-flow.ts`)
-- **Purpose:** To generate hero section copy suggestions using an AI model.
-- **Input:** `SuggestHeroCopyInput` (copyType, currentText, productName, productDescription, count, campaignFocus). The `campaignFocus` field allows the AI to tailor suggestions.
+### 3.7. Landing Page Components (`src/components/landing/`)
+- Standard landing page components (Header, HeroSection, etc.). `HeroSection` is dynamically populated.
+
+### 3.8. AI Flow (`src/ai/flows/suggest-hero-copy-flow.ts`)
+- **Purpose:** To generate hero section copy suggestions for A/B testing.
+- **Input:** `SuggestHeroCopyInput` (copyType, currentText, productName, productDescription, count, campaignFocus).
 - **Output:** `SuggestHeroCopyOutput` (array of suggestions).
-- **Technology:** Genkit, configured to use a Google AI model.
-- **Prompt:** Instructs the AI to act as a marketing copywriter, considering the product, copy type, and any provided `campaignFocus`.
 
 ## 4. Setup & Configuration
 
 ### 4.1. Environment Variables (`.env.local`)
-- Required for Firebase SDK. See `PLAYBOOK.md` for details.
-- Genkit flows using Google AI will require appropriate API keys to be configured for the Google AI plugin if not using a free tier or if specific project quotas are needed. (This is typically handled in Genkit initialization or environment setup for Genkit).
+- Required for Firebase SDK. See `PLAYBOOK.md`.
+- Genkit flows using Google AI require API key setup.
 
 ### 4.2. Firebase Project Setup
-- See `PLAYBOOK.md`. Remote Config is key.
+- See `PLAYBOOK.md`. Remote Config for `heroConfig` is key for A/B tests.
 
 ### 4.3. AB Tasty Integration
 - Placeholder in `src/app/layout.tsx`.
@@ -135,29 +168,52 @@ This Next.js application serves as a platform for managing and previewing conten
 ## 5. Development & Build
 
 ### 5.1. Running the Development Server
-- App: `npm run dev` (or `yarn dev`) - typically `http://localhost:9002`.
-- Genkit (for AI flows, if testing/developing them separately): `npm run genkit:dev` (or `genkit:watch`). The Next.js app calls server actions that invoke these flows.
+- App: `npm run dev` (or `yarn dev`) - `http://localhost:9002`.
+- Genkit: `npm run genkit:dev`.
 
 ### 5.2. Building for Production
 - `npm run build` (or `yarn build`).
 
 ## 6. Key Files & Directories
-- **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow.
+- **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow with Firebase.
 - **`TECHNICAL_SPEC.md`:** (This document).
-- **`src/app/page.tsx`:** A/B Test Configurator with AI and local configuration management.
+- **`src/app/page.tsx`:** Main 5-step workflow application.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit flow for AI suggestions.
+- **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
 - Other files as previously listed.
 
 ## 7. Branding Guidelines Reference
 - Defined in `PLAYBOOK.md`.
 
-## 8. Known Issues / Future Considerations
-- **Client-Side Limitations for Firebase Management:** Still applies.
-- **Local Storage Scope:** Still applies.
-- **AI Suggestion Quality:** Dependent on the model and prompt. Prompts may need refinement over time. The `campaignFocus` feature aims to improve relevance.
-- **Error Handling for AI Flow:** Basic error handling exists (toast, console log). Could be made more robust.
-- **Rate Limiting/Cost for AI:** If using paid AI models, consider usage limits and costs.
-- The `useRemoteConfigValue` hook is not currently used by the main landing page or preview page.
+## 8. Future Considerations / Roadmap
+- **Tokens-Based Design System:** Explore integrating a design tokens system for more flexible multi-brand UI management. Current component structure is a good base.
+- **Advanced AI - Gemini Chat for UI Dev:** Consider using AI chat (e.g., via Genkit) in "Step 3: Adjust" for more interactive UI/content refinement beyond simple suggestions.
+- **Full Blueprint Rendering:** Expand "Step 2: Build & Preview" and "Step 3: Adjust" to handle more sections from the `PageBlueprint` (e.g., Benefits, Testimonials).
+- **Backend for Firebase Management:** For direct creation/management of multiple Firebase Remote Config parameters or saving blueprints to Firestore, a backend service using the Firebase Admin SDK would be necessary.
+- **Error Handling:** Enhance error handling for JSON parsing, AI flows, and localStorage operations.
+- **AI Theme Generation:** Explore AI capabilities to suggest campaign themes or focus areas.
+- **Direct Integration with Keyword Platforms:** Requires backend development for secure API access.
+- **Rate Limiting/Cost for AI:** Monitor and manage if using paid AI models extensively.
+- The `useRemoteConfigValue` hook is not currently used by the main landing page structure but remains available.
       
+## 9. User Flow Diagram (Conceptual)
 
-    
+```mermaid
+graph TD
+    A[Start: User Navigates to App /] --> B(Step 1: Review Recommendations Panel);
+    B -- Upload JSON Blueprint --> C{Blueprint Loaded?};
+    C -- Yes --> D(State: activePageBlueprint Updated);
+    D --> E(Step 2: Build & Preview Panel);
+    E -- Display Hero from activePageBlueprint.heroConfig --> F{User Reviews Preview};
+    F --> G(Step 3: Adjust Content Panel);
+    G -- User Edits Hero Content --> H(State: activePageBlueprint.heroConfig Updated);
+    H --> I(Step 4: Configure A/B Test Panel);
+    I -- Pre-fill Version A from activePageBlueprint.heroConfig --> J{User Configures Version B};
+    J -- Use AI Suggestions --> J;
+    J -- Manage Local A/B Configs --> J;
+    J -- Render A/B Preview --> K[/landing-preview Page];
+    J -- Generate/Copy JSON for A & B --> L(Step 5: Prepare for Deployment Panel);
+    L -- User Takes JSON to Firebase Console --> M[Firebase A/B Test Setup];
+    M -- Refer to PLAYBOOK.md --> M;
+    C -- No / Error --> B;
+```

@@ -1,32 +1,36 @@
 
 'use client';
 
-import { useState, type ChangeEvent, type FormEvent, useEffect, useCallback } from 'react';
+import { useState, type ChangeEvent, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
+import HeroSection from '@/components/landing/HeroSection';
+import type { PageBlueprint, RecommendationHeroConfig } from '@/types/recommendations';
 
-interface HeroConfig {
+// Types for A/B Test Configurator (Step 4)
+interface ABTestHeroConfig {
   headline: string;
   subHeadline: string;
   ctaText: string;
 }
 
-interface ManagedHeroConfig extends HeroConfig {
+interface ManagedABTestHeroConfig extends ABTestHeroConfig {
   id: string;
   name: string;
-  campaignFocus?: string; // Added campaignFocus
+  campaignFocus?: string;
 }
 
-const LOCAL_STORAGE_KEY = 'heroConfigManager';
+const AB_TEST_LOCAL_STORAGE_KEY = 'heroConfigManager';
 
 type AISuggestionState = {
   loading: boolean;
@@ -42,9 +46,8 @@ const initialAISuggestionState: AISuggestionState = {
   popoverOpen: false,
 };
 
-
-// ConfigForm component defined outside ABTestConfiguratorPage
-const ConfigForm = ({
+// --- Reusable ConfigForm for A/B Testing (Step 4) ---
+const ABTestConfigForm = ({
   version,
   headline, setHeadline,
   subHeadline, setSubHeadline,
@@ -173,7 +176,6 @@ const ConfigForm = ({
     </Popover>
   );
 
-
   return (
   <Card className="mt-6">
     <CardHeader>
@@ -192,9 +194,7 @@ const ConfigForm = ({
         />
         <p className="text-xs text-muted-foreground mt-1">Helps AI tailor suggestions. Saved with this configuration.</p>
       </div>
-
       <Separator />
-
       <div>
         <div className="flex items-center justify-between">
           <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
@@ -250,16 +250,15 @@ const ConfigForm = ({
             aria-label={`Generated JSON configuration for Version ${version}`}
           />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => internalHandleCopyToClipboard(generatedJson, version, toast)} variant="outline" size="sm">
+            <Button onClick={() => handleCopyToClipboard(generatedJson, version, toast)} variant="outline" size="sm">
               <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
             </Button>
-            <Button onClick={() => internalHandleDownloadJson(generatedJson, version, toast)} variant="outline" size="sm">
+            <Button onClick={() => handleDownloadJson(generatedJson, version, toast)} variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" /> Download JSON
             </Button>
           </div>
         </div>
       )}
-
       <div className="mt-6 pt-4 border-t border-border space-y-3">
         <Label htmlFor={`configName${version}`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
         <div className="flex gap-2">
@@ -281,8 +280,8 @@ const ConfigForm = ({
   );
 };
 
-// Helper function needs to be accessible by ConfigForm if it's defined outside
-const internalHandleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
+// Helper function needs to be accessible by ABTestConfigForm
+const handleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
   if (!jsonString || JSON.parse(jsonString).headline === "") {
     toastFn({
       title: `Nothing to Copy for Version ${version}`,
@@ -307,7 +306,7 @@ const internalHandleCopyToClipboard = async (jsonString: string, version: string
   }
 };
 
-const internalHandleDownloadJson = (jsonString: string, version: string, toastFn: Function) => {
+const handleDownloadJson = (jsonString: string, version: string, toastFn: Function) => {
   if (!jsonString || JSON.parse(jsonString).headline === "") {
     toastFn({
       title: `Nothing to Download for Version ${version}`,
@@ -332,10 +331,19 @@ const internalHandleDownloadJson = (jsonString: string, version: string, toastFn
 };
 
 
-export default function ABTestConfiguratorPage() {
+// --- Main Page Component ---
+export default function LandingPageWorkflowPage() {
   const { toast } = useToast();
+  const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
 
-  // State for Version A
+  // Step 1: Recommendations
+  const [uploadedBlueprint, setUploadedBlueprint] = useState<PageBlueprint | null>(null);
+  const [fileError, setFileError] = useState<string | null>(null);
+
+  // Step 2 & 3: Active Landing Page Data (derived from blueprint, editable in Step 3)
+  const [activeHeroConfig, setActiveHeroConfig] = useState<RecommendationHeroConfig | null>(null);
+
+  // Step 4: A/B Test Configuration States
   const [headlineA, setHeadlineA] = useState<string>('');
   const [subHeadlineA, setSubHeadlineA] = useState<string>('');
   const [ctaTextA, setCtaTextA] = useState<string>('');
@@ -343,307 +351,386 @@ export default function ABTestConfiguratorPage() {
   const [generatedJsonA, setGeneratedJsonA] = useState<string>('');
   const [nameForConfigA, setNameForConfigA] = useState<string>('');
 
-  // State for Version B
   const [headlineB, setHeadlineB] = useState<string>('');
   const [subHeadlineB, setSubHeadlineB] = useState<string>('');
   const [ctaTextB, setCtaTextB] = useState<string>('');
   const [campaignFocusB, setCampaignFocusB] = useState<string>('');
   const [generatedJsonB, setGeneratedJsonB] = useState<string>('');
   const [nameForConfigB, setNameForConfigB] = useState<string>('');
+  
+  const [savedABTestConfigs, setSavedABTestConfigs] = useState<ManagedABTestHeroConfig[]>([]);
+  const [isLoadingABTestConfigs, setIsLoadingABTestConfigs] = useState(true);
 
-  // State for managed configurations
-  const [savedConfigs, setSavedConfigs] = useState<ManagedHeroConfig[]>([]);
-  const [isLoadingConfigs, setIsLoadingConfigs] = useState(true);
+  // --- Step 1 Logic ---
+  const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
+    setFileError(null);
+    setUploadedBlueprint(null);
+    setActiveHeroConfig(null); // Reset active hero config
 
+    const file = event.target.files?.[0];
+    if (file) {
+      if (file.type === 'application/json') {
+        const reader = new FileReader();
+        reader.onload = (e) => {
+          try {
+            const content = e.target?.result as string;
+            const parsedJson = JSON.parse(content) as PageBlueprint;
+            // Basic validation for expected structure
+            if (parsedJson.pageName && parsedJson.heroConfig) {
+              setUploadedBlueprint(parsedJson);
+              setActiveHeroConfig(parsedJson.heroConfig); // Populate active hero from blueprint
+              toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
+              setActiveAccordionItem('step-2'); // Move to next step
+            } else {
+              throw new Error('Invalid blueprint structure. Missing pageName or heroConfig.');
+            }
+          } catch (error: any) {
+            console.error('Error parsing JSON file:', error);
+            setFileError(`Error parsing JSON: ${error.message}. Please ensure it's a valid PageBlueprint JSON.`);
+            toast({ title: 'File Read Error', description: 'Could not parse the JSON file.', variant: 'destructive' });
+          }
+        };
+        reader.onerror = () => {
+            setFileError('Error reading the file.');
+            toast({ title: 'File Read Error', description: 'Could not read the file.', variant: 'destructive' });
+        }
+        reader.readAsText(file);
+      } else {
+        setFileError('Invalid file type. Please upload a JSON file.');
+        toast({ title: 'Invalid File Type', description: 'Please upload a .json file.', variant: 'destructive' });
+      }
+    }
+    event.target.value = ''; // Reset file input
+  };
 
-  // Load saved configs from localStorage on mount
+  // --- Step 3 Logic (Updating activeHeroConfig) ---
+  const handleHeroConfigChange = (field: keyof RecommendationHeroConfig, value: string) => {
+    setActiveHeroConfig(prev => prev ? { ...prev, [field]: value } : null);
+  };
+  
+  // --- Step 4 Logic (A/B Test Configurator) ---
   useEffect(() => {
-    setIsLoadingConfigs(true);
+    // Pre-populate Version A of A/B test if activeHeroConfig is available
+    if (activeHeroConfig && activeAccordionItem === 'step-4') {
+      setHeadlineA(activeHeroConfig.headline || '');
+      setSubHeadlineA(activeHeroConfig.subHeadline || '');
+      setCtaTextA(activeHeroConfig.ctaText || '');
+      // Optionally clear campaign focus or keep previous
+      // setCampaignFocusA(''); 
+    }
+  }, [activeHeroConfig, activeAccordionItem]);
+
+  useEffect(() => {
+    setIsLoadingABTestConfigs(true);
     try {
-      const storedConfigs = localStorage.getItem(LOCAL_STORAGE_KEY);
+      const storedConfigs = localStorage.getItem(AB_TEST_LOCAL_STORAGE_KEY);
       if (storedConfigs) {
-        setSavedConfigs(JSON.parse(storedConfigs));
+        setSavedABTestConfigs(JSON.parse(storedConfigs));
       }
     } catch (error) {
-      console.error("Error loading configs from localStorage:", error);
-      toast({
-        title: 'Error Loading Saved Configurations',
-        description: 'Could not load configurations from your browser storage.',
-        variant: 'destructive',
-      });
+      console.error("Error loading A/B test configs from localStorage:", error);
+      toast({ title: 'Error Loading Saved A/B Configurations', variant: 'destructive' });
     } finally {
-      setIsLoadingConfigs(false);
+      setIsLoadingABTestConfigs(false);
     }
   }, [toast]);
 
-  // Persist savedConfigs to localStorage whenever it changes
   useEffect(() => {
-    if(!isLoadingConfigs) { 
+    if(!isLoadingABTestConfigs) { 
       try {
-        localStorage.setItem(LOCAL_STORAGE_KEY, JSON.stringify(savedConfigs));
+        localStorage.setItem(AB_TEST_LOCAL_STORAGE_KEY, JSON.stringify(savedABTestConfigs));
       } catch (error) {
-        console.error("Error saving configs to localStorage:", error);
-         toast({
-          title: 'Error Persisting Configurations',
-          description: 'Could not save configuration changes to your browser storage.',
-          variant: 'destructive',
-        });
+        console.error("Error saving A/B configs to localStorage:", error);
+        toast({ title: 'Error Persisting A/B Configurations', variant: 'destructive'});
       }
     }
-  }, [savedConfigs, isLoadingConfigs, toast]);
+  }, [savedABTestConfigs, isLoadingABTestConfigs, toast]);
 
-
-  const generateJson = (headline: string, subHeadline: string, ctaText: string): string => {
+  const generateABTestJson = (headline: string, subHeadline: string, ctaText: string): string => {
     if (!headline.trim() && !subHeadline.trim() && !ctaText.trim()) {
-      const emptyConfig: HeroConfig = { headline: '', subHeadline: '', ctaText: '' };
-      return JSON.stringify(emptyConfig, null, 2);
+      return JSON.stringify({ headline: '', subHeadline: '', ctaText: '' } as ABTestHeroConfig, null, 2);
     }
-    const config: HeroConfig = {
-      headline: headline.trim(),
-      subHeadline: subHeadline.trim(),
-      ctaText: ctaText.trim(),
-    };
-    return JSON.stringify(config, null, 2);
+    return JSON.stringify({ headline: headline.trim(), subHeadline: subHeadline.trim(), ctaText: ctaText.trim() } as ABTestHeroConfig, null, 2);
   };
 
-  useEffect(() => {
-    setGeneratedJsonA(generateJson(headlineA, subHeadlineA, ctaTextA));
-  }, [headlineA, subHeadlineA, ctaTextA]);
+  useEffect(() => { setGeneratedJsonA(generateABTestJson(headlineA, subHeadlineA, ctaTextA)); }, [headlineA, subHeadlineA, ctaTextA]);
+  useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB)); }, [headlineB, subHeadlineB, ctaTextB]);
 
-  useEffect(() => {
-    setGeneratedJsonB(generateJson(headlineB, subHeadlineB, ctaTextB));
-  }, [headlineB, subHeadlineB, ctaTextB]);
-
-
-  const handleRenderPreview = () => {
+  const handleRenderABTestPreview = () => {
     let configAIsValid = false;
     let configBIsValid = false;
-
-    try {
-        const configAData = JSON.parse(generatedJsonA) as HeroConfig;
-        if(configAData.headline && configAData.subHeadline && configAData.ctaText) configAIsValid = true;
-    } catch (e) {/* ignore parsing error, handled by validity check */}
-
-    try {
-        const configBData = JSON.parse(generatedJsonB) as HeroConfig;
-        if(configBData.headline && configBData.subHeadline && configBData.ctaText) configBIsValid = true;
-    } catch (e) {/* ignore parsing error, handled by validity check */}
-
+    try { const d = JSON.parse(generatedJsonA); if(d.headline && d.subHeadline && d.ctaText) configAIsValid = true; } catch (e) {}
+    try { const d = JSON.parse(generatedJsonB); if(d.headline && d.subHeadline && d.ctaText) configBIsValid = true; } catch (e) {}
 
     if (!configAIsValid || !configBIsValid) {
-         toast({
-            title: 'Configuration Incomplete for Preview',
-            description: 'Please ensure all fields (Headline, Sub-Headline, CTA Text) are filled for both Version A and Version B before previewing.',
-            variant: 'destructive',
-        });
+         toast({ title: 'A/B Config Incomplete for Preview', description: 'Please ensure all fields for both Version A and B are filled.', variant: 'destructive'});
         return;
     }
     try {
         const query = new URLSearchParams();
         query.set('configA', generatedJsonA);
         query.set('configB', generatedJsonB);
-        
-        const previewUrl = `/landing-preview?${query.toString()}`;
-        window.open(previewUrl, '_blank');
-
+        window.open(`/landing-preview?${query.toString()}`, '_blank');
     } catch (error) {
-        toast({
-            title: 'Error Preparing Preview',
-            description: 'Could not prepare the preview link. Please check your inputs.',
-            variant: 'destructive',
-        });
-        console.error("Error preparing preview link: ", error);
+        toast({ title: 'Error Preparing A/B Preview', variant: 'destructive'});
+        console.error("Error preparing A/B preview link: ", error);
     }
   };
 
-  const saveConfiguration = (version: 'A' | 'B') => {
-    const configNameValue = version === 'A' ? nameForConfigA : nameForConfigB;
-    const name = configNameValue.trim();
-    const headline = version === 'A' ? headlineA : headlineB;
-    const subHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
-    const ctaText = version === 'A' ? ctaTextA : ctaTextB;
-    const campaignFocus = version === 'A' ? campaignFocusA : campaignFocusB;
+  const saveABTestConfiguration = (version: 'A' | 'B') => {
+    const name = (version === 'A' ? nameForConfigA : nameForConfigB).trim();
+    const currentHeadline = version === 'A' ? headlineA : headlineB;
+    const currentSubHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
+    const currentCtaText = version === 'A' ? ctaTextA : ctaTextB;
+    const currentCampaignFocus = version === 'A' ? campaignFocusA : campaignFocusB;
 
-    if (!name) {
-      toast({ title: 'Configuration Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' });
-      return;
-    }
-    if (!headline.trim() || !subHeadline.trim() || !ctaText.trim()) {
-      toast({ title: 'Content Missing', description: `Please ensure all content fields for Version ${version} are filled before saving.`, variant: 'destructive' });
-      return;
+    if (!name) { toast({ title: 'Config Name Missing', description: `Enter name for Version ${version}.`, variant: 'destructive' }); return; }
+    if (!currentHeadline.trim() || !currentSubHeadline.trim() || !currentCtaText.trim()) {
+      toast({ title: 'Content Missing', description: `Fill content for Version ${version}.`, variant: 'destructive' }); return;
     }
 
-    const existingConfigIndex = savedConfigs.findIndex(c => c.name === name);
-
+    const existingConfigIndex = savedABTestConfigs.findIndex(c => c.name === name);
     if (existingConfigIndex !== -1) {
-      const updatedConfigs = savedConfigs.map((config, index) => 
+      const updatedConfigs = savedABTestConfigs.map((config, index) => 
         index === existingConfigIndex 
-        ? {
-            ...config, 
-            name, 
-            headline: headline.trim(),
-            subHeadline: subHeadline.trim(),
-            ctaText: ctaText.trim(),
-            campaignFocus: campaignFocus.trim(), // Save campaignFocus
-          }
+        ? { ...config, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() }
         : config
       );
-      setSavedConfigs(updatedConfigs);
-      toast({ title: 'Configuration Updated!', description: `"${name}" has been updated successfully.` });
+      setSavedABTestConfigs(updatedConfigs);
+      toast({ title: 'A/B Config Updated!', description: `"${name}" updated.` });
     } else {
-      const newConfig: ManagedHeroConfig = {
-        id: Date.now().toString(), 
-        name,
-        headline: headline.trim(),
-        subHeadline: subHeadline.trim(),
-        ctaText: ctaText.trim(),
-        campaignFocus: campaignFocus.trim(), // Save campaignFocus
-      };
-      setSavedConfigs(prev => [...prev, newConfig]);
-      toast({ title: 'Configuration Saved!', description: `"${newConfig.name}" has been saved locally.` });
+      const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() };
+      setSavedABTestConfigs(prev => [...prev, newConfig]);
+      toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
     }
-
-    if (version === 'A') setNameForConfigA('');
-    if (version === 'B') setNameForConfigB('');
+    if (version === 'A') setNameForConfigA(''); else setNameForConfigB('');
   };
 
-  const loadConfigIntoVersion = (configId: string, version: 'A' | 'B') => {
-    const configToLoad = savedConfigs.find(c => c.id === configId);
-    if (!configToLoad) {
-      toast({ title: 'Error', description: 'Could not find configuration to load.', variant: 'destructive'});
-      return;
-    }
-    if (version === 'A') {
-      setHeadlineA(configToLoad.headline);
-      setSubHeadlineA(configToLoad.subHeadline);
-      setCtaTextA(configToLoad.ctaText);
-      setCampaignFocusA(configToLoad.campaignFocus || ''); // Load campaignFocus
-      setNameForConfigA(configToLoad.name); 
+  const loadABTestConfigIntoVersion = (configId: string, versionToLoadInto: 'A' | 'B') => {
+    const configToLoad = savedABTestConfigs.find(c => c.id === configId);
+    if (!configToLoad) { toast({ title: 'Error', description: 'Could not find A/B config.', variant: 'destructive'}); return; }
+    if (versionToLoadInto === 'A') {
+      setHeadlineA(configToLoad.headline); setSubHeadlineA(configToLoad.subHeadline); setCtaTextA(configToLoad.ctaText);
+      setCampaignFocusA(configToLoad.campaignFocus || ''); setNameForConfigA(configToLoad.name); 
     } else {
-      setHeadlineB(configToLoad.headline);
-      setSubHeadlineB(configToLoad.subHeadline);
-      setCtaTextB(configToLoad.ctaText);
-      setCampaignFocusB(configToLoad.campaignFocus || ''); // Load campaignFocus
-      setNameForConfigB(configToLoad.name);
+      setHeadlineB(configToLoad.headline); setSubHeadlineB(configToLoad.subHeadline); setCtaTextB(configToLoad.ctaText);
+      setCampaignFocusB(configToLoad.campaignFocus || ''); setNameForConfigB(configToLoad.name);
     }
-    toast({ title: 'Configuration Loaded', description: `"${configToLoad.name}" loaded into Version ${version}.` });
+    toast({ title: 'A/B Config Loaded', description: `"${configToLoad.name}" loaded into Version ${versionToLoadInto}.` });
   };
 
-  const deleteSavedConfig = (configId: string) => {
-    const configToDelete = savedConfigs.find(c => c.id === configId);
-    setSavedConfigs(prev => prev.filter(c => c.id !== configId));
-    toast({ title: 'Configuration Deleted', description: `"${configToDelete?.name || 'Configuration'}" has been deleted.`, variant: 'default' });
+  const deleteSavedABTestConfig = (configId: string) => {
+    const configToDelete = savedABTestConfigs.find(c => c.id === configId);
+    setSavedABTestConfigs(prev => prev.filter(c => c.id !== configId));
+    toast({ title: 'A/B Config Deleted', description: `"${configToDelete?.name || 'Config'}" deleted.` });
   };
 
-
-  return (
-    <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
-      <Card className="max-w-3xl mx-auto shadow-lg rounded-lg">
-        <CardHeader className="bg-muted/30 p-6 rounded-t-lg">
-          <CardTitle className="text-2xl font-bold text-primary">A/B Test Hero Section Configurator & Manager</CardTitle>
-          <CardDescription className="text-muted-foreground">
-            Configure two versions (A and B) of hero section content. Use AI suggestions (optionally guided by campaign focus/keywords), 
-            save, manage, and load your configurations locally. Then, preview both active versions side-by-side.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="p-6">
-          
-          <ConfigForm
-            version="A"
-            headline={headlineA} setHeadline={setHeadlineA}
-            subHeadline={subHeadlineA} setSubHeadline={setSubHeadlineA}
-            ctaText={ctaTextA} setCtaText={setCtaTextA}
-            campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA}
-            generatedJson={generatedJsonA}
-            configName={nameForConfigA} setConfigName={setNameForConfigA}
-            onSave={() => saveConfiguration('A')}
-          />
-
-          <ConfigForm
-            version="B"
-            headline={headlineB} setHeadline={setHeadlineB}
-            subHeadline={subHeadlineB} setSubHeadline={setSubHeadlineB}
-            ctaText={ctaTextB} setCtaText={setCtaTextB}
-            campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB}
-            generatedJson={generatedJsonB}
-            configName={nameForConfigB} setConfigName={setNameForConfigB}
-            onSave={() => saveConfiguration('B')}
-          />
-
-          <div className="mt-8 pt-6 border-t border-border text-center">
-            <Button 
-              onClick={handleRenderPreview} 
-              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm whitespace-normal sm:px-6 md:px-8 md:py-3 md:text-base md:whitespace-nowrap"
-            >
-              <Eye className="mr-2 h-5 w-5" /> Render Active A/B Pages for Preview
-            </Button>
-          </div>
-
-          <Separator className="my-10" />
-
-          <Card className="mt-6">
-            <CardHeader>
-              <CardTitle className="text-xl font-semibold text-primary">Managed Hero Configurations (Saved Locally)</CardTitle>
-              <CardDescription>
-                Load saved configurations into Version A or B forms above, or delete them.
-                These are stored in your browser's local storage. Campaign Focus is also saved.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-0">
-              {isLoadingConfigs && (
-                <div className="flex items-center justify-center py-4">
-                  <Loader2 className="h-6 w-6 animate-spin text-primary mr-2" />
-                  <p className="text-muted-foreground">Loading saved configurations...</p>
+  const accordionItems = [
+    {
+      value: "step-1",
+      title: "Step 1: Review Recommendations",
+      icon: <UploadCloud className="mr-2 h-5 w-5 text-primary" />,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Upload Page Blueprint JSON</CardTitle>
+            <CardDescription>Upload the JSON file containing recommendations from the URL scraping tool. This will form the base for your new landing page.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input type="file" accept=".json" onChange={handleFileUpload} className="text-base" />
+            {fileError && <p className="text-sm text-destructive">{fileError}</p>}
+            {uploadedBlueprint && (
+              <div className="mt-4 p-4 border rounded-md bg-muted/50">
+                <h4 className="font-semibold text-lg mb-2">Blueprint Loaded: {uploadedBlueprint.pageName}</h4>
+                <pre className="text-xs bg-background p-3 rounded overflow-auto max-h-60">{JSON.stringify(uploadedBlueprint, null, 2)}</pre>
+                <Button onClick={() => setActiveAccordionItem('step-2')} className="mt-4">
+                  Proceed to Build <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )
+    },
+    {
+      value: "step-2",
+      title: "Step 2: Build & Preview Page",
+      icon: <Eye className="mr-2 h-5 w-5 text-primary" />,
+      disabled: !activeHeroConfig,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Preview Landing Page (Hero Section)</CardTitle>
+            <CardDescription>This is a preview of the Hero section based on the loaded blueprint. You can adjust it in the next step.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!activeHeroConfig && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
+            {activeHeroConfig && (
+              <>
+                <HeroSection 
+                  headline={activeHeroConfig.headline}
+                  subHeadline={activeHeroConfig.subHeadline}
+                  ctaText={activeHeroConfig.ctaText}
+                />
+                <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6">
+                  Proceed to Adjust <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )
+    },
+    {
+      value: "step-3",
+      title: "Step 3: Adjust Content",
+      icon: <Edit3 className="mr-2 h-5 w-5 text-primary" />,
+      disabled: !activeHeroConfig,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Adjust Hero Section Content</CardTitle>
+            <CardDescription>Fine-tune the content for the Hero section. Changes here will update the active page blueprint and can be used as Version A in A/B testing.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {!activeHeroConfig && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
+            {activeHeroConfig && (
+              <>
+                <div>
+                  <Label htmlFor="adjustHeadline" className="text-base font-medium">Headline</Label>
+                  <Input id="adjustHeadline" value={activeHeroConfig.headline || ''} onChange={(e) => handleHeroConfigChange('headline', e.target.value)} className="mt-1 text-base" />
                 </div>
-              )}
-              {!isLoadingConfigs && savedConfigs.length === 0 && (
-                <p className="text-muted-foreground text-center py-4">No configurations saved yet. Use the "Save Content" buttons above to save your work.</p>
-              )}
-              {!isLoadingConfigs && savedConfigs.length > 0 && (
-                <div className="border border-border rounded-lg overflow-hidden">
-                  {savedConfigs.map((config, index) => (
-                    <div 
-                      key={config.id} 
-                      className={`
-                        flex flex-col sm:flex-row justify-between items-start sm:items-center 
-                        p-4 gap-3 
-                        ${index % 2 === 0 ? 'bg-card' : 'bg-muted/50'}
-                        ${index < savedConfigs.length - 1 ? 'border-b border-border' : ''}
-                      `}
-                    >
-                      <div className="flex-grow mb-3 sm:mb-0 min-w-0"> 
-                        <p className="font-semibold text-foreground">{config.name}</p>
-                        <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> 
-                        {config.campaignFocus && <p className="text-xs text-muted-foreground mt-1">Focus: {config.campaignFocus}</p>}
-                      </div>
-                      <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
-                        <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
-                        <Button onClick={() => loadConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
-                        <Button onClick={() => deleteSavedConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto">
-                          <Trash2 /> Delete
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
+                <div>
+                  <Label htmlFor="adjustSubHeadline" className="text-base font-medium">Sub-Headline</Label>
+                  <Input id="adjustSubHeadline" value={activeHeroConfig.subHeadline || ''} onChange={(e) => handleHeroConfigChange('subHeadline', e.target.value)} className="mt-1 text-base" />
                 </div>
-              )}
-            </CardContent>
-          </Card>
-
-
-        </CardContent>
-        <CardFooter className="bg-muted/30 p-6 border-t border-border rounded-b-lg">
-            <div className="flex flex-col space-y-4 text-sm text-muted-foreground">
+                <div>
+                  <Label htmlFor="adjustCtaText" className="text-base font-medium">CTA Text</Label>
+                  <Input id="adjustCtaText" value={activeHeroConfig.ctaText || ''} onChange={(e) => handleHeroConfigChange('ctaText', e.target.value)} className="mt-1 text-base" />
+                </div>
+                <div>
+                  <Label htmlFor="adjustUVP" className="text-base font-medium">Unique Value Proposition (UVP for Hero)</Label>
+                  <Textarea id="adjustUVP" value={activeHeroConfig.uniqueValueProposition || ''} onChange={(e) => handleHeroConfigChange('uniqueValueProposition', e.target.value)} className="mt-1 text-base" rows={2} />
+                </div>
+                <div className="flex justify-between items-center mt-6">
+                    <p className="text-sm text-green-600 flex items-center"><CheckCircle className="h-4 w-4 mr-1"/> Content updated.</p>
+                    <Button onClick={() => setActiveAccordionItem('step-4')}>
+                    Configure A/B Test <ChevronRight className="ml-2 h-4 w-4" />
+                    </Button>
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )
+    },
+    {
+      value: "step-4",
+      title: "Step 4: Configure A/B Test",
+      icon: <Settings className="mr-2 h-5 w-5 text-primary" />,
+      disabled: !activeHeroConfig,
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>A/B Test Hero Section Configurator</CardTitle>
+            <CardDescription>
+              Configure two versions (A and B) of hero section content. Version A is pre-filled from your adjusted content.
+              Use AI suggestions, save, manage, and load your configurations locally. Then, preview both active versions.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {!activeHeroConfig && <p className="text-muted-foreground">Adjust content in Step 3 before configuring A/B tests.</p>}
+            {activeHeroConfig && (
+              <>
+                <ABTestConfigForm
+                  version="A"
+                  headline={headlineA} setHeadline={setHeadlineA}
+                  subHeadline={subHeadlineA} setSubHeadline={setSubHeadlineA}
+                  ctaText={ctaTextA} setCtaText={setCtaTextA}
+                  campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA}
+                  generatedJson={generatedJsonA}
+                  configName={nameForConfigA} setConfigName={setNameForConfigA}
+                  onSave={() => saveABTestConfiguration('A')}
+                />
+                <ABTestConfigForm
+                  version="B"
+                  headline={headlineB} setHeadline={setHeadlineB}
+                  subHeadline={subHeadlineB} setSubHeadline={setSubHeadlineB}
+                  ctaText={ctaTextB} setCtaText={setCtaTextB}
+                  campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB}
+                  generatedJson={generatedJsonB}
+                  configName={nameForConfigB} setConfigName={setNameForConfigB}
+                  onSave={() => saveABTestConfiguration('B')}
+                />
+                <div className="mt-8 pt-6 border-t border-border text-center">
+                  <Button 
+                    onClick={handleRenderABTestPreview} 
+                    className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm whitespace-normal sm:px-6 md:px-8 md:py-3 md:text-base md:whitespace-nowrap"
+                  >
+                    <Eye className="mr-2 h-5 w-5" /> Render A/B Versions for Preview
+                  </Button>
+                </div>
+                <Separator className="my-10" />
+                <Card className="mt-6">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-semibold">Managed A/B Hero Configurations (Local)</CardTitle>
+                    <CardDescription>Load saved A/B configurations into Version A or B forms, or delete them.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-0">
+                    {isLoadingABTestConfigs && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin" /> Loading...</div>}
+                    {!isLoadingABTestConfigs && savedABTestConfigs.length === 0 && <p className="text-muted-foreground text-center py-4">No A/B configurations saved.</p>}
+                    {!isLoadingABTestConfigs && savedABTestConfigs.length > 0 && (
+                      <div className="border border-border rounded-lg overflow-hidden">
+                        {savedABTestConfigs.map((config, index) => (
+                          <div key={config.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-3 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/50'} ${index < savedABTestConfigs.length - 1 ? 'border-b border-border' : ''}`}>
+                            <div className="flex-grow mb-3 sm:mb-0 min-w-0"> 
+                              <p className="font-semibold text-foreground">{config.name}</p>
+                              <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> 
+                              {config.campaignFocus && <p className="text-xs text-muted-foreground mt-1">Focus: {config.campaignFocus}</p>}
+                            </div>
+                            <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
+                              <Button onClick={() => loadABTestConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
+                              <Button onClick={() => loadABTestConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
+                              <Button onClick={() => deleteSavedABTestConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto"><Trash2 /> Delete</Button>
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+                 <Button onClick={() => setActiveAccordionItem('step-5')} className="mt-8 w-full">
+                    Proceed to Deployment Steps <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      )
+    },
+    {
+      value: "step-5",
+      title: "Step 5: Prepare for Deployment",
+      icon: <Rocket className="mr-2 h-5 w-5 text-primary" />,
+      disabled: !generatedJsonA || !generatedJsonB, // Or some other validation from Step 4
+      content: (
+        <Card>
+          <CardHeader>
+            <CardTitle>Deployment Instructions</CardTitle>
+            <CardDescription>Follow these steps to use your configured A/B test variations in Firebase.</CardDescription>
+          </CardHeader>
+          <CardContent>
+             <div className="flex flex-col space-y-4 text-sm text-muted-foreground">
                 <div className="flex items-start space-x-3">
                     <Info className="h-5 w-5 mt-0.5 shrink-0 text-primary flex-shrink-0" />
                     <div>
                         <p className="text-lg font-semibold text-foreground mb-2">Ready to Start Your A/B Test in Firebase?</p>
                         <p className="mb-3">
-                            After configuring, saving, loading, and previewing your content variations using this tool:
+                            After configuring and previewing your content variations using this tool:
                         </p>
                         <ol className="list-decimal list-inside space-y-2 mb-4">
                             <li>
-                                <strong>Prepare JSON:</strong> Ensure you have copied or downloaded the JSON for both Version A and Version B (from the active forms above) using the buttons within each version's card. These JSON strings are what you'll use in Firebase.
+                                <strong>Prepare JSON:</strong> Ensure you have copied or downloaded the JSON for both Version A and Version B (from Step 4) using the buttons within each version's card. These JSON strings are what you'll use in Firebase.
                             </li>
                             <li>
                                 <strong>Go to Firebase:</strong> Click the button below to navigate to the Firebase Console where you will set up and manage your A/B test.
@@ -661,18 +748,51 @@ export default function ABTestConfiguratorPage() {
                                 </div>
                             </li>
                         </ol>
-                        
                         <p className="mt-4 text-xs italic">
-                           Remember, this tool helps you prepare and manage content variations locally. The actual A/B test (targeting users, measuring results) is run and managed within the Firebase A/B Testing platform.
+                           Remember, this tool helps you prepare and manage content variations. The actual A/B test (targeting users, measuring results) is run and managed within the Firebase A/B Testing platform.
                         </p>
                     </div>
                 </div>
             </div>
-        </CardFooter>
+          </CardContent>
+        </Card>
+      )
+    }
+  ];
+
+  return (
+    <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
+      <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
+        <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center">
+          <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
+          <CardDescription className="text-muted-foreground mt-2">
+            Follow these steps to build, adjust, and A/B test your landing page content.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="p-4 sm:p-6">
+          <Accordion 
+            type="single" 
+            collapsible 
+            className="w-full" 
+            value={activeAccordionItem}
+            onValueChange={setActiveAccordionItem}
+          >
+            {accordionItems.map(item => (
+              <AccordionItem value={item.value} key={item.value} disabled={item.disabled}>
+                <AccordionTrigger className="text-lg hover:no-underline disabled:opacity-50 disabled:cursor-not-allowed">
+                  <div className="flex items-center">
+                    {item.icon}
+                    {item.title}
+                  </div>
+                </AccordionTrigger>
+                <AccordionContent className="pt-4">
+                  {item.content}
+                </AccordionContent>
+              </AccordionItem>
+            ))}
+          </Accordion>
+        </CardContent>
       </Card>
     </div>
   );
 }
-    
-
-    
