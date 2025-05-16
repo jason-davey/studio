@@ -75,6 +75,7 @@ To test different Hero Section content:
       ```json
       {"headline":"Ensure Your Family's Financial Security","subHeadline":"(even when you can't be there for them)","ctaText":"Secure My Family's Future Now"}
       ```
+    - **Tip:** You can use the A/B Test Configurator tool (see section 4.3.1) to generate this JSON.
 5.  Click **"Save"**.
 
 ### 4.3. Add Variations as Conditional Values (for A/B Testing)
@@ -88,7 +89,23 @@ However, you *could* add conditional values for testing or specific user segment
     ```json
     {"headline":"Unlock Financial Peace of Mind","subHeadline":"(protecting your loved ones, always)","ctaText":"Get Protected Today"}
     ```
+    - **Tip:** Use the A/B Test Configurator tool (see section 4.3.1) to easily generate this JSON.
 5.  Save the conditional value.
+
+### 4.3.1. Using the A/B Test Configurator Tool (Recommended)
+To simplify creating the JSON for your `heroConfig` variations, your application includes an **A/B Test Configurator tool**.
+
+1.  **Access the Tool:** Open your web browser and navigate to `/admin/ab-test-configurator` on your application's domain (e.g., `http://localhost:9002/admin/ab-test-configurator` if running locally, or `https://your-app-domain.com/admin/ab-test-configurator` if deployed).
+2.  **Fill in the Content:**
+    *   **Variant Name:** Give your variant a descriptive name (e.g., "Variant A - Bold Headline"). This is for your reference.
+    *   **Headline:** Enter the main headline text for this variant.
+    *   **Sub-Headline:** Enter the supporting sub-headline text.
+    *   **Call to Action (CTA) Text:** Enter the text for the CTA button.
+3.  **Generate JSON:** Click the "Generate JSON" button.
+4.  **Copy JSON:** The tool will display the generated JSON string. Click the "Copy JSON" button.
+5.  **Paste in Firebase:** You can now paste this copied JSON string into the "Value" field for your `heroConfig` parameter in Firebase Remote Config (either as the default value or for a specific variant in an A/B test, as described in sections 4.2, 4.3, and 6.2).
+
+This tool helps ensure the JSON is correctly formatted and makes it easier for non-technical team members to prepare content for A/B tests.
 
 ### 4.4. Publish Changes
 - After defining your parameter and any initial values, click **"Publish changes"** in the Remote Config dashboard. Changes might take a few minutes to propagate.
@@ -123,12 +140,12 @@ This is where you define your experiment to test different `heroConfig` values.
 6.  **Variants:**
     *   **Baseline:** This is your control group. It will typically use the default value of your Remote Config parameter or you can specify it.
         *   Parameter: Select `heroConfig`.
-        *   Value: (Usually leave as "Use parameter's default value" or explicitly set the control JSON string).
+        *   Value: (Usually leave as "Use parameter's default value" or explicitly set the control JSON string. Use the **A/B Test Configurator Tool** (section 4.3.1) to generate this JSON if needed).
     *   **Variant A:** (and B, C, etc. as needed)
         *   Click **"Add variant"**.
         *   Name your variant (e.g., "New Headline CTA").
         *   Parameter: `heroConfig`.
-        *   Value: Enter the JSON string for this variation. For example:
+        *   Value: Use the **A/B Test Configurator Tool** (section 4.3.1) to generate the JSON string for this variation and paste it here. For example:
           ```json
           {"headline":"Unlock Financial Peace of Mind","subHeadline":"(protecting your loved ones, always)","ctaText":"Get Protected Today"}
           ```
@@ -142,12 +159,12 @@ This is where you define your experiment to test different `heroConfig` values.
 ## 7. Iterating and Adding New Variations
 
 1.  **Hypothesize:** What do you want to improve? What change might achieve that?
-2.  **Code (if needed):** If your new variation requires structural changes beyond text, update your Next.js components.
-3.  **Remote Config:** Define the new JSON string for your `heroConfig` variation.
-4.  **A/B Test:**
-    *   You can duplicate an existing experiment and modify the variants.
+2.  **Generate JSON:** Use the A/B Test Configurator Tool (`/admin/ab-test-configurator`) to create the JSON for your new `heroConfig` variation.
+3.  **Code (if needed):** If your new variation requires structural changes beyond text, update your Next.js components.
+4.  **Remote Config/A/B Test:**
+    *   If just updating a variant's content, you might edit an existing A/B test in Firebase and paste the new JSON.
     *   Or create a new experiment.
-5.  **Deploy:** Ensure your app code is deployed.
+5.  **Deploy:** Ensure your app code is deployed if you made code changes.
 
 ## 8. Best Practices
 
@@ -155,7 +172,7 @@ This is where you define your experiment to test different `heroConfig` values.
 - **One Major Change at a Time:** This makes it easier to attribute performance changes to specific modifications.
 - **Sufficient Sample Size & Duration:** Run tests long enough to get statistically significant results. Firebase will often guide you on this.
 - **Meaningful Metrics:** Track metrics that align with your business goals.
-- **Test in Development:** Before launching an A/B test to all users, ensure your variations work correctly by targeting your test devices or using conditional values in Remote Config.
+- **Test in Development:** Before launching an A/B test to all users, ensure your variations work correctly by targeting your test devices or using conditional values in Remote Config. The A/B Test Configurator page also provides instructions on how to use the generated JSON.
 
 ## 9. Troubleshooting
 
