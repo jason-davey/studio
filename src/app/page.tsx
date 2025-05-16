@@ -544,7 +544,10 @@ export default function ABTestConfiguratorPage() {
           />
 
           <div className="mt-8 pt-6 border-t border-border text-center">
-            <Button onClick={handleRenderPreview} size="lg" className="bg-green-600 hover:bg-green-700 text-white">
+            <Button 
+              onClick={handleRenderPreview} 
+              className="bg-green-600 hover:bg-green-700 text-white px-4 py-2 text-sm whitespace-normal sm:px-6 md:px-8 md:py-3 md:text-base md:whitespace-nowrap"
+            >
               <Eye className="mr-2 h-5 w-5" /> Render Active A/B Pages for Preview
             </Button>
           </div>
@@ -581,9 +584,9 @@ export default function ABTestConfiguratorPage() {
                         ${index < savedConfigs.length - 1 ? 'border-b border-border' : ''}
                       `}
                     >
-                      <div className="flex-grow mb-3 sm:mb-0 min-w-0">
+                      <div className="flex-grow mb-3 sm:mb-0 min-w-0"> {/* Added min-w-0 here */}
                         <p className="font-semibold text-foreground">{config.name}</p>
-                        <p className="text-sm text-muted-foreground">Headline: {config.headline}</p>
+                        <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> {/* Removed truncate, added break-words */}
                       </div>
                       <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
                         <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
@@ -642,6 +645,4 @@ export default function ABTestConfiguratorPage() {
     </div>
   );
 }
-    
-
     
