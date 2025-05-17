@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIcon, Type, MessageSquare, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIcon, Type, MessageSquare, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, LifeBuoy } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -22,6 +22,12 @@ import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
 
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig } from '@/types/recommendations';
+
+import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
+import WelcomeModal from '@/components/walkthrough/WelcomeModal';
+// Import HighlightCallout once created
+// import HighlightCallout from '@/components/walkthrough/HighlightCallout';
+
 
 // Types for A/B Test Configurator (Step 4)
 interface ABTestHeroConfig {
@@ -121,11 +127,13 @@ const ABTestConfigForm = ({
     copyType: SuggestHeroCopyInput['copyType'],
     aiState: AISuggestionState,
     aiStateSetter: React.Dispatch<React.SetStateAction<AISuggestionState>>,
-    fieldSetter: (val: string) => void
+    fieldSetter: (val: string) => void,
+    buttonId?: string,
   ) => (
     <Popover open={aiState.popoverOpen} onOpenChange={(open) => aiStateSetter(prev => ({...prev, popoverOpen: open}))}>
       <PopoverTrigger asChild>
         <Button
+          id={buttonId}
           type="button"
           variant="outline"
           size="sm"
@@ -204,7 +212,7 @@ const ABTestConfigForm = ({
       <div>
         <div className="flex items-center justify-between">
           <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
-          {renderAISuggestionPopover(headline, 'headline', aiStateHeadline, setAiStateHeadline, setHeadline)}
+          {renderAISuggestionPopover(headline, 'headline', aiStateHeadline, setAiStateHeadline, setHeadline, version === 'A' ? 'ai-suggest-headlineA-button' : 'ai-suggest-headlineB-button')}
         </div>
         <Input
           id={`headline${version}`}
@@ -337,9 +345,13 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 // --- Main Page Component (Landing Page Workflow) ---
-export default function LandingPageWorkflowPage() {
+function LandingPageWorkflowPageContent() {
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
+  
+  // Walkthrough context integration
+  const walkthrough = useWalkthrough();
+
 
   // Step 1: Recommendations
   const [uploadedBlueprint, setUploadedBlueprint] = useState<PageBlueprint | null>(null);
@@ -359,6 +371,20 @@ export default function LandingPageWorkflowPage() {
     formConfig: { headline: '', ctaText: '' }
   };
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
+
+   // Callback for WalkthroughProvider to set activePageBlueprint
+  const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
+    setActivePageBlueprint(blueprint);
+    setUploadedBlueprint(blueprint); // Also set uploadedBlueprint to enable other steps
+    toast({ title: 'Sample Blueprint Loaded!', description: 'A sample blueprint has been loaded for the walkthrough.' });
+  }, [toast]);
+
+  useEffect(() => {
+    // If walkthrough wants to auto-load blueprint and it hasn't been loaded yet
+    if (walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.autoLoadBlueprint && !uploadedBlueprint) {
+      walkthrough.autoLoadSampleBlueprint();
+    }
+  }, [walkthrough.isWalkthroughActive, walkthrough.currentStepIndex, walkthrough.steps, uploadedBlueprint, walkthrough]);
 
 
   // Step 4: A/B Test Configuration States
@@ -382,8 +408,8 @@ export default function LandingPageWorkflowPage() {
   // --- Step 1 Logic ---
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
-    setUploadedBlueprint(null); // Reset previous blueprint
-    setActivePageBlueprint(initialBlueprintState); // Reset active blueprint to initial state
+    setUploadedBlueprint(null); 
+    setActivePageBlueprint(initialBlueprintState); 
 
     const file = event.target.files?.[0];
     if (file) {
@@ -393,9 +419,8 @@ export default function LandingPageWorkflowPage() {
           try {
             const content = e.target?.result as string;
             const parsedJson = JSON.parse(content) as PageBlueprint;
-            if (parsedJson.pageName) { // Basic validation
+            if (parsedJson.pageName) { 
               setUploadedBlueprint(parsedJson);
-              // Populate activePageBlueprint from the uploaded one, ensuring all fields exist with defaults
               setActivePageBlueprint({
                 pageName: parsedJson.pageName || 'Untitled Page',
                 targetUrl: parsedJson.targetUrl || '',
@@ -409,7 +434,7 @@ export default function LandingPageWorkflowPage() {
                 formConfig: parsedJson.formConfig || initialBlueprintState.formConfig,
               });
               toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
-              setActiveAccordionItem('step-2'); // Move to next step
+              setActiveAccordionItem('step-2'); 
             } else {
               throw new Error('Invalid blueprint structure. Missing pageName.');
             }
@@ -429,16 +454,14 @@ export default function LandingPageWorkflowPage() {
         toast({ title: 'Invalid File Type', description: 'Please upload a .json file.', variant: 'destructive' });
       }
     }
-    event.target.value = ''; // Reset file input
+    event.target.value = ''; 
   };
 
   // --- Step 3 Logic (Updating activePageBlueprint) ---
-  // Generic handler for top-level properties of activePageBlueprint
   const handleSimpleBlueprintFieldChange = <K extends keyof PageBlueprint>(field: K, value: PageBlueprint[K]) => {
     setActivePageBlueprint(prev => ({ ...prev, [field]: value }));
   };
 
-  // Handler for nested objects like heroConfig, formConfig
   const handleNestedObjectChange = <S extends 'heroConfig' | 'formConfig'>(
     section: S,
     field: keyof NonNullable<PageBlueprint[S]>,
@@ -453,7 +476,6 @@ export default function LandingPageWorkflowPage() {
     }));
   };
 
-  // Handler for arrays of objects like benefits, testimonials, trustSignals
   const handleArrayObjectChange = <S extends 'benefits' | 'testimonials' | 'trustSignals'>(
     section: S,
     index: number,
@@ -468,7 +490,7 @@ export default function LandingPageWorkflowPage() {
           [field]: value,
         };
       }
-      return { ...prev, [section]: newArray as any }; // Type assertion needed due to complex generic
+      return { ...prev, [section]: newArray as any }; 
     });
   };
 
@@ -555,13 +577,13 @@ export default function LandingPageWorkflowPage() {
     if (existingConfigIndex !== -1) {
       const updatedConfigs = savedABTestConfigs.map((config, index) => 
         index === existingConfigIndex 
-        ? { ...config, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || '' }
+        ? { ...config, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || undefined }
         : config
       );
       setSavedABTestConfigs(updatedConfigs);
       toast({ title: 'A/B Config Updated!', description: `"${name}" updated.` });
     } else {
-      const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || '' };
+      const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || undefined };
       setSavedABTestConfigs(prev => [...prev, newConfig]);
       toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
     }
@@ -593,13 +615,13 @@ export default function LandingPageWorkflowPage() {
       title: "Step 1: Review Recommendations",
       icon: <UploadCloud className="mr-2 h-5 w-5 text-primary" />,
       content: (
-        <Card>
+        <Card id="step-1-card">
           <CardHeader>
             <CardTitle>Upload Page Blueprint JSON</CardTitle>
             <CardDescription>Upload the JSON file containing recommendations for your landing page. This blueprint will populate the content for subsequent steps.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input type="file" accept=".json" onChange={handleFileUpload} className="text-base" />
+            <Input id="blueprint-upload-input" type="file" accept=".json" onChange={handleFileUpload} className="text-base" />
             {fileError && <p className="text-sm text-destructive">{fileError}</p>}
             {uploadedBlueprint && (
               <div className="mt-4 p-4 border rounded-md bg-muted/50">
@@ -620,7 +642,7 @@ export default function LandingPageWorkflowPage() {
       icon: <Palette className="mr-2 h-5 w-5 text-primary" />,
       disabled: !uploadedBlueprint,
       content: (
-        <Card>
+        <Card id="step-2-card">
           <CardHeader>
             <CardTitle>Preview Landing Page</CardTitle>
             <CardDescription>This is a preview of the landing page based on the loaded blueprint. You can adjust the content in the next step.</CardDescription>
@@ -628,21 +650,26 @@ export default function LandingPageWorkflowPage() {
           <CardContent>
             {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
             {activePageBlueprint?.pageName && (
-              <div className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
+              <div id="step-2-preview-area" className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
                 <HeroSection 
                   headline={activePageBlueprint.heroConfig?.headline}
                   subHeadline={activePageBlueprint.heroConfig?.subHeadline}
                   ctaText={activePageBlueprint.heroConfig?.ctaText}
+                  uniqueValueProposition={activePageBlueprint.heroConfig?.uniqueValueProposition}
+                  heroImageUrl={activePageBlueprint.heroConfig?.heroImageUrl}
                 />
                 <BenefitsSection benefits={activePageBlueprint.benefits} />
                 <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
                 <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
                  {activePageBlueprint.formConfig && (
-                    <div className="text-center my-4 py-8 bg-background"> {/* Added bg-background for consistency */}
+                    <div className="text-center my-4 py-8 bg-background">
                         <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline || "Get Your Personalized Quote"}</h3>
                     </div>
                  )}
-                <QuoteFormSection /> 
+                <QuoteFormSection 
+                    headline={activePageBlueprint.formConfig?.headline} 
+                    ctaText={activePageBlueprint.formConfig?.ctaText}
+                /> 
 
                 <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
                   Proceed to Adjust Content <ChevronRight className="ml-2 h-4 w-4" />
@@ -659,7 +686,7 @@ export default function LandingPageWorkflowPage() {
       icon: <Edit className="mr-2 h-5 w-5 text-primary" />,
       disabled: !uploadedBlueprint,
       content: (
-        <Card>
+        <Card id="step-3-card">
           <CardHeader>
             <CardTitle>Adjust Landing Page Content</CardTitle>
             <CardDescription>Fine-tune the content for each section of your landing page. Changes here update the active blueprint that pre-fills A/B Test Version A.</CardDescription>
@@ -668,7 +695,7 @@ export default function LandingPageWorkflowPage() {
             {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
             {activePageBlueprint?.pageName && (
               <>
-                <Card className="bg-muted/50 p-1"> {/* General Page Info */}
+                <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5" /> Page Information</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     <div><Label htmlFor="bpPageName">Page Name</Label><Input id="bpPageName" value={activePageBlueprint.pageName} onChange={(e) => handleSimpleBlueprintFieldChange('pageName', e.target.value)} /></div>
@@ -676,10 +703,10 @@ export default function LandingPageWorkflowPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> {/* Hero Config */}
+                <Card className="bg-muted/50 p-1"> 
                   <CardHeader><CardTitle className="text-lg flex items-center"><ImageIcon className="mr-2 h-5 w-5" /> Hero Section</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
-                    <div><Label htmlFor="heroHeadline">Headline</Label><Input id="heroHeadline" value={activePageBlueprint.heroConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'headline', e.target.value)} /></div>
+                    <div><Label htmlFor="heroHeadline-input">Headline</Label><Input id="heroHeadline-input" value={activePageBlueprint.heroConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'headline', e.target.value)} /></div>
                     <div><Label htmlFor="heroSubHeadline">Sub-Headline</Label><Input id="heroSubHeadline" value={activePageBlueprint.heroConfig?.subHeadline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'subHeadline', e.target.value)} /></div>
                     <div><Label htmlFor="heroCtaText">CTA Text</Label><Input id="heroCtaText" value={activePageBlueprint.heroConfig?.ctaText || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'ctaText', e.target.value)} /></div>
                     <div><Label htmlFor="heroUVP">Unique Value Proposition</Label><Textarea id="heroUVP" value={activePageBlueprint.heroConfig?.uniqueValueProposition || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'uniqueValueProposition', e.target.value)} rows={2}/></div>
@@ -687,7 +714,7 @@ export default function LandingPageWorkflowPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> {/* Benefits */}
+                <Card className="bg-muted/50 p-1"> 
                   <CardHeader><CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     {activePageBlueprint.benefits?.map((benefit, index) => (
@@ -703,7 +730,7 @@ export default function LandingPageWorkflowPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> {/* Testimonials */}
+                <Card className="bg-muted/50 p-1"> 
                     <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquare className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {activePageBlueprint.testimonials?.map((testimonial, index) => (
@@ -722,7 +749,7 @@ export default function LandingPageWorkflowPage() {
                     </CardContent>
                 </Card>
 
-                 <Card className="bg-muted/50 p-1"> {/* Trust Signals */}
+                 <Card className="bg-muted/50 p-1">
                     <CardHeader><CardTitle className="text-lg flex items-center"><AwardIcon className="mr-2 h-5 w-5"/> Trust Signals Section</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {activePageBlueprint.trustSignals?.map((signal, index) => (
@@ -739,7 +766,7 @@ export default function LandingPageWorkflowPage() {
                                             id={`trustSignalType${index}`} 
                                             value={signal.type} 
                                             onChange={(e) => handleArrayObjectChange('trustSignals', index, 'type', e.target.value as RecommendationTrustSignal['type'])}
-                                            className="w-full mt-1 p-2 border border-input rounded-md text-base"
+                                            className="w-full mt-1 p-2 border border-input rounded-md text-base bg-background text-foreground"
                                         >
                                             <option value="award">Award</option>
                                             <option value="rating">Rating</option>
@@ -754,7 +781,7 @@ export default function LandingPageWorkflowPage() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> {/* Form Config */}
+                <Card className="bg-muted/50 p-1"> 
                   <CardHeader><CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     <div><Label htmlFor="formHeadline">Form Headline</Label><Input id="formHeadline" value={activePageBlueprint.formConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'headline', e.target.value)} /></div>
@@ -780,7 +807,7 @@ export default function LandingPageWorkflowPage() {
       icon: <Settings className="mr-2 h-5 w-5 text-primary" />,
       disabled: !uploadedBlueprint,
       content: (
-        <Card>
+        <Card id="step-4-card">
           <CardHeader>
             <CardTitle>A/B Test Hero Section Configurator</CardTitle>
             <CardDescription>
@@ -814,8 +841,9 @@ export default function LandingPageWorkflowPage() {
                 />
                 <div className="mt-8 pt-6 border-t border-border text-center">
                   <Button 
+                    id="render-ab-preview-button"
                     onClick={handleRenderABTestPreview} 
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm sm:px-4 sm:py-2 md:px-6 md:py-3 md:text-base"
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base"
                   >
                     <Eye className="mr-2 h-5 w-5" /> Render A/B Versions for Preview
                   </Button>
@@ -830,9 +858,12 @@ export default function LandingPageWorkflowPage() {
                     {isLoadingABTestConfigs && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin" /> Loading...</div>}
                     {!isLoadingABTestConfigs && savedABTestConfigs.length === 0 && <p className="text-muted-foreground text-center py-4">No A/B configurations saved.</p>}
                     {!isLoadingABTestConfigs && savedABTestConfigs.length > 0 && (
-                      <div className="border border-border rounded-lg overflow-hidden">
+                       <div className="border border-border rounded-lg overflow-hidden">
                         {savedABTestConfigs.map((config, index) => (
-                          <div key={config.id} className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-3 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/50'} ${index < savedABTestConfigs.length - 1 ? 'border-b border-border' : ''}`}>
+                          <div 
+                            key={config.id} 
+                            className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-3 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/50'} ${index < savedABTestConfigs.length - 1 ? 'border-b border-border' : ''}`}
+                          >
                             <div className="flex-grow mb-3 sm:mb-0 min-w-0"> 
                               <p className="font-semibold text-foreground">{config.name}</p>
                               <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> 
@@ -841,7 +872,7 @@ export default function LandingPageWorkflowPage() {
                             <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
                               <Button onClick={() => loadABTestConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
                               <Button onClick={() => loadABTestConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
-                              <Button onClick={() => deleteSavedABTestConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto"><Trash2 /> Delete</Button>
+                              <Button onClick={() => deleteSavedABTestConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto"><Trash2 className="h-4 w-4" /> Delete</Button>
                             </div>
                           </div>
                         ))}
@@ -864,7 +895,7 @@ export default function LandingPageWorkflowPage() {
       icon: <Rocket className="mr-2 h-5 w-5 text-primary" />,
       disabled: !generatedJsonA || !generatedJsonB, 
       content: (
-        <Card>
+        <Card id="step-5-card">
           <CardHeader>
             <CardTitle>Deployment Instructions</CardTitle>
             <CardDescription>Follow these steps to use your configured A/B test variations in Firebase.</CardDescription>
@@ -912,12 +943,28 @@ export default function LandingPageWorkflowPage() {
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8">
+      {/* Dummy target for end of walkthrough if needed */}
+      <div id="walkthrough-end-target" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
+      
+      <WelcomeModal />
+      {/* Render HighlightCallout if walkthrough is active - To be implemented in next phase */}
+      {/* {walkthrough.isWalkthroughActive && <HighlightCallout />} */}
+
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
-        <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center">
+        <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center relative">
           <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
           </CardDescription>
+           <Button 
+            variant="outline" 
+            size="icon" 
+            onClick={walkthrough.startWalkthrough} 
+            className="absolute top-4 right-4"
+            title="Start Guided Walkthrough"
+          >
+            <HelpCircle className="h-5 w-5" />
+          </Button>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Accordion 
@@ -925,11 +972,20 @@ export default function LandingPageWorkflowPage() {
             collapsible 
             className="w-full" 
             value={activeAccordionItem}
-            onValueChange={setActiveAccordionItem}
+            onValueChange={(value) => {
+                setActiveAccordionItem(value);
+                if (walkthrough.isWalkthroughActive && value) {
+                  // If walkthrough is active, try to find a step matching the new accordion item
+                  const stepIndexToOpen = walkthrough.steps.findIndex(s => s.requiresAccordionOpen === value);
+                  if (stepIndexToOpen !== -1) {
+                    walkthrough.goToStep(stepIndexToOpen);
+                  }
+                }
+            }}
           >
             {accordionItems.map(item => (
               <AccordionItem value={item.value} key={item.value} disabled={item.disabled}>
-                <AccordionTrigger className="text-lg hover:no-underline disabled:opacity-50 disabled:cursor-not-allowed">
+                <AccordionTrigger id={`${item.value}-accordion-trigger`} className="text-lg hover:no-underline disabled:opacity-50 disabled:cursor-not-allowed">
                   <div className="flex items-center">
                     {item.icon}
                     {item.title}
@@ -946,3 +1002,48 @@ export default function LandingPageWorkflowPage() {
     </div>
   );
 }
+
+// Wrap the main content with the provider
+export default function LandingPageWorkflowPage() {
+    // These state items need to be managed by the Page component that WalkthroughProvider wraps,
+    // so the provider can call back to control them.
+    const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
+    const [_, setActivePageBlueprintForWalkthrough] = useState<PageBlueprint | null>(null); // Placeholder for blueprint update function
+
+    const handleAccordionChangeForWalkthrough = (value: string | undefined) => {
+        setActiveAccordionItemForWalkthrough(value);
+    };
+
+    const handleLoadBlueprintForWalkthrough = (blueprint: PageBlueprint) => {
+        // This function will be passed to WalkthroughProvider and called to update the
+        // main page's activePageBlueprint state.
+        // We'll need to ensure this function is correctly wired up to the actual
+        // setActivePageBlueprint of the LandingPageWorkflowPageContent component.
+        // For now, this is a placeholder for where the logic would go.
+        // The actual update will happen inside LandingPageWorkflowPageContent via its own state setter
+        // which is passed to the provider. This is just for passing it down.
+         (LandingPageWorkflowPageContent as any)._updateBlueprintForWalkthrough?.(blueprint);
+    };
+
+
+    return (
+        <WalkthroughProvider 
+            onAccordionChange={handleAccordionChangeForWalkthrough}
+            onLoadBlueprint={(bp) => {
+                // This is a bit of a hack for now, ideally LandingPageWorkflowPageContent
+                // would pass its blueprint setter to the Provider directly.
+                // This will be picked up by the useEffect in LandingPageWorkflowPageContent.
+                // We're setting a 'global-like' state that the inner component listens to
+                // if the walkthrough loads a blueprint.
+                // In a more complex app, this would use a shared state manager or lift state.
+                if (typeof window !== 'undefined') {
+                    (window as any).__blueprintForWalkthrough = bp;
+                }
+            }}
+        >
+            <LandingPageWorkflowPageContent />
+        </WalkthroughProvider>
+    );
+}
+
+    

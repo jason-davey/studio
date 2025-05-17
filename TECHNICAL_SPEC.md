@@ -4,7 +4,7 @@
 ## 1. Introduction
 
 ### 1.1. Purpose of the Application
-This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content, configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords).
+This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content, configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords) and includes a guided walkthrough for new users.
 
 ### 1.2. High-Level Functionality
 - **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy).
@@ -17,26 +17,28 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Local Configuration Management (Step 4):** Enables users to save, load, and manage different A/B test content configurations (including campaign focus) directly in their browser's local storage.
 - **Side-by-Side A/B Preview (Step 4):** Renders two selected A/B content variations on a dedicated preview page (`/landing-preview`) for visual comparison.
 - **Deployment Guidance (Step 5):** Provides instructions for using the generated JSON in Firebase.
+- **Guided Walkthrough:** An interactive, step-by-step tour of the application's features, highlighting key UI elements and explaining their purpose. Includes a welcome modal and can auto-load sample data.
 - **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Actual test setup and management occur in the Firebase console.
 - **AB Tasty Integration Point:** Includes a placeholder for integrating AB Tasty's JavaScript snippet for client-side A/B testing.
 
 ### 1.3. Key Technologies Used
 - **Frontend Framework:** Next.js (with App Router)
 - **UI Library:** React
-- **UI Components:** ShadCN UI (Accordion, Button, Card, Input, Label, Textarea, Popover, Toast, etc.)
+- **UI Components:** ShadCN UI (Accordion, Button, Card, Input, Label, Textarea, Popover, Toast, Dialog, etc.)
 - **Styling:** Tailwind CSS
-- **State Management:** React Hooks (useState, useEffect, useCallback, useContext for Toast)
+- **State Management:** React Hooks (useState, useEffect, useCallback, useContext for Toast and Walkthrough)
 - **A/B Test Content Delivery (Primary Method):** Firebase Remote Config
 - **A/B Test Management (Primary Method):** Firebase A/B Testing (via Firebase Console)
 - **Client-Side A/B Testing (Alternative/External):** Placeholder for AB Tasty
 - **Generative AI (Stack):** Genkit with Google AI (Gemini models) for content suggestions.
   - Flow: `src/ai/flows/suggest-hero-copy-flow.ts` (accepts optional `campaignFocus`)
+- **Guided Walkthrough:** Custom implementation using React Context and DOM manipulation for highlights.
 
 ## 2. Application Architecture
 
 ### 2.1. Frontend Structure
 - **Next.js App Router:** Used for routing and page structure.
-    - `/` (root): Main 5-step workflow application (`src/app/page.tsx`) with the accordion interface.
+    - `/` (root): Main 5-step workflow application (`src/app/page.tsx`) with the accordion interface and guided walkthrough.
     - `/landing-preview`: Side-by-side A/B test preview page.
 - **Key Directories:**
     - `src/app/`: Contains page components and layouts.
@@ -47,6 +49,9 @@ This Next.js application serves as a comprehensive platform for creating, config
     - `src/components/`: Reusable UI components.
         - `landing/`: Components specific to the landing page (Header, HeroSection, BenefitsSection, TestimonialsSection, TrustSignalsSection, AwardsSection, QuoteFormSection, Footer).
         - `ui/`: ShadCN UI components.
+        - `walkthrough/`: Components for the guided walkthrough (WelcomeModal, HighlightCallout - to be implemented).
+    - `src/contexts/`: Global React Context providers.
+        - `WalkthroughContext.tsx`: Manages state and logic for the guided walkthrough.
     - `src/lib/`: Utility functions and Firebase initialization.
         - `firebase.ts`: Firebase SDK initialization and Remote Config setup.
         - `utils.ts`: General utility functions (e.g., `cn` for classnames).
@@ -65,11 +70,14 @@ This Next.js application serves as a comprehensive platform for creating, config
     - Font: URW DIN (defined via `@font-face` in `globals.css` and applied via `tailwind.config.ts`).
 
 ### 2.2. Data Flow & State Management
-- **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds the `PageBlueprint` data loaded from the JSON in Step 1. This data is used in Step 2 (Build/Preview) and can be modified in Step 3 (Adjust).
+- **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds the `PageBlueprint` data loaded from the JSON in Step 1. This data is used in Step 2 (Build/Preview) and can be modified in Step 3 (Adjust). Can also be pre-filled by the guided walkthrough.
 - **A/B Test Configurations (Step 4):**
     - Hero content from `activePageBlueprint.heroConfig` (after Step 3 adjustments) pre-fills "Version A".
     - "Version B" (Hero content) is configured by the user.
     - AI suggestions, campaign focus, and local storage management (`heroConfigManager`) are handled within this step for A/B test Hero variations.
+- **Walkthrough State (`WalkthroughContext.tsx`):**
+    - Manages `isWalkthroughActive`, `currentStepIndex`, `showWelcomeModal`.
+    - Controls the display and progression of the guided tour.
 - **Firebase Integration:**
     - Initialization: `src/lib/firebase.ts`.
     - Remote Config: The application prepares JSON for `heroConfig` parameter (from Step 4). Actual A/B test setup occurs in Firebase Console.
@@ -79,7 +87,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 
 ### 2.3. Workflow Overview (5-Step Accordion)
 1.  **Step 1: Review Recommendations:**
-    - User uploads a `PageBlueprint` JSON file.
+    - User uploads a `PageBlueprint` JSON file or walkthrough auto-loads a sample.
     - Application parses and stores this blueprint in `activePageBlueprint`.
 2.  **Step 2: Build & Preview Page:**
     - Application renders a preview of the landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on `activePageBlueprint`.
@@ -94,6 +102,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 5.  **Step 5: Prepare for Deployment:**
     - User is guided to take the generated JSON to the Firebase Console.
     - `PLAYBOOK.md` provides detailed Firebase setup instructions.
+- **Guided Walkthrough:** Can be initiated from the main page header, guiding users through each step and key features.
 - **AB Tasty:** If used, its script (added to `layout.tsx`) would override content for tests managed by that platform.
 
 ## 3. Core Features & Functionality (by Step)
@@ -105,6 +114,7 @@ This Next.js application serves as a comprehensive platform for creating, config
     - JSON parsing and basic validation.
     - Display of loaded blueprint name and raw JSON.
     - Stores data in `activePageBlueprint` state.
+    - Can be pre-filled by the guided walkthrough.
 
 ### 3.2. Step 2: Build & Preview Page
 - **Purpose:** To visualize the landing page based on the current blueprint.
@@ -155,6 +165,17 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Input:** `SuggestHeroCopyInput` (copyType, currentText, productName, productDescription, count, campaignFocus).
 - **Output:** `SuggestHeroCopyOutput` (array of suggestions).
 
+### 3.9. Guided Walkthrough (`src/contexts/WalkthroughContext.tsx`, `src/components/walkthrough/*`)
+- **Purpose:** To provide an interactive onboarding experience for new users.
+- **Features:**
+    - Welcome modal.
+    - Step-by-step guidance through the 5-step workflow.
+    - Highlighting of key UI elements.
+    - Text callouts explaining features.
+    - Ability to start/end the tour.
+    - Auto-loading of sample data for a hands-on experience.
+    - Managed via React Context for global state.
+
 ## 4. Setup & Configuration
 
 ### 4.1. Environment Variables (`.env.local`)
@@ -177,34 +198,37 @@ This Next.js application serves as a comprehensive platform for creating, config
 - `npm run build` (or `yarn build`).
 
 ## 6. Key Files & Directories
-- **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow with Firebase.
+- **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow with Firebase, including use of the guided walkthrough.
 - **`TECHNICAL_SPEC.md`:** (This document).
 - **`src/app/page.tsx`:** Main 5-step workflow application.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit flow for AI suggestions.
 - **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
+- **`src/contexts/WalkthroughContext.tsx`:** Manages state for the guided walkthrough.
+- **`src/components/walkthrough/`:** Contains UI components for the walkthrough.
 - Other files as previously listed.
 
 ## 7. Branding Guidelines Reference
 - Defined in `PLAYBOOK.md`.
 
 ## 8. Future Considerations / Roadmap
-- **Tokens-Based Design System:** Explore integrating a design tokens system for more flexible multi-brand UI management. Current component structure is a good base for this, allowing dynamic styling based on loaded tokens. (Noted as part of current requirements for future thought).
-- **Advanced AI - Gemini Chat for UI Dev (Step 3):** Consider using AI chat (e.g., via Genkit) in "Step 3: Adjust" for more interactive UI/content refinement beyond simple suggestions. This could involve users describing desired changes, and AI providing guidance or even code snippets for simple style adjustments if a token system is in place. (Noted as part of current requirements for future thought).
-- **Full Blueprint Editing (Step 3):** Allow adding/deleting items in lists (Benefits, Testimonials, Trust Signals) in Step 3, not just editing existing ones.
-- **Backend for Firebase Management:** For direct creation/management of multiple Firebase Remote Config parameters or saving blueprints to Firestore, a backend service using the Firebase Admin SDK would be necessary. This would enable true CMS-like capabilities.
+- **Design System Tokens Integration:** The current component-based structure (e.g., in `src/components/landing/`) is a good foundation. Future work could involve defining brand tokens (colors, fonts, spacing) that these components consume, allowing for easier multi-brand theming if the "Recommendations Engine" provides brand-specific tokens as part of the `PageBlueprint`.
+- **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider integrating a more conversational AI interaction in "Step 3: Adjust Content." Users could describe desired changes (e.g., "Make this headline more urgent," "Shorten this benefit description") and the AI (via Genkit) could offer specific revisions or options.
+- **Full Blueprint Editing (Step 3):** Allow adding/deleting items in lists (Benefits, Testimonials, Trust Signals) in Step 3, not just editing existing ones. This would require more complex state management for these arrays.
+- **Backend for Firebase Management:** For direct creation/management of multiple Firebase Remote Config parameters (if each "landing page" created in a CMS-like fashion needed its own parameter) or saving blueprints to Firestore, a backend service using the Firebase Admin SDK would be necessary. This would enable true CMS-like capabilities beyond local storage.
 - **Error Handling & Validation:** Enhance error handling for JSON parsing (Step 1), AI flows, and localStorage operations. Implement more robust validation for the `PageBlueprint` structure.
-- **AI Theme Generation:** Explore AI capabilities to suggest campaign themes or focus areas based on product information or goals.
-- **Direct Integration with Keyword Platforms:** Requires backend development for secure API access to platforms like Google Ads API.
-- **Advanced UX Analysis AI (from User Input):** Concepts for AI-led UX evaluation (Nielsen's Heuristics, WCAG, COM-B model) as described by user. These would feed into an external "Recommendations Engine" that produces the initial `PageBlueprint` JSON.
+- **AI Theme Generation:** Explore AI capabilities to suggest campaign themes or focus areas based on product information or goals, rather than just generating copy based on a user-provided theme.
+- **Direct Integration with Keyword Platforms (Backend Task):** Requires backend development for secure API access to platforms like Google Ads API to fetch keywords.
+- **Advanced UX Analysis AI (External Tool):** The "Recommendations Engine" is envisioned to perform advanced UX evaluations (Nielsen's Heuristics, WCAG, COM-B model). The output of this engine (the `PageBlueprint`) is consumed by this application.
 - **Rate Limiting/Cost for AI:** Monitor and manage if using paid AI models extensively.
-- The `useRemoteConfigValue` hook is not currently used by the main landing page structure in the 5-step workflow but remains available for other potential uses.
+- The `useRemoteConfigValue` hook is not currently used by the main landing page structure in the 5-step workflow (as content comes from `activePageBlueprint`) but remains available for other potential uses.
+- **Walkthrough Enhancements:** More sophisticated element highlighting, dynamic step generation based on app state.
 
 ## 9. User Flow Diagram (Conceptual for 5-Step Workflow)
 
 ```mermaid
 graph TD
     A[Start: User Navigates to App /] --> B(Step 1: Review Recommendations Panel);
-    B -- Upload JSON Blueprint --> C{Blueprint Loaded?};
+    B -- Upload JSON Blueprint / Walkthrough Loads Sample --> C{Blueprint Loaded?};
     C -- Yes --> D(State: activePageBlueprint Updated);
     D --> E(Step 2: Build & Preview Panel);
     E -- Display Full Page Preview from activePageBlueprint --> F{User Reviews Preview};
@@ -219,4 +243,15 @@ graph TD
     L -- User Takes JSON to Firebase Console --> M[Firebase A/B Test Setup];
     M -- Refer to PLAYBOOK.md --> M;
     C -- No / Error --> B;
+
+    WT_Start[User clicks Walkthrough Toggle] --> WT_Modal(Welcome Modal);
+    WT_Modal -- Start Tour --> WT_Step1(Guides through Step 1);
+    WT_Step1 --> WT_Step2(Guides through Step 2);
+    WT_Step2 --> WT_Step3(Guides through Step 3);
+    WT_Step3 --> WT_Step4(Guides through Step 4);
+    WT_Step4 --> WT_Step5(Guides through Step 5);
+    WT_Step5 --> WT_End(Walkthrough Ends);
+    WT_Modal -- Skip Tour --> WT_End;
 ```
+
+    

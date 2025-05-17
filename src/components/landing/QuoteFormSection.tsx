@@ -18,14 +18,25 @@ import {
 import { Input } from '@/components/ui/input';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { ShieldCheck, CalendarIcon, ArrowLeft, ArrowRight } from 'lucide-react'; // Changed icon from Paperclip to ShieldCheck
+import { ShieldCheck, CalendarIcon, ArrowLeft, ArrowRight } from 'lucide-react'; 
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { cn } from '@/lib/utils';
 import React, { useState } from 'react';
-import { Progress } from '@/components/ui/progress'; // Import Progress component
+import { Progress } from '@/components/ui/progress'; 
+
+interface QuoteFormSectionProps {
+  headline?: string;
+  ctaText?: string;
+}
+
+const defaultProps: Required<QuoteFormSectionProps> = {
+    headline: "Get Your Personalized Protection Plan",
+    ctaText: "Secure My Family's Future",
+};
+
 
 const formSchema = z.object({
   gender: z.enum(['male', 'female'], {
@@ -47,7 +58,6 @@ const formSchema = z.object({
 
 type FormData = z.infer<typeof formSchema>;
 
-// Dummy cover levels - replace with actual options if available
 const coverLevelOptions = [
   '$100,000',
   '$250,000',
@@ -62,7 +72,8 @@ const STEPS = [
   { id: 3, name: 'Contact Details', fields: ['name', 'email', 'phone'] as FieldName<FormData>[] },
 ];
 
-export default function QuoteFormSection() {
+export default function QuoteFormSection(props: QuoteFormSectionProps) {
+  const { headline, ctaText } = { ...defaultProps, ...props };
   const { toast } = useToast();
   const [currentStep, setCurrentStep] = useState(1);
 
@@ -79,7 +90,6 @@ export default function QuoteFormSection() {
   const dobValue = form.watch('dob');
 
   async function processForm(values: FormData) {
-    // In a real app, you'd send this data to a server.
     console.log(values);
     toast({
       title: 'Quote Request Submitted!',
@@ -99,7 +109,6 @@ export default function QuoteFormSection() {
     if (currentStep < STEPS.length) {
       setCurrentStep(step => step + 1);
     } else {
-      // Final step, trigger submit
       await form.handleSubmit(processForm)();
     }
   };
@@ -117,14 +126,13 @@ export default function QuoteFormSection() {
       <div className="container mx-auto px-4 sm:px-6 lg:px-8">
         <Card className="max-w-2xl mx-auto shadow-2xl">
           <CardHeader className="text-center">
-            <ShieldCheck className="h-12 w-12 text-primary mx-auto mb-4" /> {/* Changed icon */}
+            <ShieldCheck className="h-12 w-12 text-primary mx-auto mb-4" /> 
             <CardTitle className="text-3xl sm:text-4xl font-bold text-foreground">
-              Get Your Personalized Protection Plan
+              {headline}
             </CardTitle>
             <CardDescription className="text-lg text-muted-foreground mt-2">
               Fill out the short form below (Step {currentStep} of {STEPS.length}).
             </CardDescription>
-            {/* Updated Progress component background */}
             <Progress value={progressValue} className="w-full mt-4 h-2 bg-[#F0EDE2]" />
           </CardHeader>
           <CardContent>
@@ -168,7 +176,7 @@ export default function QuoteFormSection() {
                     control={form.control}
                     name="smoker"
                     render={({ field }) => (
-                      <FormItem className="space-y-3 mt-6"> {/* Added mt-6 */}
+                      <FormItem className="space-y-3 mt-6"> 
                         <FormLabel className="text-base">Are you a smoker?</FormLabel>
                         <FormControl>
                           <RadioGroup
@@ -200,7 +208,7 @@ export default function QuoteFormSection() {
                     control={form.control}
                     name="dob"
                     render={({ field }) => (
-                      <FormItem className="flex flex-col mt-6"> {/* Added mt-6 */}
+                      <FormItem className="flex flex-col mt-6"> 
                         <FormLabel className="text-base">What is your date of birth?</FormLabel>
                         <Popover>
                           <PopoverTrigger asChild>
@@ -300,7 +308,7 @@ export default function QuoteFormSection() {
                     control={form.control}
                     name="email"
                     render={({ field }) => (
-                      <FormItem className="mt-6"> {/* Added mt-6 */}
+                      <FormItem className="mt-6"> 
                         <FormLabel className="text-base">Email Address</FormLabel>
                         <FormControl>
                           <Input type="email" placeholder="e.g., jane.doe@example.com" {...field} className="text-base py-3 px-4" />
@@ -313,7 +321,7 @@ export default function QuoteFormSection() {
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
-                      <FormItem className="mt-6"> {/* Added mt-6 */}
+                      <FormItem className="mt-6"> 
                         <FormLabel className="text-base">Phone Number (Optional)</FormLabel>
                         <FormControl>
                           <Input type="tel" placeholder="e.g., 0400 123 456" {...field} className="text-base py-3 px-4" />
@@ -330,7 +338,7 @@ export default function QuoteFormSection() {
                     type="button"
                     variant="outline"
                     onClick={prevStep}
-                    className={cn(currentStep === 1 && 'invisible')} // Hide on first step
+                    className={cn(currentStep === 1 && 'invisible')} 
                   >
                     <ArrowLeft className="mr-2 h-4 w-4" /> Previous
                   </Button>
@@ -341,7 +349,7 @@ export default function QuoteFormSection() {
                     disabled={form.formState.isSubmitting}
                   >
                     {currentStep === STEPS.length ? (
-                      form.formState.isSubmitting ? 'Securing...' : "Secure My Family's Future"
+                      form.formState.isSubmitting ? 'Securing...' : ctaText
                     ) : (
                       <>Next <ArrowRight className="ml-2 h-4 w-4" /></>
                     )}
@@ -355,3 +363,5 @@ export default function QuoteFormSection() {
     </section>
   );
 }
+
+    

@@ -1,17 +1,25 @@
 
 # Landing Page Creation & A/B Testing: Playbook
 
-This playbook guides you through using the in-app tools to create landing page content, configure A/B tests for its Hero Section, and then deploy these tests using Firebase.
+This playbook guides you through using the in-app tools to create landing page content, configure A/B tests for its Hero Section, and then deploy these tests using Firebase. It also explains how to use the Guided Walkthrough feature.
 
 ## 0. Overview of the In-App Workflow
 
-The application provides a 5-step guided workflow:
+The application provides a 5-step guided workflow using an accordion interface:
 
-1.  **Step 1: Review Recommendations (Optional):** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections.
-2.  **Step 2: Build & Preview Page:** See a preview of your landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
+1.  **Step 1: Review Recommendations:** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections. The Guided Walkthrough can also load a sample blueprint for you.
+2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
 3.  **Step 3: Adjust Content:** Fine-tune the content of your landing page sections (e.g., Hero section text, Benefit descriptions, Testimonial quotes).
 4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions and manage configurations locally.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
+
+## 0.1. Using the Guided Walkthrough (Recommended for First-Time Users)
+The application includes a Guided Walkthrough to help you learn its features.
+- **Starting the Walkthrough:** Click the **Help icon** (HelpCircle) located in the top-right corner of the main application card (within the "Landing Page Creation & A/B Testing Workflow" header).
+- **Welcome Modal:** A welcome message will appear. Click "Start Tour" to begin.
+- **Navigation:** Follow the on-screen callouts. Use "Next" and "Previous" buttons in the callouts to move through the steps. You can "End Walkthrough" at any time.
+- **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
+- **Re-accessing:** You can start the walkthrough again at any time by clicking the Help icon.
 
 ## 1. Introduction to A/B Testing
 
@@ -43,25 +51,29 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 
 ## 3. Using the In-App Landing Page Workflow Tool (Root `/` path)
 
-Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool.
+Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool, organized into 5 accordion steps.
 
 ### 3.1. Step 1: Review Recommendations
-- If you have a JSON file (a "Page Blueprint") from a URL scraping tool or other source with content recommendations:
-    - Click "Upload File" and select your JSON file.
+- This is the first panel in the accordion.
+- **If you have a JSON "Page Blueprint" file** from a URL scraping tool or other source with content recommendations:
+    - Click the file input field (often labeled "Choose File" or similar).
+    - Select your JSON file.
     - The tool will attempt to parse it. If successful, its content will be used to pre-fill the landing page content in the subsequent steps.
-    - You'll see a preview of the loaded JSON.
-    - Click "Proceed to Build".
-- If you don't have a blueprint, you can skip this step and the app might use default values or allow you to build from scratch in Step 3.
+    - You'll see a preview of the loaded JSON content and its name.
+    - Click "Proceed to Build" to move to the next step or simply open the Step 2 accordion.
+- **If you don't have a blueprint or are using the Guided Walkthrough:**
+    - The walkthrough may load a sample blueprint for you.
+    - If no blueprint is loaded, subsequent steps might use default values or allow you to build content from scratch.
 
 ### 3.2. Step 2: Build & Preview Page
-- This step shows a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint loaded in Step 1 (or defaults).
+- This panel shows a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint loaded in Step 1 (or defaults).
 - Review the preview.
-- Click "Proceed to Adjust".
+- Click "Proceed to Adjust Content" or open the Step 3 accordion.
 
 ### 3.3. Step 3: Adjust Content
 - Here, you can edit the content for each section of the landing page (Page Info, Hero, Benefits, Testimonials, Trust Signals, Form Config) using the provided input fields.
 - These changes will form the basis of "Version A" for the Hero section in your A/B test.
-- Click "Configure A/B Test".
+- When done, click "Configure A/B Test" or open the Step 4 accordion.
 
 ### 3.4. Step 4: Configure A/B Test
 This panel is where you define two versions (A and B) of Hero section content for your A/B test.
@@ -73,9 +85,9 @@ This panel is where you define two versions (A and B) of Hero section content fo
     - You can save the current state of Version A or B (headline, sub-headline, CTA, and campaign focus) locally.
     - Enter a name in "Save Version ... Content As:" and click "Save Content".
     - Saved configurations appear in the "Managed A/B Hero Configurations" list, allowing you to load them back into the forms or delete them.
-- **JSON Generation:** The tool automatically generates the JSON string for `heroConfig` for Version A and B. You can **Copy** or **Download** this JSON. This is what you'll use in Firebase.
+- **JSON Generation:** The tool automatically generates the JSON string for `heroConfig` for Version A and B. You can **Copy** or **Download** this JSON from within each Version's card. This is what you'll use in Firebase.
 - **Preview A/B Versions:** Click "Render A/B Versions for Preview". This opens the `/landing-preview` page with both Hero Version A and B (as currently configured in the forms) displayed side-by-side.
-- Once satisfied, click "Proceed to Deployment Steps".
+- Once satisfied, click "Proceed to Deployment Steps" or open the Step 5 accordion.
 
 ### 3.5. Step 5: Prepare for Deployment
 - This panel provides instructions for using the JSON generated in Step 4 with Firebase Remote Config and A/B Testing.
@@ -176,5 +188,10 @@ When designing new content variations for your A/B tests, ensure they align with
     *   Check browser console. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus / Keywords" in Step 4 for better results.
 - **JSON Blueprint Upload Error (Step 1):**
     *   Ensure the file is valid JSON and matches the expected `PageBlueprint` structure (see `src/types/recommendations.ts`). Key fields like `pageName` and `heroConfig` are usually expected.
+- **Guided Walkthrough Issues:**
+    *   If elements are not highlighting correctly, ensure the page structure hasn't significantly changed from when the walkthrough was defined.
+    *   If the walkthrough seems stuck, try ending it and restarting.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
+
+    
