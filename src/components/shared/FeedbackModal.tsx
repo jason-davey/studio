@@ -13,7 +13,6 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -21,6 +20,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { MessageSquare, Send } from 'lucide-react';
+import { useUIActions } from '@/contexts/UIActionContext'; // To control global modal state
 
 const feedbackSchema = z.object({
   feedbackType: z.enum(['bug', 'feature', 'general'], {
@@ -33,15 +33,15 @@ const feedbackSchema = z.object({
 type FeedbackFormData = z.infer<typeof feedbackSchema>;
 
 interface FeedbackModalProps {
-  isOpen: boolean;
-  onOpenChange: (isOpen: boolean) => void;
-  serviceDeskEmail?: string; // Optional email for mailto link
+  // isOpen and onOpenChange are now handled by UIActionContext
+  serviceDeskEmail?: string; 
 }
 
-export default function FeedbackModal({ isOpen, onOpenChange, serviceDeskEmail = "servicedesk@example.com" }: FeedbackModalProps) {
+export default function FeedbackModal({ serviceDeskEmail = "servicedesk@example.com" }: FeedbackModalProps) {
   const { toast } = useToast();
   const [showMailtoLink, setShowMailtoLink] = useState(false);
   const [mailtoHref, setMailtoHref] = useState('');
+  const { isFeedbackModalOpen, setIsFeedbackModalOpen } = useUIActions(); // Use global state
 
   const form = useForm<FeedbackFormData>({
     resolver: zodResolver(feedbackSchema),
@@ -78,12 +78,6 @@ export default function FeedbackModal({ isOpen, onOpenChange, serviceDeskEmail =
             target="_blank"
             rel="noopener noreferrer"
             className="mt-1 inline-block text-primary underline hover:text-primary/80"
-            onClick={() => {
-              // Optionally close modal after clicking mailto
-              // onOpenChange(false);
-              // form.reset();
-              // setShowMailtoLink(false);
-            }}
           >
             Send Feedback Email
           </a>
@@ -92,21 +86,24 @@ export default function FeedbackModal({ isOpen, onOpenChange, serviceDeskEmail =
           </p>
         </div>
       ),
-      duration: 15000, // Keep toast longer for the link
+      duration: 15000, 
     });
-    // Note: We are not resetting the form or closing the modal immediately here
-    // to allow the user to click the mailto link from the toast.
-    // The toast itself can be dismissed, or the modal can be closed manually.
   };
 
   const handleModalClose = () => {
-    onOpenChange(false);
+    setIsFeedbackModalOpen(false); // Close via global context
     form.reset();
     setShowMailtoLink(false);
   };
 
   return (
-    <Dialog open={isOpen} onOpenChange={handleModalClose}>
+    <Dialog open={isFeedbackModalOpen} onOpenChange={(isOpen) => {
+        if (!isOpen) {
+            handleModalClose();
+        } else {
+            setIsFeedbackModalOpen(true);
+        }
+    }}>
       <DialogContent className="sm:max-w-[525px]">
         <DialogHeader>
           <DialogTitle className="flex items-center">
@@ -192,9 +189,6 @@ export default function FeedbackModal({ isOpen, onOpenChange, serviceDeskEmail =
                 target="_blank"
                 rel="noopener noreferrer"
                 className="inline-flex items-center justify-center whitespace-nowrap rounded-md text-sm font-medium ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-primary text-primary-foreground hover:bg-primary/90 h-10 px-4 py-2"
-                onClick={() => {
-                    // handleModalClose(); // Optionally close after clicking
-                }}
               >
                 Open Email Client <Send className="ml-2 h-4 w-4" />
               </a>

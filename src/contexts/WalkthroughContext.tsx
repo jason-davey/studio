@@ -3,38 +3,38 @@
 
 import type { PageBlueprint } from '@/types/recommendations';
 import React, { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
+// Removed import for useUIActions as we will manage welcome modal state internally first
+// and page.tsx will bridge if needed.
 
-// Define the shape of a single walkthrough step
 export interface WalkthroughStep {
-  id: string; // Unique ID for the step, can be used for targeting accordion
-  selector: string; // CSS selector for the element to highlight
+  id: string; 
+  selector: string; 
   title: string;
   content: ReactNode;
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
-  requiresAccordionOpen?: string; // Value of the accordion item that needs to be open
-  autoLoadBlueprint?: boolean; // If true, loads a sample blueprint for this step
-  isModal?: boolean; // If true, this step is a modal (like the welcome modal)
+  requiresAccordionOpen?: string; 
+  autoLoadBlueprint?: boolean; 
+  isModal?: boolean; 
 }
 
 interface WalkthroughContextType {
   isWalkthroughActive: boolean;
   currentStepIndex: number;
-  showWelcomeModal: boolean;
+  showWelcomeModal: boolean; // This context's own welcome modal state
   steps: WalkthroughStep[];
-  startWalkthrough: () => void; // Shows welcome modal
-  actuallyStartWalkthrough: () => void; // Begins the tour steps
+  startWalkthrough: () => void; // Shows this context's welcome modal & prepares for tour
+  actuallyStartWalkthrough: () => void; // Begins the tour steps after welcome
   endWalkthrough: () => void;
   nextStep: () => void;
   prevStep: () => void;
   goToStep: (index: number) => void;
-  setShowWelcomeModal: (show: boolean) => void;
+  setShowWelcomeModal: (show: boolean) => void; // To control this context's welcome modal
   setAccordionToOpen: (accordionValue: string | undefined) => void;
   autoLoadSampleBlueprint: () => void; 
 }
 
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
 
-// Sample blueprint (can be moved or made more dynamic later)
 const sampleBlueprintForWalkthrough: PageBlueprint = {
   pageName: "SecureTomorrow Life Insurance - Walkthrough Sample",
   targetUrl: "https://www.realinsurance.com.au/lp/life-form",
@@ -63,9 +63,7 @@ const sampleBlueprintForWalkthrough: PageBlueprint = {
   }
 };
 
-
 export const walkthroughStepsDefinition: WalkthroughStep[] = [
-  // Step 0 is implicitly the WelcomeModal handled by showWelcomeModal
   {
     id: 'step-1-intro',
     selector: '#step-1-accordion-trigger', 
@@ -73,7 +71,7 @@ export const walkthroughStepsDefinition: WalkthroughStep[] = [
     content: 'This is where you start! Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections.',
     placement: 'bottom',
     requiresAccordionOpen: 'step-1',
-    autoLoadBlueprint: true, // This will be triggered when actuallyStartWalkthrough is called
+    autoLoadBlueprint: true, 
   },
   {
     id: 'step-1-upload',
@@ -144,7 +142,7 @@ export const walkthroughStepsDefinition: WalkthroughStep[] = [
     selector: '#walkthrough-end-target', 
     title: 'Tour Complete!',
     content: 'You\'ve completed the guided tour! You can restart this tour anytime from the help button in the header. Now you\'re ready to build amazing landing pages.',
-    placement: 'center', // This will make the callout appear in the center of the screen
+    placement: 'center', 
   }
 ];
 
@@ -154,11 +152,10 @@ interface WalkthroughProviderProps {
   onLoadBlueprint: (blueprint: PageBlueprint) => void; 
 }
 
-
 export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ children, onAccordionChange, onLoadBlueprint }) => {
   const [isWalkthroughActive, setIsWalkthroughActive] = useState(false);
   const [currentStepIndex, setCurrentStepIndex] = useState(0);
-  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false); // Internal state for this context's welcome modal
 
   const steps = walkthroughStepsDefinition;
 
@@ -168,24 +165,19 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
       if (currentStepDetails.requiresAccordionOpen) {
         onAccordionChange(currentStepDetails.requiresAccordionOpen);
       }
-      if (currentStepDetails.autoLoadBlueprint && newStepIndex === 0 && isWalkthroughActive) { 
-          // Auto-load only if it's the first content step and tour is active
-          onLoadBlueprint(sampleBlueprintForWalkthrough);
-      }
+      // autoLoadBlueprint is now handled in actuallyStartWalkthrough for the first step
       setCurrentStepIndex(newStepIndex);
     }
-  }, [steps, onAccordionChange, onLoadBlueprint, isWalkthroughActive]);
-
+  }, [steps, onAccordionChange]);
 
   const startWalkthrough = useCallback(() => {
-    endWalkthrough(); // Reset any previous state
-    setShowWelcomeModal(true);
-  }, [/* no dependencies needed for this initial part */]);
+    endWalkthrough(); 
+    setShowWelcomeModal(true); // Show this context's welcome modal
+  }, [/* No direct dependency on uiActions.setShowWelcomeModal here */]);
 
   const actuallyStartWalkthrough = useCallback(() => {
     setIsWalkthroughActive(true);
-    setShowWelcomeModal(false); // Ensure modal is closed
-    // Check if the first step requires blueprint loading
+    setShowWelcomeModal(false); // Close this context's welcome modal
     if (steps[0]?.autoLoadBlueprint) {
       onLoadBlueprint(sampleBlueprintForWalkthrough);
     }
@@ -198,10 +190,8 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
   const endWalkthrough = useCallback(() => {
     setIsWalkthroughActive(false);
     setCurrentStepIndex(0);
-    setShowWelcomeModal(false);
-    // Optionally close all accordions or reset to default accordion
-    // onAccordionChange(undefined); // Example: Close all
-    onAccordionChange('step-1'); // Example: Reset to first step open
+    setShowWelcomeModal(false); // Ensure this context's welcome modal is also closed
+    onAccordionChange('step-1'); 
   }, [onAccordionChange]);
 
   const nextStep = useCallback(() => {
@@ -224,15 +214,14 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
     }
   }, [steps.length, handleStepChangeLogic]);
   
-  const autoLoadSampleBlueprint = useCallback(() => { // Still useful if called directly
+  const autoLoadSampleBlueprint = useCallback(() => { 
       onLoadBlueprint(sampleBlueprintForWalkthrough);
   }, [onLoadBlueprint]);
-
 
   const value = {
     isWalkthroughActive,
     currentStepIndex,
-    showWelcomeModal,
+    showWelcomeModal, // Expose this context's welcome modal state
     steps,
     startWalkthrough, 
     actuallyStartWalkthrough,
@@ -240,7 +229,7 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
     nextStep,
     prevStep,
     goToStep,
-    setShowWelcomeModal,
+    setShowWelcomeModal, // Expose setter for this context's welcome modal
     setAccordionToOpen: onAccordionChange, 
     autoLoadSampleBlueprint,
   };

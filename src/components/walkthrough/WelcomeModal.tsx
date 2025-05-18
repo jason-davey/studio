@@ -10,29 +10,30 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
-import { useWalkthrough } from '@/contexts/WalkthroughContext'; // Ensure this path is correct
+import { useWalkthrough } from '@/contexts/WalkthroughContext';
+import { useUIActions } from '@/contexts/UIActionContext'; // To control global modal state
 
 export default function WelcomeModal() {
-  const { showWelcomeModal, setShowWelcomeModal, actuallyStartWalkthrough, endWalkthrough } = useWalkthrough();
+  const walkthrough = useWalkthrough();
+  const uiActions = useUIActions(); // Get global modal controllers
 
   const handleStartTour = () => {
-    setShowWelcomeModal(false);
-    if(actuallyStartWalkthrough) {
-      actuallyStartWalkthrough(); // Ensure this function exists and is called
-    }
+    uiActions.setShowWelcomeModal(false); // Close via global context
+    walkthrough.actuallyStartWalkthrough(); 
   };
 
-  const handleClose = () => {
-    setShowWelcomeModal(false);
-    endWalkthrough(); // End the tour if they close the welcome modal without starting
+  const handleCloseOrSkip = () => {
+    uiActions.setShowWelcomeModal(false); // Close via global context
+    walkthrough.endWalkthrough(); 
   }
 
+  // Dialog open state is now controlled by UIActionContext's showWelcomeModal
   return (
-    <Dialog open={showWelcomeModal} onOpenChange={(isOpen) => {
+    <Dialog open={uiActions.showWelcomeModal} onOpenChange={(isOpen) => {
         if (!isOpen) {
-            handleClose(); // If dialog is closed by other means (e.g. ESC), treat as ending.
+            handleCloseOrSkip(); 
         } else {
-            setShowWelcomeModal(true);
+            uiActions.setShowWelcomeModal(true);
         }
     }}>
       <DialogContent className="sm:max-w-[425px]">
@@ -47,12 +48,10 @@ export default function WelcomeModal() {
           <p>This guided walkthrough will highlight key features and steps. You can exit at any time.</p>
         </div>
         <DialogFooter>
-          <Button variant="outline" onClick={handleClose}>Skip Tour</Button>
+          <Button variant="outline" onClick={handleCloseOrSkip}>Skip Tour</Button>
           <Button onClick={handleStartTour}>Start Tour</Button>
         </DialogFooter>
       </DialogContent>
     </Dialog>
   );
 }
-
-    

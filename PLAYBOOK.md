@@ -5,7 +5,7 @@ This playbook guides you through using the in-app tools to create landing page c
 
 ## 0. Overview of the In-App Workflow
 
-The application provides a 5-step guided workflow using an accordion interface:
+The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to the "Guided Walkthrough" and "Provide Feedback" features at all times.
 
 1.  **Step 1: Review Recommendations:** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections. The Guided Walkthrough can also load a sample blueprint for you.
 2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
@@ -15,15 +15,15 @@ The application provides a 5-step guided workflow using an accordion interface:
 
 ## 0.1. Using the Guided Walkthrough (Recommended for First-Time Users)
 The application includes a Guided Walkthrough to help you learn its features.
-- **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon and text label) located in the top bar of the main application card's header (within the "Landing Page Creation & A/B Testing Workflow" card, above the title).
+- **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon and text label) located in the **fixed top bar** of the application.
 - **Welcome Modal:** A welcome message will appear. Click "Start Tour" to begin.
 - **Navigation:** Follow the on-screen callouts. Use "Next" and "Previous" buttons in the callouts to move through the steps. You can "End Walkthrough" at any time.
 - **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
-- **Re-accessing:** You can start the walkthrough again at any time by clicking the "Guided Walkthrough" button.
+- **Re-accessing:** You can start the walkthrough again at any time by clicking the "Guided Walkthrough" button in the top bar.
 
 ## 0.2. Providing Feedback or Reporting Issues
 If you encounter any issues, have suggestions, or want to provide general feedback:
-- Click the **"Provide Feedback" button** (with MessageSquare icon and text label) located in the top bar of the main application card's header (within the "Landing Page Creation & A/B Testing Workflow" card, above the title).
+- Click the **"Provide Feedback" button** (with MessageSquare icon and text label) located in the **fixed top bar** of the application.
 - A modal dialog will appear.
 - **Select Feedback Type:** Choose from "Bug Report," "Feature Request," or "General Feedback."
 - **Description:** Provide a detailed description of the issue or your feedback.
@@ -64,7 +64,7 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 
 ## 3. Using the In-App Landing Page Workflow Tool (Root `/` path)
 
-Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool, organized into 5 accordion steps.
+Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool, organized into 5 accordion steps. The "Guided Walkthrough" and "Provide Feedback" buttons are always available in the top bar.
 
 ### 3.1. Step 1: Review Recommendations
 - This is the first panel in the accordion.
@@ -212,5 +212,3 @@ When designing new content variations for your A/B tests, ensure they align with
     *   Confirm the RUM application is correctly set up in your Datadog account.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
-
-```

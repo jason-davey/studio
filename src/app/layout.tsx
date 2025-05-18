@@ -1,9 +1,10 @@
+
 import type { Metadata } from 'next';
-// Removed Geist font imports as we are using URW DIN defined via @font-face and tailwind.config
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
-
-// Removed Geist font variables
+import { UIActionProvider } from '@/contexts/UIActionContext';
+import TopBar from '@/components/layout/TopBar';
+// We will also need to render FeedbackModal and WelcomeModal here, driven by UIActionContext
 
 export const metadata: Metadata = {
   title: 'SecureTomorrow Landing Page | Real Insurance',
@@ -25,11 +26,19 @@ export default function RootLayout({
           Consult your AB Tasty documentation for the exact placement and script.
         */}
       </head>
-      {/* Apply font-sans (which is now URW DIN) directly to the body */}
-      {/* Removed explicit font-din class and Geist variables */}
-      <body className="font-sans antialiased"> {/* Added font-sans */}
-        {children}
-        <Toaster />
+      <body className="font-sans antialiased">
+        <UIActionProvider>
+          <TopBar />
+          {/* 
+            FeedbackModal and WelcomeModal will need to be rendered here too, 
+            likely within a client component that consumes UIActionContext 
+            or directly if they can be simple presentational components triggered by context.
+            For now, this structure sets up TopBar. We'll adjust modal rendering in page.tsx
+            or lift it fully if needed in subsequent steps.
+          */}
+          {children}
+          <Toaster />
+        </UIActionProvider>
       </body>
     </html>
   );
