@@ -15,14 +15,11 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
-import Header from '@/components/landing/Header'; // Not used in 5-step, but keep for /landing-preview
 import HeroSection from '@/components/landing/HeroSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
-import Footer from '@/components/landing/Footer'; // Not used in 5-step, but keep for /landing-preview
-
 
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig } from '@/types/recommendations';
 
@@ -32,9 +29,8 @@ import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
-import { useRouter } from 'next/navigation'; // Import useRouter
-
+// Removed: import { useAuth } from '@/contexts/AuthContext';
+// Removed: import { useRouter } from 'next/navigation';
 
 interface ABTestHeroConfig {
   headline: string;
@@ -352,7 +348,6 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 function LandingPageWorkflowPageContent() {
-  console.log("Rendering LandingPageWorkflowPageContent (inside provider)");
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
 
@@ -361,6 +356,7 @@ function LandingPageWorkflowPageContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
+    console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to", uiActions.showWelcomeModal);
     if (uiActions.showWelcomeModal) {
       walkthrough.startWalkthrough();
     }
@@ -1065,8 +1061,8 @@ function LandingPageWorkflowPageContent() {
 
 export default function LandingPageWorkflowPage() {
     console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
-    const { currentUser, loading: authLoading } = useAuth();
-    const router = useRouter();
+    // Removed: const router = useRouter();
+    // Removed auth-related states and effects
 
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
@@ -1082,24 +1078,10 @@ export default function LandingPageWorkflowPage() {
         if (typeof window !== 'undefined') {
             (window as any).__blueprintForWalkthrough = blueprint;
         }
-        setBlueprintForWalkthrough(blueprint);
+        setBlueprintForWalkthrough(blueprint); // This state seems unused now, activePageBlueprint is in Content
     }, []);
-
-    useEffect(() => {
-      if (!authLoading && !currentUser) {
-        router.push('/login');
-      }
-    }, [currentUser, authLoading, router]);
-
-    if (authLoading || !currentUser) {
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="ml-4 text-lg text-foreground">Loading Application...</p>
-        </div>
-      );
-    }
-
+    
+    // Removed auth loading check, directly render content for now
     return (
         <WalkthroughProvider
             onAccordionChange={handleAccordionChangeForWalkthrough}
