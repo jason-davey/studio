@@ -9,7 +9,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 The application is designed with a UX-AI collaborative development approach, aiming for rapid prototyping and iterative feature enhancement to quickly deliver value.
 
 ### 1.2. High-Level Functionality
-- **Fixed Top Bar:** Contains buttons for "Provide Feedback" and "Guided Walkthrough." Always visible.
+- **Fixed Top Bar:** Contains navigation links ("Workflow", "Tech Spec") and action buttons ("Provide Feedback", "Guided Walkthrough"). Always visible.
 - **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy) on the main page (`/`).
 - **Recommendation Ingestion (Step 1):** Allows users to upload a JSON file (`PageBlueprint`) containing recommendations for landing page content.
 - **Page Preview (Step 2):** Displays a preview of the landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on the ingested or adjusted blueprint.
@@ -25,6 +25,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **AB Tasty Integration Point:** Placeholder for AB Tasty's JavaScript snippet.
 - **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
 - **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console. Triggered from the fixed top bar.
+- **Admin Technical Specification View:** A page (`/admin/tech-spec`) that renders this `TECHNICAL_SPEC.md` document. Accessible via the Top Bar.
 
 ### 1.3. Key Technologies Used
 - **Frontend Framework:** Next.js (with App Router)
@@ -53,19 +54,19 @@ This provides a high-level overview of the development journey:
 - **Phase 0 (Foundation - Initial Setup):**
     - Basic Next.js project structure.
     - ShadCN UI and Tailwind CSS integration.
-- **Phase 1 (Core A/B Content Preparation - Approx. Day 1):**
-    - `/admin/ab-test-configurator` page for generating `heroConfig` JSON.
-    - Client-side Hero section preview on `/landing-preview`.
+- **Phase 1 (Core A/B Content Preparation):**
+    - Initial A/B test configurator for generating `heroConfig` JSON.
+    - Client-side Hero section preview.
     - `PLAYBOOK.md` drafted for Firebase A/B test setup.
     - *Value:* Empowered marketing to generate Firebase-compatible JSON.
-- **Phase 2 (Integrated Workflow & Content Structure - Approx. Day 2-3):**
+- **Phase 2 (Integrated Workflow & Content Structure):**
     - Refactored UI into a 5-Step Accordion Workflow on the main page (`/`).
     - Defined `PageBlueprint` type for ingesting external recommendations (Step 1).
     - Implemented multi-section preview (Hero, Benefits, Testimonials, Trust Signals, Form) in Step 2.
     - Created multi-section content adjustment UI in Step 3.
     - Migrated A/B Hero configurator to Step 4.
     - *Value:* Structured app around a clear user journey, enabling intake of external recommendations and holistic page content management.
-- **Phase 3 (AI Integration & Usability Enhancements - Approx. Day 3-4):**
+- **Phase 3 (AI Integration & Usability Enhancements):**
     - Genkit AI flow (`suggestHeroCopy`) for content suggestions (Headline, Sub-Headline, CTA) in Step 4.
     - Added "Campaign Focus" input to tailor AI suggestions.
     - Implemented Local Storage for saving/loading A/B Hero configurations (including campaign focus).
@@ -73,10 +74,10 @@ This provides a high-level overview of the development journey:
     - User Feedback Modal (Top Bar button, `UIActionContext`, mailto link for submission).
     - Globally Fixed Top Bar for Walkthrough and Feedback.
     - Datadog RUM integration for performance monitoring.
-    - *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability.
-- **Phase 4 (Authentication & Role Foundation - Paused):**
-    - Initial implementation of Firebase Authentication (Login, Register pages, AuthContext) was started.
-    - This feature is currently paused due to external dependencies for Firebase project admin access. Code related to direct auth functionality has been reverted to maintain app stability.
+    - Admin page to render `TECHNICAL_SPEC.md`.
+    - *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability and admin view.
+- **Phase 4 (Authentication & Role Foundation - Paused, Tag: `FEATURE_AUTH_ROLES_PAUSED`):**
+    - Initial work on Firebase Authentication (Login, Register pages, AuthContext) was started and then paused.
     - *Value (Future):* Foundation for multi-user application and role-based access.
 
 ## 2. Application Architecture
@@ -85,7 +86,7 @@ This provides a high-level overview of the development journey:
 - **Next.js App Router:**
     - `/`: Main 5-step workflow application (`src/app/page.tsx`).
     - `/landing-preview`: Side-by-side A/B test preview page. Publicly accessible.
-    - *(Future)* `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md` for admin users (pending roles).
+    - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md`. Publicly accessible (pending roles).
     - *(Future)* `/login`, `/register`: User authentication pages (pending resumption of auth feature).
 - **Key Directories:**
     - `src/app/`: Page components and layouts.
@@ -122,7 +123,7 @@ This provides a high-level overview of the development journey:
 3.  **Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`.
 4.  **Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local configs, preview on `/landing-preview`.
 5.  **Step 5: Prepare for Deployment:** Guidance for Firebase.
-- **Global Fixed Top Bar:** Provides access to Guided Walkthrough (via `WelcomeModal`), Feedback (via `FeedbackModal`).
+- **Global Fixed Top Bar:** Provides navigation ("Workflow", "Tech Spec") and access to Guided Walkthrough (via `WelcomeModal`), Feedback (via `FeedbackModal`).
 
 ### 2.4. System Architecture & Connections
 
@@ -131,15 +132,17 @@ graph TD
     subgraph UserBrowser [User's Browser - Next.js App]
         App[Landing Page Workflow App]
         App_PageTsx["src/app/page.tsx (Main Workflow)"]
+        App_AdminSpecPage["src/app/admin/tech-spec/page.tsx (Tech Spec View)"]
         App_LayoutTsx["src/app/layout.tsx (Global Layout)"]
         App_UIActionContext["UIActionContext"]
         App_WalkthroughContext["WalkthroughContext"]
-        App_TopBar["TopBar Component"]
+        App_TopBar["TopBar Component (Nav: Workflow, Tech Spec; Actions: Feedback, Walkthrough)"]
         App_FeedbackModal["FeedbackModal Component"]
         App_WelcomeModal["WelcomeModal Component"]
         App_GenkitFlow["Genkit: suggestHeroCopyFlow (Client Call)"]
         App_LocalStorage["Browser Local Storage (A/B Hero Configs)"]
         App_DatadogLib["Datadog RUM SDK"]
+        App_TechSpecFile["TECHNICAL_SPEC.md (File System - Read by Server Component)"]
 
         App_LayoutTsx --> App_UIActionContext
         App_LayoutTsx --> App_TopBar
@@ -150,8 +153,13 @@ graph TD
         App_PageTsx --> App_WelcomeModal
         App_PageTsx <--> App_LocalStorage
         App_PageTsx --> App_GenkitFlow
+        
+        App_AdminSpecPage -- Reads --> App_TechSpecFile
+
 
         App_TopBar --> App_UIActionContext
+        App_TopBar -- Navigates to --> App_PageTsx
+        App_TopBar -- Navigates to --> App_AdminSpecPage
 
         App_WelcomeModal --> App_UIActionContext
         App_WelcomeModal --> App_WalkthroughContext
@@ -192,11 +200,15 @@ graph TD
 ## 3. Core Features & Functionality
 
 ### 3.1. Global Fixed Top Bar (`src/components/layout/TopBar.tsx`)
-- **Purpose:** Provides persistent access to global application utilities.
+- **Purpose:** Provides persistent navigation and access to global application utilities.
 - **Features:**
     - Fixed position at the top of the viewport.
-    - "Provide Feedback" button: Triggers `FeedbackModal` via `UIActionContext`.
-    - "Guided Walkthrough" button: Triggers `WelcomeModal` via `UIActionContext`.
+    - Navigation links:
+        - "Workflow": Navigates to the main 5-step application (`/`).
+        - "Tech Spec": Navigates to the rendered technical specification page (`/admin/tech-spec`).
+    - Action Buttons:
+        - "Provide Feedback" button: Triggers `FeedbackModal` via `UIActionContext`.
+        - "Guided Walkthrough" button: Triggers `WelcomeModal` via `UIActionContext`.
     - Styled with background and bottom border for visual separation.
 
 ### 3.2. User Feedback Mechanism (`src/components/shared/FeedbackModal.tsx`)
@@ -252,6 +264,11 @@ graph TD
 - Datadog RUM Browser SDK integrated.
 - Initializes in `layout.tsx` using environment variables.
 - Collects client-side performance metrics and errors.
+
+### 3.8. Admin View for Technical Specification (`src/app/admin/tech-spec/page.tsx`)
+- **Purpose:** Allows viewing of the `TECHNICAL_SPEC.md` file rendered within the application.
+- **Access:** Via a "Tech Spec" link in the global `TopBar`. Currently public, intended for Admin role in the future.
+- **Functionality:** Reads `TECHNICAL_SPEC.md` from the file system (server-side) and displays its content, preserving formatting.
 
 ## 4. Setup & Configuration
 
@@ -316,6 +333,7 @@ graph TD
 - **`TECHNICAL_SPEC.md`:** (This document).
 - **`src/app/layout.tsx`:** Root layout, global providers (`UIActionProvider`), `TopBar`.
 - **`src/app/page.tsx`:** Main 5-step workflow application, `WalkthroughProvider`.
+- **`src/app/admin/tech-spec/page.tsx`:** Renders `TECHNICAL_SPEC.md`.
 - **`src/contexts/UIActionContext.tsx`:** Manages global modal states.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages guided tour state.
 - **`src/components/layout/TopBar.tsx`:** Fixed top navigation bar.
@@ -330,15 +348,15 @@ graph TD
 - Defined in `PLAYBOOK.md`.
 
 ## 8. Future Considerations / Roadmap
-- **User Authentication & Roles (Currently Paused):**
+- **User Authentication & Roles (Paused - Ref: `FEATURE_AUTH_ROLES_PAUSED`):**
     - Firebase Authentication for login/registration.
     - Role-Based Access Control (RBAC):
-        - **Admin Role:** Access to a rendered version of `TECHNICAL_SPEC.md` in-app.
+        - **Admin Role:** Access to the rendered version of `TECHNICAL_SPEC.md` in-app (`/admin/tech-spec`).
         - **Creator Role:** Access to the main 5-step workflow.
-    - Secure role management (potentially via Firebase Admin SDK on a backend or custom claims).
+    - Secure role management.
 - **User-Specific Data Persistence (Firestore):**
-    - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs, instead of Local Storage.
-    - Store feedback submissions in Firestore, potentially linking to user IDs.
+    - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs.
+    - Store feedback submissions in Firestore.
 - **Backend for ServiceNow Integration:** Create a Firebase Cloud Function or other backend service to securely create ServiceNow tickets from feedback submissions.
 - **Design System Tokens Integration:** Foundation laid by component structure. Future work could involve defining and consuming brand tokens for multi-brand theming.
 - **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider more conversational AI interaction for content adjustments.
@@ -352,15 +370,16 @@ graph TD
 ```mermaid
 graph TD
     subgraph GlobalUI [Global UI]
-        UserNav["User visits /"]
-        UserNav --> AppLoad["Load Main App (/ page.tsx)"]
-        TopBarComp["TopBar Component"]
+        UserVisitsApp["User visits any app page"]
+        UserVisitsApp --> TopBarComp["TopBar Component (Always Visible)"]
+        TopBarComp -- Click Workflow --> MainAppNav["Navigate to / (Main Workflow)"]
+        TopBarComp -- Click Tech Spec --> AdminSpecNav["Navigate to /admin/tech-spec"]
         TopBarComp -- Click Guided Walkthrough --> UIAction_ShowWelcomeModal["UIAction: Show Welcome Modal"]
         TopBarComp -- Click Provide Feedback --> UIAction_ShowFeedbackModal["UIAction: Show Feedback Modal"]
     end
 
-    subgraph MainApp [Main Application Flow]
-        AppLoad --> AccordionInterface["5-Step Accordion UI (page.tsx)"]
+    subgraph MainApp [Main Application Flow at /]
+        MainAppNav --> AccordionInterface["5-Step Accordion UI (page.tsx)"]
         
         AccordionInterface -- Step 1 --> Step1Panel["Step 1: Review Recommendations Panel"]
         Step1Panel -- Upload JSON Blueprint / Walkthrough Loads Sample --> BlueprintState["State: activePageBlueprint Updated"]
@@ -378,6 +397,10 @@ graph TD
         
         Step5Panel -- User Takes JSON to Firebase --> FirebaseConsoleSetup["External: Firebase A/B Test Setup"]
         FirebaseConsoleSetup -- Refer to PLAYBOOK.md --> FirebaseConsoleSetup
+    end
+    
+    subgraph AdminSpecView [Admin Tech Spec View at /admin/tech-spec]
+        AdminSpecNav --> RenderTechSpec["Render TECHNICAL_SPEC.md"]
     end
 
     subgraph WalkthroughFlow [Walkthrough Sub-Flow]
@@ -398,6 +421,8 @@ graph TD
 
     style GlobalUI fill:#f0f8ff,stroke:#4682b4
     style MainApp fill:#e6ffe6,stroke:#2e8b57
+    style AdminSpecView fill:#fffacd,stroke:#ffd700
     style WalkthroughFlow fill:#fff0f5,stroke:#db7093
     style FeedbackFlow fill:#fffff0,stroke:#ffd700
 ```
+

@@ -3,22 +3,13 @@
 
 import { Button } from '@/components/ui/button';
 import { useUIActions } from '@/contexts/UIActionContext';
-// Removed: import { useAuth } from '@/contexts/AuthContext';
-// Removed: import { authInstance } from '@/lib/firebase';
-// Removed: import { signOut } from 'firebase/auth';
-// Removed: import { useRouter } from 'next/navigation';
-import { MessageSquare, HelpCircle } from 'lucide-react'; // Removed LogOut, UserCircle
-// Removed: import { useToast } from '@/hooks/use-toast';
+import { MessageSquare, HelpCircle, LayoutDashboard, FileText } from 'lucide-react';
+import Link from 'next/link';
 
 export const TOP_BAR_HEIGHT_PX = 60; 
 
 export default function TopBar() {
   const { setIsFeedbackModalOpen, setShowWelcomeModal } = useUIActions();
-  // Removed: const { currentUser } = useAuth();
-  // Removed: const router = useRouter();
-  // Removed: const { toast } = useToast();
-
-  // Removed: handleLogout function
 
   return (
     <div
@@ -26,7 +17,18 @@ export default function TopBar() {
       style={{ zIndex: 100, '--top-bar-height': `${TOP_BAR_HEIGHT_PX}px` } as React.CSSProperties}
     >
       <div className="flex items-center gap-2">
-        {/* Removed currentUser display */}
+        <Button variant="ghost" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
+          <Link href="/">
+            <LayoutDashboard className="mr-1.5 h-4 w-4" />
+            Workflow
+          </Link>
+        </Button>
+        <Button variant="ghost" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
+          <Link href="/admin/tech-spec">
+            <FileText className="mr-1.5 h-4 w-4" />
+            Tech Spec
+          </Link>
+        </Button>
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -47,7 +49,6 @@ export default function TopBar() {
           <HelpCircle className="mr-1.5 h-4 w-4" />
           Guided Walkthrough
         </Button>
-        {/* Removed Logout button */}
       </div>
     </div>
   );
