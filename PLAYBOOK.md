@@ -1,8 +1,7 @@
 
-
 # Landing Page Creation & A/B Testing: Playbook
 
-This playbook guides you through using the in-app tools to create landing page content, configure A/B tests for its Hero Section, and then deploy these tests using Firebase. It also explains how to use the Guided Walkthrough feature.
+This playbook guides you through using the in-app tools to create landing page content, configure A/B tests for its Hero Section, and then deploy these tests using Firebase. It also explains how to use the Guided Walkthrough and Feedback features.
 
 ## 0. Overview of the In-App Workflow
 
@@ -21,6 +20,19 @@ The application includes a Guided Walkthrough to help you learn its features.
 - **Navigation:** Follow the on-screen callouts. Use "Next" and "Previous" buttons in the callouts to move through the steps. You can "End Walkthrough" at any time.
 - **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
 - **Re-accessing:** You can start the walkthrough again at any time by clicking the Help icon.
+
+## 0.2. Providing Feedback or Reporting Issues
+If you encounter any issues, have suggestions, or want to provide general feedback:
+- Click the **Feedback icon** (MessageSquare) located in the top-right corner of the main application card.
+- A modal dialog will appear.
+- **Select Feedback Type:** Choose from "Bug Report," "Feature Request," or "General Feedback."
+- **Description:** Provide a detailed description of the issue or your feedback.
+- **Email (Optional):** You can provide your email if you'd like a follow-up.
+- **Submit:** Click "Submit Feedback."
+- **Action:**
+    - The feedback details will be logged to the browser's console (for developers).
+    - A toast notification will appear with a pre-filled `mailto:` link. Clicking this link will open your default email client, allowing you to send the feedback to the designated service desk email (e.g., `feedback@realinsurance.com.au`).
+    - For direct integration with ServiceNow, a backend service is required.
 
 ## 1. Introduction to A/B Testing
 
@@ -80,7 +92,7 @@ Navigate to the root of your application (e.g., `http://localhost:9002/`). This 
 This panel is where you define two versions (A and B) of Hero section content for your A/B test.
 - **Version A:** Will be pre-filled with the Hero content you finalized in Step 3.
 - **Version B:** Input alternative content for Headline, Sub-Headline, and CTA Text.
-- **Campaign Focus / Keywords (for A & B):** Optionally, provide text in the "Campaign Focus / Keywords" textarea for each version. This text will guide the AI when generating suggestions, making them more relevant.
+- **Campaign Focus / Keywords (for A & B):** Optionally, provide text in the "Campaign Focus / Keywords" textarea for each version. This text will guide the AI when generating suggestions, making them more relevant. This focus text is also saved and loaded with your local configurations.
 - **AI Content Suggestions (for A & B):** Use the "✨ Suggest with AI" buttons to get AI-generated ideas for Hero copy. These suggestions will be tailored if you've provided text in the "Campaign Focus" field.
 - **Local Configuration Management (for A/B Hero Variants):**
     - You can save the current state of Version A or B (headline, sub-headline, CTA, and campaign focus) locally.
@@ -156,7 +168,7 @@ You will define your variations when creating an A/B test (see Section 6). The A
 2.  **Use the In-App Tool (Steps 3 & 4):**
     *   Adjust content in Step 3 as needed for your overall landing page. This will update what pre-fills "Version A" of the Hero.
     *   In Step 4, configure "Version A" (new baseline for Hero) and "Version B" (new experimental Hero).
-    *   Use AI suggestions and Campaign Focus as needed.
+    *   Use AI suggestions and Campaign Focus as needed. The campaign focus is saved with your configurations.
     *   Preview on `/landing-preview`.
 3.  **Download/Copy JSON:** For the version you want to use as your new experimental variant in Firebase, copy or download its JSON from Step 4.
 4.  **A/B Test Setup:** In Firebase A/B Testing, create a new experiment or edit an existing one, pasting the new JSON for the relevant variant.
@@ -184,7 +196,7 @@ When designing new content variations for your A/B tests, ensure they align with
 - **A/B Test Not Starting/No Data:**
     *   Check activation event. Verify Firebase Analytics.
 - **Preview Page (`/landing-preview`) Not Showing Correct Content:**
-    *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `configA` and `configB`. The preview page currently only shows Hero section variations.
+    *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `configA` and `configB`. The preview page currently only shows Hero section variations by default (other sections are based on a default or static blueprint).
 - **AI Suggestions Not Working:**
     *   Check browser console. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus / Keywords" in Step 4 for better results.
 - **JSON Blueprint Upload Error (Step 1):**
@@ -193,7 +205,10 @@ When designing new content variations for your A/B tests, ensure they align with
     *   If elements are not highlighting correctly, ensure the page structure hasn't significantly changed from when the walkthrough was defined. The `HighlightCallout.tsx` component relies on CSS selectors to find elements.
     *   If the walkthrough seems stuck, try ending it and restarting. Check the browser's developer console for any errors.
     *   The walkthrough attempts to open the correct accordion panel for each step. If this isn't working, ensure the `requiresAccordionOpen` property in `WalkthroughContext.tsx` matches the `value` of the `AccordionItem` in `src/app/page.tsx`.
+- **Datadog RUM Data Not Appearing:**
+    *   Ensure you've run `npm install @datadog/browser-rum` (or `yarn add`).
+    *   Verify all `NEXT_PUBLIC_DATADOG_*` environment variables are correctly set in `.env.local` and that you've restarted your Next.js development server after setting them.
+    *   Check your browser's network tab for requests to Datadog's intake servers.
+    *   Confirm the RUM application is correctly set up in your Datadog account.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
-
-    

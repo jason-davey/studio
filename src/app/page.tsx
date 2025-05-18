@@ -9,26 +9,24 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, LifeBuoy } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, LifeBuoy, MessageSquare } from 'lucide-react'; // Added MessageSquare
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
-import Header from '@/components/landing/Header'; // For Step 2 preview
 import HeroSection from '@/components/landing/HeroSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
-import Footer from '@/components/landing/Footer'; // For Step 2 preview
-
 
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig } from '@/types/recommendations';
 
 import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
 import WelcomeModal from '@/components/walkthrough/WelcomeModal';
 import HighlightCallout from '@/components/walkthrough/HighlightCallout';
+import FeedbackModal from '@/components/shared/FeedbackModal'; // Import FeedbackModal
 
 
 // Types for A/B Test Configurator (Step 4)
@@ -97,8 +95,8 @@ const ABTestConfigForm = ({
         copyType,
         currentText: currentValue,
         campaignFocus: currentCampaignFocus,
-        productName: "SecureTomorrow Life Insurance", // Example, could be dynamic
-        productDescription: "Life insurance for families, offering cashback and a free will.", // Example
+        productName: "SecureTomorrow Life Insurance", 
+        productDescription: "Life insurance for families, offering cashback and a free will.", 
         count: 3,
       });
       if (result.suggestions && result.suggestions.length > 0) {
@@ -219,7 +217,7 @@ const ABTestConfigForm = ({
           {renderAISuggestionPopover(headline, 'headline', aiStateHeadline, setAiStateHeadline, setHeadline, version === 'A' ? 'ai-suggest-headlineA-button' : 'ai-suggest-headlineB-button')}
         </div>
         <Input
-          id={`headline${version}-input`} //Ensure unique ID for walkthrough
+          id={`headline${version}-input`} 
           type="text"
           value={headline}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setHeadline(e.target.value)}
@@ -233,7 +231,7 @@ const ABTestConfigForm = ({
           {renderAISuggestionPopover(subHeadline, 'subHeadline', aiStateSubHeadline, setAiStateSubHeadline, setSubHeadline)}
         </div>
         <Input
-          id={`subHeadline${version}-input`} //Ensure unique ID for walkthrough
+          id={`subHeadline${version}-input`} 
           type="text"
           value={subHeadline}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setSubHeadline(e.target.value)}
@@ -247,7 +245,7 @@ const ABTestConfigForm = ({
          {renderAISuggestionPopover(ctaText, 'ctaText', aiStateCtaText, setAiStateCtaText, setCtaText)}
         </div>
         <Input
-          id={`ctaText${version}-input`} //Ensure unique ID for walkthrough
+          id={`ctaText${version}-input`} 
           type="text"
           value={ctaText}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setCtaText(e.target.value)}
@@ -281,7 +279,7 @@ const ABTestConfigForm = ({
         <Label htmlFor={`configName${version}`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
         <div className="flex gap-2">
           <Input
-            id={`configName${version}-input`} //Ensure unique ID for walkthrough
+            id={`configName${version}-input`} 
             type="text"
             value={configName}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setConfigName(e.target.value)}
@@ -353,8 +351,8 @@ function LandingPageWorkflowPageContent() {
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
   
-  // Walkthrough context integration
   const walkthrough = useWalkthrough();
+  const [isFeedbackModalOpen, setIsFeedbackModalOpen] = useState(false);
 
 
   // Step 1: Recommendations
@@ -363,7 +361,6 @@ function LandingPageWorkflowPageContent() {
   const [fileName, setFileName] = useState<string>('');
 
 
-  // Step 2 & 3: Active Landing Page Data (derived from blueprint, editable in Step 3)
   const initialBlueprintState: PageBlueprint = {
     pageName: 'Untitled Page',
     targetUrl: '',
@@ -378,7 +375,6 @@ function LandingPageWorkflowPageContent() {
   };
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
 
-   // Callback for WalkthroughProvider to set activePageBlueprint
   const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
     setActivePageBlueprint(blueprint);
     setUploadedBlueprint(blueprint); 
@@ -387,16 +383,11 @@ function LandingPageWorkflowPageContent() {
   }, [toast]);
 
   useEffect(() => {
-    // If walkthrough wants to auto-load blueprint and it hasn't been loaded yet
-    // This check is now part of the `WalkthroughProvider`'s `effectivelyStartWalkthrough`
-    // and `nextStep`/`prevStep`/`goToStep` logic using the `onLoadBlueprint` callback.
-    // The `activePageBlueprint` is now set through the callback triggered by the context.
     if ((window as any).__blueprintForWalkthrough && !uploadedBlueprint) {
         handleLoadBlueprintFromWalkthrough((window as any).__blueprintForWalkthrough);
-        delete (window as any).__blueprintForWalkthrough; // Clean up
+        delete (window as any).__blueprintForWalkthrough; 
     }
   }, [uploadedBlueprint, handleLoadBlueprintFromWalkthrough]);
-
 
 
   // Step 4: A/B Test Configuration States
@@ -471,7 +462,6 @@ function LandingPageWorkflowPageContent() {
     event.target.value = ''; 
   };
 
-  // --- Step 3 Logic (Updating activePageBlueprint) ---
   const handleSimpleBlueprintFieldChange = <K extends keyof PageBlueprint>(field: K, value: PageBlueprint[K]) => {
     setActivePageBlueprint(prev => ({ ...prev, [field]: value }));
   };
@@ -494,11 +484,12 @@ function LandingPageWorkflowPageContent() {
     section: S,
     index: number,
     field: keyof NonNullable<PageBlueprint[S]>[number],
-    value: string
+    value: string | boolean // Updated to allow boolean for potential future checkbox use
   ) => {
     setActivePageBlueprint(prev => {
       const newArray = [...(prev[section] || [])];
       if (newArray[index]) {
+        // Create a new object for the item being changed to ensure immutability
         newArray[index] = {
           ...newArray[index],
           [field]: value,
@@ -508,8 +499,6 @@ function LandingPageWorkflowPageContent() {
     });
   };
 
-
-  // --- Step 4 Logic (A/B Test Configurator) ---
   useEffect(() => {
     if (activePageBlueprint.heroConfig && (activeAccordionItem === 'step-4' || (walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.requiresAccordionOpen === 'step-4'))) {
       setHeadlineA(activePageBlueprint.heroConfig.headline || '');
@@ -737,9 +726,9 @@ function LandingPageWorkflowPageContent() {
                       <Card key={`benefit-${index}`} className="p-3 bg-card shadow-sm">
                         <Label className="font-semibold text-md">Benefit {index + 1}</Label>
                         <div className="space-y-2 mt-1">
-                          <div><Label htmlFor={`benefitTitle${index}`}>Title</Label><Input id={`benefitTitle${index}-adjust-input`} value={benefit.title} onChange={(e) => handleArrayObjectChange('benefits', index, 'title', e.target.value)} /></div>
-                          <div><Label htmlFor={`benefitDesc${index}`}>Description</Label><Textarea id={`benefitDesc${index}-adjust-input`} value={benefit.description} onChange={(e) => handleArrayObjectChange('benefits', index, 'description', e.target.value)} rows={2}/></div>
-                          <div><Label htmlFor={`benefitIcon${index}`}>Icon (Lucide Name)</Label><Input id={`benefitIcon${index}-adjust-input`} value={benefit.icon || ''} onChange={(e) => handleArrayObjectChange('benefits', index, 'icon', e.target.value)} /></div>
+                          <div><Label htmlFor={`benefitTitle${index}-adjust-input`}>Title</Label><Input id={`benefitTitle${index}-adjust-input`} value={benefit.title} onChange={(e) => handleArrayObjectChange('benefits', index, 'title', e.target.value)} /></div>
+                          <div><Label htmlFor={`benefitDesc${index}-adjust-input`}>Description</Label><Textarea id={`benefitDesc${index}-adjust-input`} value={benefit.description} onChange={(e) => handleArrayObjectChange('benefits', index, 'description', e.target.value)} rows={2}/></div>
+                          <div><Label htmlFor={`benefitIcon${index}-adjust-input`}>Icon (Lucide Name)</Label><Input id={`benefitIcon${index}-adjust-input`} value={benefit.icon || ''} onChange={(e) => handleArrayObjectChange('benefits', index, 'icon', e.target.value)} /></div>
                         </div>
                       </Card>
                     ))}
@@ -747,18 +736,18 @@ function LandingPageWorkflowPageContent() {
                 </Card>
 
                 <Card className="bg-muted/50 p-1"> 
-                    <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquare className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquareIconLucide className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {activePageBlueprint.testimonials?.map((testimonial, index) => (
                             <Card key={`testimonial-${index}`} className="p-3 bg-card shadow-sm">
                                 <Label className="font-semibold text-md">Testimonial {index + 1}</Label>
                                 <div className="space-y-2 mt-1">
-                                    <div><Label htmlFor={`testimonialName${index}`}>Name</Label><Input id={`testimonialName${index}-adjust-input`} value={testimonial.name} onChange={(e) => handleArrayObjectChange('testimonials',index, 'name', e.target.value)} /></div>
-                                    <div><Label htmlFor={`testimonialLocation${index}`}>Location</Label><Input id={`testimonialLocation${index}-adjust-input`} value={testimonial.location || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'location', e.target.value)} /></div>
-                                    <div><Label htmlFor={`testimonialQuote${index}`}>Quote</Label><Textarea id={`testimonialQuote${index}-adjust-input`} value={testimonial.quote} onChange={(e) => handleArrayObjectChange('testimonials',index, 'quote', e.target.value)} rows={3}/></div>
-                                    <div><Label htmlFor={`testimonialAvatarUrl${index}`}>Avatar Image URL</Label><Input id={`testimonialAvatarUrl${index}-adjust-input`} value={testimonial.avatarImageUrl || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'avatarImageUrl', e.target.value)} /></div>
-                                    <div><Label htmlFor={`testimonialInitial${index}`}>Avatar Initial</Label><Input id={`testimonialInitial${index}-adjust-input`} value={testimonial.avatarInitial || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'avatarInitial', e.target.value)} /></div>
-                                    <div><Label htmlFor={`testimonialSince${index}`}>Protected Since</Label><Input id={`testimonialSince${index}-adjust-input`} value={testimonial.since || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'since', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialName${index}-adjust-input`}>Name</Label><Input id={`testimonialName${index}-adjust-input`} value={testimonial.name} onChange={(e) => handleArrayObjectChange('testimonials',index, 'name', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialLocation${index}-adjust-input`}>Location</Label><Input id={`testimonialLocation${index}-adjust-input`} value={testimonial.location || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'location', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialQuote${index}-adjust-input`}>Quote</Label><Textarea id={`testimonialQuote${index}-adjust-input`} value={testimonial.quote} onChange={(e) => handleArrayObjectChange('testimonials',index, 'quote', e.target.value)} rows={3}/></div>
+                                    <div><Label htmlFor={`testimonialAvatarUrl${index}-adjust-input`}>Avatar Image URL</Label><Input id={`testimonialAvatarUrl${index}-adjust-input`} value={testimonial.avatarImageUrl || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'avatarImageUrl', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialInitial${index}-adjust-input`}>Avatar Initial</Label><Input id={`testimonialInitial${index}-adjust-input`} value={testimonial.avatarInitial || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'avatarInitial', e.target.value)} /></div>
+                                    <div><Label htmlFor={`testimonialSince${index}-adjust-input`}>Protected Since</Label><Input id={`testimonialSince${index}-adjust-input`} value={testimonial.since || ''} onChange={(e) => handleArrayObjectChange('testimonials',index, 'since', e.target.value)} /></div>
                                 </div>
                             </Card>
                         ))}
@@ -772,12 +761,12 @@ function LandingPageWorkflowPageContent() {
                             <Card key={`trust-${index}`} className="p-3 bg-card shadow-sm">
                                 <Label className="font-semibold text-md">Trust Signal {index + 1}</Label>
                                 <div className="space-y-2 mt-1">
-                                    <div><Label htmlFor={`trustSignalText${index}`}>Text</Label><Input id={`trustSignalText${index}-adjust-input`} value={signal.text} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'text', e.target.value)} /></div>
-                                    <div><Label htmlFor={`trustSignalDetails${index}`}>Details</Label><Input id={`trustSignalDetails${index}-adjust-input`} value={signal.details || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'details', e.target.value)} /></div>
-                                    <div><Label htmlFor={`trustSignalSource${index}`}>Source</Label><Input id={`trustSignalSource${index}-adjust-input`} value={signal.source || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'source', e.target.value)} /></div>
-                                    <div><Label htmlFor={`trustSignalImageUrl${index}`}>Image URL</Label><Input id={`trustSignalImageUrl${index}-adjust-input`} value={signal.imageUrl || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'imageUrl', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalText${index}-adjust-input`}>Text</Label><Input id={`trustSignalText${index}-adjust-input`} value={signal.text} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'text', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalDetails${index}-adjust-input`}>Details</Label><Input id={`trustSignalDetails${index}-adjust-input`} value={signal.details || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'details', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalSource${index}-adjust-input`}>Source</Label><Input id={`trustSignalSource${index}-adjust-input`} value={signal.source || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'source', e.target.value)} /></div>
+                                    <div><Label htmlFor={`trustSignalImageUrl${index}-adjust-input`}>Image URL</Label><Input id={`trustSignalImageUrl${index}-adjust-input`} value={signal.imageUrl || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'imageUrl', e.target.value)} /></div>
                                     <div>
-                                        <Label htmlFor={`trustSignalType${index}`}>Type</Label>
+                                        <Label htmlFor={`trustSignalType${index}-adjust-input`}>Type</Label>
                                         <select 
                                             id={`trustSignalType${index}-adjust-input`} 
                                             value={signal.type} 
@@ -974,6 +963,12 @@ function LandingPageWorkflowPageContent() {
         />
       )}
 
+      <FeedbackModal 
+        isOpen={isFeedbackModalOpen}
+        onOpenChange={setIsFeedbackModalOpen}
+        serviceDeskEmail="feedback@realinsurance.com.au" // Replace with actual email
+      />
+
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
         <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center relative">
@@ -981,16 +976,26 @@ function LandingPageWorkflowPageContent() {
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
           </CardDescription>
-           <Button 
-            variant="outline" 
-            size="icon" 
-            onClick={walkthrough.startWalkthrough} 
-            className="absolute top-4 right-4"
-            title="Start Guided Walkthrough"
-            id="start-walkthrough-button"
-          >
-            <HelpCircle className="h-5 w-5" />
-          </Button>
+          <div className="absolute top-4 right-4 flex gap-2">
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={() => setIsFeedbackModalOpen(true)} 
+              title="Provide Feedback"
+              id="provide-feedback-button"
+            >
+              <MessageSquare className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              onClick={walkthrough.startWalkthrough} 
+              title="Start Guided Walkthrough"
+              id="start-walkthrough-button"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </Button>
+           </div>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Accordion 
@@ -999,18 +1004,12 @@ function LandingPageWorkflowPageContent() {
             className="w-full" 
             value={activeAccordionItem}
             onValueChange={(value) => {
-                const newActiveItem = value === activeAccordionItem ? undefined : value; // Allow closing by clicking active item
+                const newActiveItem = value === activeAccordionItem ? undefined : value; 
                 setActiveAccordionItem(newActiveItem);
                 if (walkthrough.isWalkthroughActive && newActiveItem) {
-                  const stepIndexToOpen = walkthrough.steps.findIndex(s => s.requiresAccordionOpen === newActiveItem);
-                  if (stepIndexToOpen !== -1 && walkthrough.currentStepIndex !== stepIndexToOpen) {
-                     // If user manually opens an accordion relevant to a different step, go to that step
-                     // This behavior might need refinement based on desired UX
-                    // walkthrough.goToStep(stepIndexToOpen); 
-                  }
+                  walkthrough.setAccordionToOpen(newActiveItem);
                 } else if (walkthrough.isWalkthroughActive && !newActiveItem) {
-                    // If user closes an accordion item, and it was required for the current step,
-                    // it might be good to pause or guide the user. For now, no specific action.
+                  // Walkthrough active but accordion closed, context handles if it needs to reopen
                 }
             }}
           >
@@ -1036,8 +1035,6 @@ function LandingPageWorkflowPageContent() {
 
 export default function LandingPageWorkflowPage() {
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
-    // This state will be updated by the callback from WalkthroughProvider
-    // It's used to trigger a re-render if necessary, but the actual blueprint is managed inside LandingPageWorkflowPageContent
     const [, setBlueprintForWalkthroughTrigger] = useState<PageBlueprint | null>(null);
 
 
@@ -1046,13 +1043,9 @@ export default function LandingPageWorkflowPage() {
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
-        // This function is called by the WalkthroughProvider when it auto-loads the blueprint.
-        // We can set a global-like variable or a state here that LandingPageWorkflowPageContent
-        // can pick up in an effect to update its own activePageBlueprint.
         if (typeof window !== 'undefined') {
             (window as any).__blueprintForWalkthrough = blueprint;
         }
-        // Trigger a re-render in this parent to ensure the child effect runs
         setBlueprintForWalkthroughTrigger(blueprint);
     }, []);
 

@@ -1,11 +1,10 @@
 
-
 # Technical Specification & Release Guide: SecureTomorrow Landing Page A/B Testing Platform
 
 ## 1. Introduction
 
 ### 1.1. Purpose of the Application
-This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content, configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords) and includes a guided walkthrough for new users.
+This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content, configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords) and includes a guided walkthrough for new users. It also integrates Datadog RUM for performance monitoring and includes a client-side feedback mechanism.
 
 ### 1.2. High-Level Functionality
 - **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy).
@@ -21,11 +20,13 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Guided Walkthrough:** An interactive, step-by-step tour of the application's features, highlighting key UI elements and explaining their purpose. Includes a welcome modal and can auto-load sample data.
 - **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Actual test setup and management occur in the Firebase console.
 - **AB Tasty Integration Point:** Includes a placeholder for integrating AB Tasty's JavaScript snippet for client-side A/B testing.
+- **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
+- **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console.
 
 ### 1.3. Key Technologies Used
 - **Frontend Framework:** Next.js (with App Router)
 - **UI Library:** React
-- **UI Components:** ShadCN UI (Accordion, Button, Card, Input, Label, Textarea, Popover, Toast, Dialog, etc.)
+- **UI Components:** ShadCN UI (Accordion, Button, Card, Input, Label, Textarea, Popover, Toast, Dialog, Select, etc.)
 - **Styling:** Tailwind CSS
 - **State Management:** React Hooks (useState, useEffect, useCallback, useContext for Toast and Walkthrough)
 - **A/B Test Content Delivery (Primary Method):** Firebase Remote Config
@@ -34,28 +35,32 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Generative AI (Stack):** Genkit with Google AI (Gemini models) for content suggestions.
   - Flow: `src/ai/flows/suggest-hero-copy-flow.ts` (accepts optional `campaignFocus`)
 - **Guided Walkthrough:** Custom implementation using React Context and DOM manipulation for highlights.
+- **Performance Monitoring:** Datadog RUM Browser SDK.
+- **Forms:** React Hook Form with Zod for validation in feedback modal.
 
 ## 2. Application Architecture
 
 ### 2.1. Frontend Structure
 - **Next.js App Router:** Used for routing and page structure.
-    - `/` (root): Main 5-step workflow application (`src/app/page.tsx`) with the accordion interface and guided walkthrough.
+    - `/` (root): Main 5-step workflow application (`src/app/page.tsx`) with the accordion interface, guided walkthrough, and feedback modal trigger.
     - `/landing-preview`: Side-by-side A/B test preview page.
 - **Key Directories:**
     - `src/app/`: Contains page components and layouts.
         - `page.tsx`: Main 5-step workflow application.
         - `landing-preview/page.tsx`: Side-by-side A/B test preview page.
-        - `layout.tsx`: Root layout, includes Toaster and AB Tasty script placeholder.
+        - `layout.tsx`: Root layout, includes Toaster, AB Tasty script placeholder, and Datadog RUM initialization.
         - `globals.css`: Global styles, Tailwind directives, and ShadCN CSS theme variables (HSL).
     - `src/components/`: Reusable UI components.
         - `landing/`: Components specific to the landing page (Header, HeroSection, BenefitsSection, TestimonialsSection, TrustSignalsSection, AwardsSection, QuoteFormSection, Footer).
         - `ui/`: ShadCN UI components.
         - `walkthrough/`: Components for the guided walkthrough (WelcomeModal, HighlightCallout).
+        - `shared/`: Components used across different parts of the app (e.g., `FeedbackModal.tsx`).
     - `src/contexts/`: Global React Context providers.
         - `WalkthroughContext.tsx`: Manages state and logic for the guided walkthrough.
-    - `src/lib/`: Utility functions and Firebase initialization.
+    - `src/lib/`: Utility functions and integrations.
         - `firebase.ts`: Firebase SDK initialization and Remote Config setup.
         - `utils.ts`: General utility functions (e.g., `cn` for classnames).
+        - `datadog.ts`: Datadog RUM SDK initialization.
     - `src/hooks/`: Custom React hooks.
         - `useRemoteConfigValue.ts`: Hook to fetch values from Firebase Remote Config.
         - `useToast.ts`: Hook for displaying toast notifications.
@@ -79,12 +84,14 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Walkthrough State (`WalkthroughContext.tsx`):**
     - Manages `isWalkthroughActive`, `currentStepIndex`, `showWelcomeModal`.
     - Controls the display and progression of the guided tour via `HighlightCallout.tsx`.
+- **Feedback Modal State (in `src/app/page.tsx`):** Manages the visibility of the feedback modal.
 - **Firebase Integration:**
     - Initialization: `src/lib/firebase.ts`.
     - Remote Config: The application prepares JSON for `heroConfig` parameter (from Step 4). Actual A/B test setup occurs in Firebase Console.
 - **Genkit/AI:**
     - Uses `ai.defineFlow` and `ai.definePrompt` for the `suggestHeroCopyFlow`.
     - The flow is called from the client-side component in Step 4.
+- **Datadog RUM:** Initialized in `layout.tsx` via `src/lib/datadog.ts` to send performance and error data.
 
 ### 2.3. Workflow Overview (5-Step Accordion)
 1.  **Step 1: Review Recommendations:**
@@ -93,7 +100,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 2.  **Step 2: Build & Preview Page:**
     - Application renders a preview of the landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on `activePageBlueprint`.
 3.  **Step 3: Adjust Content:**
-    - User edits the content of `activePageBlueprint` (Hero, Benefits, Testimonials, Trust Signals, Form Config) via input fields.
+    - User edits the content of `activePageBlueprint` (Page Info, Hero, Benefits, Testimonials, Trust Signals, Form Config) via input fields.
 4.  **Step 4: Configure A/B Test:**
     - "Version A" (Hero) is pre-filled using the (adjusted) Hero content from `activePageBlueprint.heroConfig`.
     *   User configures "Version B" (Hero), uses AI suggestions (with optional campaign focus).
@@ -104,6 +111,7 @@ This Next.js application serves as a comprehensive platform for creating, config
     - User is guided to take the generated JSON to the Firebase Console.
     - `PLAYBOOK.md` provides detailed Firebase setup instructions.
 - **Guided Walkthrough:** Can be initiated from the main page header, guiding users through each step and key features using `HighlightCallout.tsx`.
+- **Feedback Mechanism:** A "Provide Feedback" button in the header opens a modal for submitting issues or suggestions.
 - **AB Tasty:** If used, its script (added to `layout.tsx`) would override content for tests managed by that platform.
 
 ## 3. Core Features & Functionality (by Step)
@@ -125,10 +133,11 @@ This Next.js application serves as a comprehensive platform for creating, config
 ### 3.3. Step 3: Adjust Content
 - **Purpose:** To allow fine-tuning of the landing page content derived from the blueprint.
 - **Features:**
+    - Input fields for `activePageBlueprint.pageName`, `activePageBlueprint.seoTitle`.
     - Input fields for `activePageBlueprint.heroConfig` (headline, subHeadline, ctaText, uniqueValueProposition, heroImageUrl, heroImageAltText).
-    - Input fields for `activePageBlueprint.benefits` (title, description, icon for each benefit).
-    - Input fields for `activePageBlueprint.testimonials` (name, location, quote, avatarImageUrl, avatarInitial, since for each testimonial).
-    - Input fields for `activePageBlueprint.trustSignals` (text, details, source, imageUrl, type for each signal).
+    - Input fields for each item in `activePageBlueprint.benefits` (title, description, icon).
+    - Input fields for each item in `activePageBlueprint.testimonials` (name, location, quote, avatarImageUrl, avatarInitial, since).
+    - Input fields for each item in `activePageBlueprint.trustSignals` (text, details, source, imageUrl, type).
     - Input fields for `activePageBlueprint.formConfig` (headline, ctaText).
     - Changes update the `activePageBlueprint` state in real-time.
 
@@ -156,7 +165,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 
 ### 3.6. Landing Preview Page (`src/app/landing-preview/page.tsx`)
 - **Purpose:** To display two versions of the Hero Section side-by-side for A/B test comparison.
-- **Functionality:** Reads `configA` and `configB` JSON strings (Hero content) from URL query parameters.
+- **Functionality:** Reads `configA` and `configB` JSON strings (Hero content) from URL query parameters. Renders full page context around the hero sections.
 
 ### 3.7. Landing Page Components (`src/components/landing/`)
 - Standard landing page components (Header, HeroSection, BenefitsSection, TestimonialsSection, TrustSignalsSection, AwardsSection, QuoteFormSection, Footer). Dynamically populated from `activePageBlueprint` in Step 2 & 3, or specific Hero configs in `/landing-preview`.
@@ -177,17 +186,39 @@ This Next.js application serves as a comprehensive platform for creating, config
     - Auto-loading of sample data for a hands-on experience.
     - Managed via React Context (`WalkthroughContext.tsx`) for global state.
 
+### 3.10. User Feedback Mechanism (`src/components/shared/FeedbackModal.tsx`)
+- **Purpose:** Allow users to report issues, suggest features, or provide general feedback.
+- **Features:**
+    - Triggered by a "Provide Feedback" button in the main app header.
+    - Modal dialog with fields for feedback type, description, and optional email.
+    - Uses `react-hook-form` for validation.
+    - On submission, logs data to the console and generates a `mailto:` link for sending to a pre-configured service desk email.
+    - Displays a toast message guiding the user to the `mailto:` link.
+
+### 3.11. Performance Monitoring (`src/lib/datadog.ts`, `src/app/layout.tsx`)
+- **Purpose:** To collect client-side performance metrics and errors.
+- **Features:**
+    - Integrates Datadog RUM Browser SDK.
+    - Initialization in `layout.tsx` using environment variables for configuration.
+    - Automatically tracks page views, errors, resource timings, and core web vitals.
+    - Sends data to the configured Datadog instance.
+
 ## 4. Setup & Configuration
 
 ### 4.1. Environment Variables (`.env.local`)
 - Required for Firebase SDK. See `PLAYBOOK.md`.
 - Genkit flows using Google AI require API key setup.
+- **Datadog RUM Integration:** Requires `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, `NEXT_PUBLIC_DATADOG_APPLICATION_ID`, `NEXT_PUBLIC_DATADOG_SITE`, `NEXT_PUBLIC_DATADOG_SERVICE_NAME`, `NEXT_PUBLIC_APP_ENV`, `NEXT_PUBLIC_APP_VERSION`.
 
 ### 4.2. Firebase Project Setup
 - See `PLAYBOOK.md`. Remote Config for `heroConfig` is key for A/B tests.
 
 ### 4.3. AB Tasty Integration
 - Placeholder in `src/app/layout.tsx`.
+
+### 4.4. Datadog Setup
+- A Datadog account is required.
+- The RUM application must be set up in Datadog to obtain the `clientToken` and `applicationId`.
 
 ## 5. Development & Build
 
@@ -199,13 +230,15 @@ This Next.js application serves as a comprehensive platform for creating, config
 - `npm run build` (or `yarn build`).
 
 ## 6. Key Files & Directories
-- **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow with Firebase, including use of the guided walkthrough.
+- **`PLAYBOOK.md`:** User-focused guide for A/B testing workflow with Firebase, including use of the guided walkthrough and feedback mechanism.
 - **`TECHNICAL_SPEC.md`:** (This document).
 - **`src/app/page.tsx`:** Main 5-step workflow application.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit flow for AI suggestions.
 - **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages state for the guided walkthrough.
 - **`src/components/walkthrough/`:** Contains UI components for the walkthrough (WelcomeModal, HighlightCallout).
+- **`src/components/shared/FeedbackModal.tsx`:** Component for user feedback.
+- **`src/lib/datadog.ts`:** Datadog RUM initialization logic.
 - Other files as previously listed.
 
 ## 7. Branding Guidelines Reference
@@ -215,7 +248,9 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Design System Tokens Integration:** The current component-based structure (e.g., in `src/components/landing/`) is a good foundation. Future work could involve defining brand tokens (colors, fonts, spacing) that these components consume, allowing for easier multi-brand theming if the "Recommendations Engine" provides brand-specific tokens as part of the `PageBlueprint`.
 - **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider integrating a more conversational AI interaction in "Step 3: Adjust Content." Users could describe desired changes (e.g., "Make this headline more urgent," "Shorten this benefit description") and the AI (via Genkit) could offer specific revisions or options.
 - **Full Blueprint Editing (Step 3):** Allow adding/deleting items in lists (Benefits, Testimonials, Trust Signals) in Step 3, not just editing existing ones. This would require more complex state management for these arrays.
-- **Backend for Firebase Management:** For direct creation/management of multiple Firebase Remote Config parameters (if each "landing page" created in a CMS-like fashion needed its own parameter) or saving blueprints to Firestore, a backend service using the Firebase Admin SDK would be necessary. This would enable true CMS-like capabilities beyond local storage.
+- **Backend for Firebase Management & ServiceNow Integration:**
+    - For direct creation/management of multiple Firebase Remote Config parameters (if each "landing page" created in a CMS-like fashion needed its own parameter) or saving blueprints to Firestore, a backend service using the Firebase Admin SDK would be necessary.
+    - For direct ServiceNow ticket creation from the feedback modal, a backend endpoint is needed to securely interact with the ServiceNow API.
 - **Error Handling & Validation:** Enhance error handling for JSON parsing (Step 1), AI flows, and localStorage operations. Implement more robust validation for the `PageBlueprint` structure.
 - **AI Theme Generation:** Explore AI capabilities to suggest campaign themes or focus areas based on product information or goals, rather than just generating copy based on a user-provided theme.
 - **Direct Integration with Keyword Platforms (Backend Task):** Requires backend development for secure API access to platforms like Google Ads API to fetch keywords.
@@ -253,6 +288,13 @@ graph TD
     WT_Step4 --> WT_Step5(Guides through Step 5);
     WT_Step5 --> WT_End(Walkthrough Ends);
     WT_Modal -- Skip Tour --> WT_End;
+
+    FB_Button[User clicks Feedback Button] --> FB_Modal(Feedback Modal Displayed);
+    FB_Modal -- User Fills Form & Submits --> FB_Action{Feedback Action};
+    FB_Action -- Log to Console --> FB_Action;
+    FB_Action -- Generate Mailto Link --> FB_Toast(Toast with Mailto Link);
+    FB_Toast -- User Clicks Link --> FB_EmailClient(Opens User's Email Client);
+    FB_EmailClient --> FB_Modal;
+    FB_Modal -- User Cancels/Closes --> A;
 ```
 
-    
