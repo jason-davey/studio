@@ -26,6 +26,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
 - **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console. Triggered from the fixed top bar.
 - **Admin Technical Specification View:** A page (`/admin/tech-spec`) that renders this `TECHNICAL_SPEC.md` document. Accessible via the Top Bar.
+- **Login/Register Pages (Paused):** `/login` and `/register` pages exist but are currently non-functional as user authentication feature development is paused (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 
 ### 1.3. Key Technologies Used
 - **Frontend Framework:** Next.js (with App Router)
@@ -39,7 +40,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **Generative AI (Stack):** Genkit with Google AI (Gemini models)
 - **Guided Walkthrough:** Custom implementation using React Context and DOM manipulation.
 - **Performance Monitoring:** Datadog RUM Browser SDK.
-- **Forms:** React Hook Form with Zod for validation (in Quote Form).
+- **Forms:** React Hook Form with Zod for validation (in Quote Form and Feedback Modal).
 
 ### 1.4. Development Approach & Methodology
 This application has been developed using a highly iterative and collaborative UX-AI model:
@@ -77,7 +78,7 @@ This provides a high-level overview of the development journey:
     - Admin page to render `TECHNICAL_SPEC.md`.
     - *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability and admin view.
 - **Phase 4 (Authentication & Role Foundation - Paused, Tag: `FEATURE_AUTH_ROLES_PAUSED`):**
-    - Initial work on Firebase Authentication (Login, Register pages, AuthContext) was started and then paused.
+    - Initial work on Firebase Authentication (Login, Register pages, AuthContext) was started and then paused due to external dependencies. These pages exist but are non-functional. The related `AuthContext.tsx` file also exists but is not currently used.
     - *Value (Future):* Foundation for multi-user application and role-based access.
 
 ## 2. Application Architecture
@@ -87,7 +88,7 @@ This provides a high-level overview of the development journey:
     - `/`: Main 5-step workflow application (`src/app/page.tsx`).
     - `/landing-preview`: Side-by-side A/B test preview page. Publicly accessible.
     - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md`. Publicly accessible (pending roles).
-    - *(Future)* `/login`, `/register`: User authentication pages (pending resumption of auth feature).
+    - `/login`, `/register`: User authentication pages. Currently exist but are non-functional (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 - **Key Directories:**
     - `src/app/`: Page components and layouts.
         - `layout.tsx`: Root layout, includes `UIActionProvider`, `TopBar`, `Toaster`, AB Tasty script placeholder, and Datadog RUM initialization.
@@ -101,7 +102,7 @@ This provides a high-level overview of the development journey:
     - `src/contexts/`:
         - `UIActionContext.tsx`: Manages global UI states like feedback/welcome modal visibility.
         - `WalkthroughContext.tsx`: Manages state and logic for the guided walkthrough.
-        - *(Future)* `AuthContext.tsx`: (File exists but is unused) Will manage user authentication state.
+        - `AuthContext.tsx`: (File exists but is unused due to `FEATURE_AUTH_ROLES_PAUSED`) Intended to manage user authentication state.
     - `src/lib/`: Utilities and integrations (Firebase, Datadog).
     - `src/hooks/`: Custom React hooks (`useToast`, `useRemoteConfigValue`, `useMobile`).
     - `src/ai/`: Genkit related files (flows, base configuration).
@@ -171,7 +172,7 @@ graph TD
         FB_ABTesting[Firebase A/B Testing (via Console)]
         FB_Hosting[Firebase Hosting (Next.js App Deployed)]
         FB_AI_Models["Google AI Models (via GoogleAI Plugin for Genkit)"]
-        %% FB_Auth[Firebase Authentication (Future)]
+        %% FB_Auth[Firebase Authentication (Paused)]
     end
 
     subgraph ExternalSystems [External Systems & Tools]
@@ -267,8 +268,8 @@ graph TD
 
 ### 3.8. Admin View for Technical Specification (`src/app/admin/tech-spec/page.tsx`)
 - **Purpose:** Allows viewing of the `TECHNICAL_SPEC.md` file rendered within the application.
-- **Access:** Via a "Tech Spec" link in the global `TopBar`. Currently public, intended for Admin role in the future.
-- **Functionality:** Reads `TECHNICAL_SPEC.md` from the file system (server-side) and displays its content, preserving formatting.
+- **Access:** Via a "Tech Spec" link in the global `TopBar`. Currently public, intended for Admin role in the future when authentication is implemented.
+- **Functionality:** Reads `TECHNICAL_SPEC.md` from the file system (server-side) and displays its content, preserving formatting within `<pre>` tags.
 
 ## 4. Setup & Configuration
 
@@ -293,7 +294,7 @@ graph TD
 ### 4.2. Firebase Project Setup
 - See `PLAYBOOK.md`.
 - Remote Config for `heroConfig`.
-- *(Future)* Firebase Authentication enablement.
+- *(Future)* Firebase Authentication enablement (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 
 ### 4.3. AB Tasty Integration
 - Placeholder in `src/app/layout.tsx`.
@@ -304,12 +305,12 @@ graph TD
 ### 4.5. Considerations for Scalability, Risk, Compliance, & Data
 - **Scalability:**
     - Client-side focus with reliance on scalable cloud services (Firebase, Datadog).
-    - User-specific data (A/B Hero configs) stored in browser Local Storage. (Future: Migrating this to Firestore per user would enhance scalability).
+    - User-specific data (A/B Hero configs) stored in browser Local Storage. (Future: Migrating this to Firestore per user would enhance scalability when authentication is active).
     - Future token-based design system could aid multi-brand scalability.
 - **Risk Mitigation:**
     - No direct client-side modification of Firebase A/B tests or sensitive Remote Config parameters. Users are guided to the secure Firebase Console.
     - Generated JSON is for content; platform management for Firebase is separate.
-    - *(Future)* Firebase Auth will handle secure user authentication.
+    - *(Future)* Firebase Auth (when implemented) will handle secure user authentication.
 - **Compliance & Data Sovereignty:**
     - The app primarily handles content configuration.
     - Data entered by users for A/B Hero configs is stored in their browser's Local Storage.
@@ -334,14 +335,16 @@ graph TD
 - **`src/app/layout.tsx`:** Root layout, global providers (`UIActionProvider`), `TopBar`.
 - **`src/app/page.tsx`:** Main 5-step workflow application, `WalkthroughProvider`.
 - **`src/app/admin/tech-spec/page.tsx`:** Renders `TECHNICAL_SPEC.md`.
+- **`src/app/login/page.tsx` & `src/app/register/page.tsx`:** Exist but are non-functional due to paused authentication feature.
 - **`src/contexts/UIActionContext.tsx`:** Manages global modal states.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages guided tour state.
+- **`src/contexts/AuthContext.tsx`:** Exists but unused due to paused authentication feature.
 - **`src/components/layout/TopBar.tsx`:** Fixed top navigation bar.
 - **`src/components/shared/FeedbackModal.tsx`:** Feedback collection UI.
 - **`src/components/walkthrough/`:** Walkthrough UI components.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit AI flow.
 - **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
-- **`src/lib/firebase.ts`:** Firebase SDK initialization (App, Remote Config).
+- **`src/lib/firebase.ts`:** Firebase SDK initialization (App, Remote Config). No Auth initialization currently.
 - **`src/lib/datadog.ts`:** Datadog RUM initialization.
 
 ## 7. Branding Guidelines Reference
@@ -349,20 +352,20 @@ graph TD
 
 ## 8. Future Considerations / Roadmap
 - **User Authentication & Roles (Paused - Ref: `FEATURE_AUTH_ROLES_PAUSED`):**
-    - Firebase Authentication for login/registration.
+    - Resume Firebase Authentication integration for login/registration.
     - Role-Based Access Control (RBAC):
-        - **Admin Role:** Access to the rendered version of `TECHNICAL_SPEC.md` in-app (`/admin/tech-spec`).
+        - **Admin Role:** Secure access to the rendered version of `TECHNICAL_SPEC.md` in-app (`/admin/tech-spec`).
         - **Creator Role:** Access to the main 5-step workflow.
-    - Secure role management.
+    - Secure role management (e.g., using Firebase custom claims).
 - **User-Specific Data Persistence (Firestore):**
-    - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs.
-    - Store feedback submissions in Firestore.
+    - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs (once auth is active).
+    - Store feedback submissions in Firestore (once auth is active).
 - **Backend for ServiceNow Integration:** Create a Firebase Cloud Function or other backend service to securely create ServiceNow tickets from feedback submissions.
 - **Design System Tokens Integration:** Foundation laid by component structure. Future work could involve defining and consuming brand tokens for multi-brand theming.
 - **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider more conversational AI interaction for content adjustments.
 - **Full Blueprint Editing (Step 3):** Allow adding/deleting items in lists (Benefits, Testimonials, Trust Signals).
 - **AI Theme Generation:** AI to suggest campaign themes.
-- **Direct Integration with Keyword Platforms (Backend Task):** For fetching keywords.
+- **Direct Integration with Keyword Platforms (Backend Task):** For fetching keywords to pre-fill `campaignFocus`.
 - **Advanced UX Analysis AI (External Tool - Recommendations Engine):** The external "Recommendations Engine" (which produces the `PageBlueprint`) is responsible for incorporating analysis based on Usability Heuristics (Nielsen), Accessibility (WCAG), and behavioral models like COM-B, as detailed by UX. This application consumes the resulting content recommendations from the `PageBlueprint`.
 - **Enhanced Reporting Tool Integration:** The external "Recommendations Engine" could be enhanced with AI-led UX evaluation using frameworks like Nielsen's Heuristics, WCAG, and COM-B to generate more refined `PageBlueprint` data for this application.
 
@@ -425,4 +428,3 @@ graph TD
     style WalkthroughFlow fill:#fff0f5,stroke:#db7093
     style FeedbackFlow fill:#fffff0,stroke:#ffd700
 ```
-
