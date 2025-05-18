@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ChangeEvent, useEffect, useCallback } from 'react';
+import { useState, type ChangeEvent, useEffect, useCallback }_ from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -347,7 +347,7 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 function LandingPageWorkflowPageContent() {
-  console.log("Rendering LandingPageWorkflowPageContent"); // Log for debugging
+  console.log("Rendering LandingPageWorkflowPageContent"); 
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
   
@@ -961,6 +961,7 @@ function LandingPageWorkflowPageContent() {
   ];
 
   const mainCardMarginTop = `mt-[${TOP_BAR_HEIGHT_PX}px]`;
+  console.log("Rendering LandingPageWorkflowPage (default export)");
 
   return (
     <div className={`container mx-auto py-8 px-4 md:px-6 lg:px-8 ${mainCardMarginTop}`}>
@@ -985,7 +986,7 @@ function LandingPageWorkflowPageContent() {
       />
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
-        <CardHeader className="p-6 text-center">
+        <CardHeader className="px-6 pt-10 pb-6 text-center">
           <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
@@ -1026,7 +1027,7 @@ function LandingPageWorkflowPageContent() {
 }
 
 export default function LandingPageWorkflowPage() {
-    console.log("Rendering LandingPageWorkflowPage (default export)"); // Log for debugging
+    console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [, setBlueprintForWalkthroughTrigger] = useState<PageBlueprint | null>(null);
 
@@ -1050,6 +1051,3 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
-
-
-    
