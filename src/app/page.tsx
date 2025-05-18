@@ -347,7 +347,7 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 function LandingPageWorkflowPageContent() {
-  console.log("Rendering LandingPageWorkflowPageContent"); 
+  console.log("Rendering LandingPageWorkflowPageContent (inside provider)"); 
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
   
@@ -356,7 +356,12 @@ function LandingPageWorkflowPageContent() {
 
   useEffect(() => {
     if (uiActions.showWelcomeModal) {
-      walkthrough.startWalkthrough(); // This will show the WelcomeModal via WalkthroughContext
+      // Check if walkthrough context is available before calling its methods
+      if (walkthrough && typeof walkthrough.startWalkthrough === 'function') {
+        walkthrough.startWalkthrough(); // This will show the WelcomeModal via WalkthroughContext
+      } else {
+        console.warn("Walkthrough context or startWalkthrough function not available when trying to show welcome modal.");
+      }
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
@@ -388,7 +393,7 @@ function LandingPageWorkflowPageContent() {
   }, [toast]);
 
   useEffect(() => {
-    if ((window as any).__blueprintForWalkthrough && !uploadedBlueprint) {
+    if (typeof window !== 'undefined' && (window as any).__blueprintForWalkthrough && !uploadedBlueprint) {
         handleLoadBlueprintFromWalkthrough((window as any).__blueprintForWalkthrough);
         delete (window as any).__blueprintForWalkthrough; 
     }
@@ -503,13 +508,13 @@ function LandingPageWorkflowPageContent() {
 
 
   useEffect(() => {
-    if (activePageBlueprint.heroConfig && (activeAccordionItem === 'step-4' || (walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.requiresAccordionOpen === 'step-4'))) {
+    if (activePageBlueprint.heroConfig && (activeAccordionItem === 'step-4' || (walkthrough?.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.requiresAccordionOpen === 'step-4'))) {
       setHeadlineA(activePageBlueprint.heroConfig.headline || '');
       setSubHeadlineA(activePageBlueprint.heroConfig.subHeadline || '');
       setCtaTextA(activePageBlueprint.heroConfig.ctaText || '');
       setCampaignFocusA((activePageBlueprint.heroConfig as any)?.campaignFocus || ''); 
     }
-  }, [activePageBlueprint.heroConfig, activeAccordionItem, walkthrough.isWalkthroughActive, walkthrough.currentStepIndex, walkthrough.steps]);
+  }, [activePageBlueprint.heroConfig, activeAccordionItem, walkthrough?.isWalkthroughActive, walkthrough?.currentStepIndex, walkthrough?.steps]);
 
   useEffect(() => {
     setIsLoadingABTestConfigs(true);
@@ -968,7 +973,7 @@ function LandingPageWorkflowPageContent() {
       <div id="walkthrough-end-target" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
       
       <WelcomeModal />
-      {walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex] && (
+      {walkthrough?.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex] && (
         <HighlightCallout
           step={walkthrough.steps[walkthrough.currentStepIndex]}
           onNext={walkthrough.nextStep}
@@ -986,7 +991,7 @@ function LandingPageWorkflowPageContent() {
       />
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
-        <CardHeader className="px-6 pt-10 pb-6 text-center">
+        <CardHeader className="px-6 pt-14 pb-6 text-center">
           <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
@@ -1001,7 +1006,7 @@ function LandingPageWorkflowPageContent() {
             onValueChange={(value) => {
                 const newActiveItem = value === activeAccordionItem ? undefined : value; 
                 setActiveAccordionItem(newActiveItem);
-                if (walkthrough.isWalkthroughActive && newActiveItem) {
+                if (walkthrough?.isWalkthroughActive && newActiveItem && walkthrough.setAccordionToOpen) {
                   walkthrough.setAccordionToOpen(newActiveItem);
                 }
             }}
@@ -1029,17 +1034,23 @@ function LandingPageWorkflowPageContent() {
 export default function LandingPageWorkflowPage() {
     console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
-    const [, setBlueprintForWalkthroughTrigger] = useState<PageBlueprint | null>(null);
+    const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
+
 
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
-        setActiveAccordionItemForWalkthrough(value);
+        console.log("Walkthrough wants to change accordion to:", value);
+        setActiveAccordionItemForWalkthrough(value); 
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
+        console.log("Walkthrough wants to load blueprint:", blueprint);
+        // This function now directly sets a state that the content component can react to.
+        // However, the primary mechanism for blueprint loading remains the file input in Step 1
+        // for actual user interaction. This is specifically for the walkthrough.
         if (typeof window !== 'undefined') {
-            (window as any).__blueprintForWalkthrough = blueprint;
+            (window as any).__blueprintForWalkthrough = blueprint; // Keep for immediate effect if needed
         }
-        setBlueprintForWalkthroughTrigger(blueprint); 
+        setBlueprintForWalkthrough(blueprint); // Update state
     }, []);
     
     return (
