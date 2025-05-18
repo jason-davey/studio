@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, MessageSquare as GlobalMessageSquareIcon } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -347,11 +347,18 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 function LandingPageWorkflowPageContent() {
+  console.log("Rendering LandingPageWorkflowPageContent"); // Log for debugging
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
   
   const walkthrough = useWalkthrough();
   const uiActions = useUIActions();
+
+  useEffect(() => {
+    if (uiActions.showWelcomeModal) {
+      walkthrough.startWalkthrough();
+    }
+  }, [uiActions.showWelcomeModal, walkthrough]);
 
 
   const [uploadedBlueprint, setUploadedBlueprint] = useState<PageBlueprint | null>(null);
@@ -500,7 +507,7 @@ function LandingPageWorkflowPageContent() {
       setHeadlineA(activePageBlueprint.heroConfig.headline || '');
       setSubHeadlineA(activePageBlueprint.heroConfig.subHeadline || '');
       setCtaTextA(activePageBlueprint.heroConfig.ctaText || '');
-      setCampaignFocusA((activePageBlueprint.heroConfig as any)?.campaignFocus || ''); // campaignFocus is not on RecommendationHeroConfig
+      setCampaignFocusA((activePageBlueprint.heroConfig as any)?.campaignFocus || ''); 
     }
   }, [activePageBlueprint.heroConfig, activeAccordionItem, walkthrough.isWalkthroughActive, walkthrough.currentStepIndex, walkthrough.steps]);
 
@@ -953,7 +960,6 @@ function LandingPageWorkflowPageContent() {
     }
   ];
 
-  // Calculate dynamic top margin based on TopBar height
   const mainCardMarginTop = `mt-[${TOP_BAR_HEIGHT_PX}px]`;
 
   return (
@@ -980,7 +986,6 @@ function LandingPageWorkflowPageContent() {
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
         <CardHeader className="p-6 text-center">
-          {/* Top bar buttons are now in global TopBar.tsx */}
           <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
@@ -1021,6 +1026,7 @@ function LandingPageWorkflowPageContent() {
 }
 
 export default function LandingPageWorkflowPage() {
+    console.log("Rendering LandingPageWorkflowPage (default export)"); // Log for debugging
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [, setBlueprintForWalkthroughTrigger] = useState<PageBlueprint | null>(null);
 
@@ -1034,39 +1040,16 @@ export default function LandingPageWorkflowPage() {
         }
         setBlueprintForWalkthroughTrigger(blueprint); 
     }, []);
-
-    // Subscribe to UIActionContext for modal triggers from TopBar
-    const uiActions = useUIActions(); 
-    const walkthrough = useWalkthrough(); // To get access to actuallyStartWalkthrough
-
-    useEffect(() => {
-        // If the welcome modal was requested to be shown (e.g., by TopBar)
-        // then we also initiate the walkthrough context's logic for showing the welcome modal.
-        // This links the global UIAction to the specific walkthrough context's welcome modal state.
-        // Note: This might feel a bit indirect. A more advanced setup might use a single global state.
-        if (uiActions.showWelcomeModal) {
-            walkthrough.startWalkthrough(); // This sets walkthrough's internal showWelcomeModal
-        }
-    }, [uiActions.showWelcomeModal, walkthrough]);
-
-
+    
     return (
         <WalkthroughProvider 
             onAccordionChange={handleAccordionChangeForWalkthrough}
             onLoadBlueprint={handleLoadBlueprintForWalkthrough}
-            // Pass UIAction context setters to WalkthroughProvider if it needs to control global modals directly
-            // This part requires care to avoid circular dependencies or overly complex state.
-            // For now, WelcomeModal within WalkthroughProvider uses its own context's showWelcomeModal.
-            // And TopBar uses UIActionContext's showWelcomeModal.
-            // We need to bridge these if TopBar's button should directly control Walkthrough's welcome.
-
-            // Revised approach: WalkthroughContext's `startWalkthrough` sets its *own* showWelcomeModal.
-            // TopBar's button sets UIActionContext's `showWelcomeModal`.
-            // We need a way for page.tsx to observe UIAction's `showWelcomeModal` and then tell `walkthrough.startWalkthrough()`.
-
         >
-          {/* Pass the UIAction setters to the content so it can control modals from TopBar */}
           <LandingPageWorkflowPageContent />
         </WalkthroughProvider>
     );
 }
+
+
+    
