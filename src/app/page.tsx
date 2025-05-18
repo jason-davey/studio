@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ChangeEvent, useEffect, useCallback }_ from 'react';
+import { useState, type ChangeEvent, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -356,7 +356,7 @@ function LandingPageWorkflowPageContent() {
 
   useEffect(() => {
     if (uiActions.showWelcomeModal) {
-      walkthrough.startWalkthrough();
+      walkthrough.startWalkthrough(); // This will show the WelcomeModal via WalkthroughContext
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
@@ -961,7 +961,7 @@ function LandingPageWorkflowPageContent() {
   ];
 
   const mainCardMarginTop = `mt-[${TOP_BAR_HEIGHT_PX}px]`;
-  console.log("Rendering LandingPageWorkflowPage (default export)");
+  console.log("Rendering LandingPageWorkflowPageContent (inside provider)");
 
   return (
     <div className={`container mx-auto py-8 px-4 md:px-6 lg:px-8 ${mainCardMarginTop}`}>
@@ -1051,3 +1051,4 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
+
