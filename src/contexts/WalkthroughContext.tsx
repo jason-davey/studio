@@ -13,6 +13,7 @@ export interface WalkthroughStep {
   placement?: 'top' | 'bottom' | 'left' | 'right' | 'center';
   requiresAccordionOpen?: string; // Value of the accordion item that needs to be open
   autoLoadBlueprint?: boolean; // If true, loads a sample blueprint for this step
+  isModal?: boolean; // If true, this step is a modal (like the welcome modal)
 }
 
 interface WalkthroughContextType {
@@ -20,15 +21,15 @@ interface WalkthroughContextType {
   currentStepIndex: number;
   showWelcomeModal: boolean;
   steps: WalkthroughStep[];
-  startWalkthrough: () => void;
+  startWalkthrough: () => void; // Shows welcome modal
+  actuallyStartWalkthrough: () => void; // Begins the tour steps
   endWalkthrough: () => void;
   nextStep: () => void;
   prevStep: () => void;
   goToStep: (index: number) => void;
   setShowWelcomeModal: (show: boolean) => void;
-  setAccordionToOpen: (accordionValue: string | undefined) => void; // To control accordion from context
-  autoLoadSampleBlueprint: () => void; // To load sample data
-  actuallyStartWalkthrough?: () => void; // Made optional as it's mainly for internal use after modal
+  setAccordionToOpen: (accordionValue: string | undefined) => void;
+  autoLoadSampleBlueprint: () => void; 
 }
 
 const WalkthroughContext = createContext<WalkthroughContextType | undefined>(undefined);
@@ -54,7 +55,7 @@ const sampleBlueprintForWalkthrough: PageBlueprint = {
     { name: "Walkthrough User", location: "Guideland", avatarImageUrl: "https://placehold.co/100x100.png", avatarInitial: "WU", quote: "This walkthrough is helping me learn!", since: "Just now" }
   ],
   trustSignals: [
-    { type: "award", text: "Best Onboarding Award (Sample)", imageUrl: "https://placehold.co/150x50.png" }
+    { type: "award", text: "Best Onboarding Award (Sample)", imageUrl: "https://placehold.co/150x50.png", details: "Awarded for excellence" }
   ],
   formConfig: {
     headline: "Sample Form Headline for Walkthrough",
@@ -64,18 +65,19 @@ const sampleBlueprintForWalkthrough: PageBlueprint = {
 
 
 export const walkthroughStepsDefinition: WalkthroughStep[] = [
+  // Step 0 is implicitly the WelcomeModal handled by showWelcomeModal
   {
     id: 'step-1-intro',
-    selector: '#step-1-accordion-trigger', // Target the trigger for Step 1
+    selector: '#step-1-accordion-trigger', 
     title: 'Step 1: Review Recommendations',
     content: 'This is where you start! Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections.',
     placement: 'bottom',
     requiresAccordionOpen: 'step-1',
-    autoLoadBlueprint: true,
+    autoLoadBlueprint: true, // This will be triggered when actuallyStartWalkthrough is called
   },
   {
     id: 'step-1-upload',
-    selector: '#blueprint-upload-input', // Assuming your file input has this ID
+    selector: '#blueprint-upload-input', 
     title: 'Upload Your Blueprint',
     content: 'Click here to select and upload your JSON blueprint file. For this tour, we\'ve pre-loaded a sample for you!',
     placement: 'bottom',
@@ -99,9 +101,9 @@ export const walkthroughStepsDefinition: WalkthroughStep[] = [
   },
    {
     id: 'step-3-hero-adjust',
-    selector: '#heroHeadline-input', // Target a specific input in step 3
+    selector: '#heroHeadline-adjust-input', 
     title: 'Adjusting Hero Headline',
-    content: 'For example, you can edit the main Hero Headline here. Changes will reflect in the Step 2 preview.',
+    content: 'For example, you can edit the main Hero Headline here. Changes will reflect in the Step 2 preview and pre-fill Version A in Step 4.',
     placement: 'bottom',
     requiresAccordionOpen: 'step-3',
   },
@@ -115,7 +117,7 @@ export const walkthroughStepsDefinition: WalkthroughStep[] = [
   },
   {
     id: 'step-4-ai-suggest',
-    selector: '#ai-suggest-headlineA-button', // Example ID for an AI button
+    selector: '#ai-suggest-headlineA-button', 
     title: 'AI Content Suggestions',
     content: 'Use the ✨ AI buttons to get suggestions for headlines, sub-headlines, and CTAs. You can also provide a "Campaign Focus" to guide the AI.',
     placement: 'bottom',
@@ -139,18 +141,17 @@ export const walkthroughStepsDefinition: WalkthroughStep[] = [
   },
   {
     id: 'walkthrough-end',
-    selector: '#walkthrough-end-target', // A dummy selector or a real one if you have a final "well done" spot
+    selector: '#walkthrough-end-target', 
     title: 'Tour Complete!',
     content: 'You\'ve completed the guided tour! You can restart this tour anytime from the help button in the header. Now you\'re ready to build amazing landing pages.',
-    placement: 'center',
+    placement: 'center', // This will make the callout appear in the center of the screen
   }
 ];
 
-// Props for the provider
 interface WalkthroughProviderProps {
   children: ReactNode;
-  onAccordionChange: (value: string | undefined) => void; // Callback to open accordion items
-  onLoadBlueprint: (blueprint: PageBlueprint) => void; // Callback to load blueprint in main page
+  onAccordionChange: (value: string | undefined) => void; 
+  onLoadBlueprint: (blueprint: PageBlueprint) => void; 
 }
 
 
@@ -167,42 +168,47 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
       if (currentStepDetails.requiresAccordionOpen) {
         onAccordionChange(currentStepDetails.requiresAccordionOpen);
       }
-      // Auto-load blueprint handled by actuallyStartWalkthrough and useEffect
+      if (currentStepDetails.autoLoadBlueprint && newStepIndex === 0 && isWalkthroughActive) { 
+          // Auto-load only if it's the first content step and tour is active
+          onLoadBlueprint(sampleBlueprintForWalkthrough);
+      }
       setCurrentStepIndex(newStepIndex);
     }
-  }, [steps, onAccordionChange]);
+  }, [steps, onAccordionChange, onLoadBlueprint, isWalkthroughActive]);
 
 
   const startWalkthrough = useCallback(() => {
+    endWalkthrough(); // Reset any previous state
     setShowWelcomeModal(true);
-    // Actual start (setting step 0) will happen after welcome modal is closed
-  }, []);
+  }, [/* no dependencies needed for this initial part */]);
 
-  const effectivelyStartWalkthrough = useCallback(() => {
+  const actuallyStartWalkthrough = useCallback(() => {
     setIsWalkthroughActive(true);
+    setShowWelcomeModal(false); // Ensure modal is closed
     // Check if the first step requires blueprint loading
     if (steps[0]?.autoLoadBlueprint) {
       onLoadBlueprint(sampleBlueprintForWalkthrough);
     }
-    // Open accordion for the first step if needed
     if (steps[0]?.requiresAccordionOpen) {
         onAccordionChange(steps[0].requiresAccordionOpen);
     }
-    setCurrentStepIndex(0); // Explicitly set to first step
+    setCurrentStepIndex(0); 
   }, [steps, onLoadBlueprint, onAccordionChange]);
 
   const endWalkthrough = useCallback(() => {
     setIsWalkthroughActive(false);
     setCurrentStepIndex(0);
     setShowWelcomeModal(false);
-    onAccordionChange(undefined); // Optionally close all accordions or reset to default
+    // Optionally close all accordions or reset to default accordion
+    // onAccordionChange(undefined); // Example: Close all
+    onAccordionChange('step-1'); // Example: Reset to first step open
   }, [onAccordionChange]);
 
   const nextStep = useCallback(() => {
     if (currentStepIndex < steps.length - 1) {
       handleStepChangeLogic(currentStepIndex + 1);
     } else {
-      endWalkthrough(); // End tour if it's the last step
+      endWalkthrough(); 
     }
   }, [currentStepIndex, steps.length, endWalkthrough, handleStepChangeLogic]);
 
@@ -216,21 +222,11 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
     if (index >= 0 && index < steps.length) {
       handleStepChangeLogic(index);
     }
-  }, [steps, handleStepChangeLogic]);
+  }, [steps.length, handleStepChangeLogic]);
   
-  const autoLoadSampleBlueprint = useCallback(() => {
+  const autoLoadSampleBlueprint = useCallback(() => { // Still useful if called directly
       onLoadBlueprint(sampleBlueprintForWalkthrough);
   }, [onLoadBlueprint]);
-
-
-  // This effect handles the auto-loading when the walkthrough becomes active
-  // and the modal is not shown (meaning it was just closed to start the tour)
-  useEffect(() => {
-    if (isWalkthroughActive && !showWelcomeModal && currentStepIndex === 0) {
-        // This logic is now part of `effectivelyStartWalkthrough`
-        // to ensure it happens exactly once when the tour truly begins.
-    }
-  }, [isWalkthroughActive, showWelcomeModal, currentStepIndex, steps, autoLoadSampleBlueprint, effectivelyStartWalkthrough, onAccordionChange]);
 
 
   const value = {
@@ -238,8 +234,8 @@ export const WalkthroughProvider: React.FC<WalkthroughProviderProps> = ({ childr
     currentStepIndex,
     showWelcomeModal,
     steps,
-    startWalkthrough, // This will just show the modal
-    actuallyStartWalkthrough: effectivelyStartWalkthrough, // This starts the tour steps
+    startWalkthrough, 
+    actuallyStartWalkthrough,
     endWalkthrough,
     nextStep,
     prevStep,
@@ -263,4 +259,3 @@ export const useWalkthrough = (): WalkthroughContextType => {
   }
   return context;
 };
-

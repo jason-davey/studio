@@ -1,4 +1,5 @@
 
+
 # Landing Page Creation & A/B Testing: Playbook
 
 This playbook guides you through using the in-app tools to create landing page content, configure A/B tests for its Hero Section, and then deploy these tests using Firebase. It also explains how to use the Guided Walkthrough feature.
@@ -189,8 +190,9 @@ When designing new content variations for your A/B tests, ensure they align with
 - **JSON Blueprint Upload Error (Step 1):**
     *   Ensure the file is valid JSON and matches the expected `PageBlueprint` structure (see `src/types/recommendations.ts`). Key fields like `pageName` and `heroConfig` are usually expected.
 - **Guided Walkthrough Issues:**
-    *   If elements are not highlighting correctly, ensure the page structure hasn't significantly changed from when the walkthrough was defined.
-    *   If the walkthrough seems stuck, try ending it and restarting.
+    *   If elements are not highlighting correctly, ensure the page structure hasn't significantly changed from when the walkthrough was defined. The `HighlightCallout.tsx` component relies on CSS selectors to find elements.
+    *   If the walkthrough seems stuck, try ending it and restarting. Check the browser's developer console for any errors.
+    *   The walkthrough attempts to open the correct accordion panel for each step. If this isn't working, ensure the `requiresAccordionOpen` property in `WalkthroughContext.tsx` matches the `value` of the `AccordionItem` in `src/app/page.tsx`.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
 

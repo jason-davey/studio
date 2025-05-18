@@ -1,4 +1,5 @@
 
+
 # Technical Specification & Release Guide: SecureTomorrow Landing Page A/B Testing Platform
 
 ## 1. Introduction
@@ -49,7 +50,7 @@ This Next.js application serves as a comprehensive platform for creating, config
     - `src/components/`: Reusable UI components.
         - `landing/`: Components specific to the landing page (Header, HeroSection, BenefitsSection, TestimonialsSection, TrustSignalsSection, AwardsSection, QuoteFormSection, Footer).
         - `ui/`: ShadCN UI components.
-        - `walkthrough/`: Components for the guided walkthrough (WelcomeModal, HighlightCallout - to be implemented).
+        - `walkthrough/`: Components for the guided walkthrough (WelcomeModal, HighlightCallout).
     - `src/contexts/`: Global React Context providers.
         - `WalkthroughContext.tsx`: Manages state and logic for the guided walkthrough.
     - `src/lib/`: Utility functions and Firebase initialization.
@@ -77,7 +78,7 @@ This Next.js application serves as a comprehensive platform for creating, config
     - AI suggestions, campaign focus, and local storage management (`heroConfigManager`) are handled within this step for A/B test Hero variations.
 - **Walkthrough State (`WalkthroughContext.tsx`):**
     - Manages `isWalkthroughActive`, `currentStepIndex`, `showWelcomeModal`.
-    - Controls the display and progression of the guided tour.
+    - Controls the display and progression of the guided tour via `HighlightCallout.tsx`.
 - **Firebase Integration:**
     - Initialization: `src/lib/firebase.ts`.
     - Remote Config: The application prepares JSON for `heroConfig` parameter (from Step 4). Actual A/B test setup occurs in Firebase Console.
@@ -102,7 +103,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 5.  **Step 5: Prepare for Deployment:**
     - User is guided to take the generated JSON to the Firebase Console.
     - `PLAYBOOK.md` provides detailed Firebase setup instructions.
-- **Guided Walkthrough:** Can be initiated from the main page header, guiding users through each step and key features.
+- **Guided Walkthrough:** Can be initiated from the main page header, guiding users through each step and key features using `HighlightCallout.tsx`.
 - **AB Tasty:** If used, its script (added to `layout.tsx`) would override content for tests managed by that platform.
 
 ## 3. Core Features & Functionality (by Step)
@@ -124,7 +125,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 ### 3.3. Step 3: Adjust Content
 - **Purpose:** To allow fine-tuning of the landing page content derived from the blueprint.
 - **Features:**
-    - Input fields for `activePageBlueprint.heroConfig` (headline, subHeadline, ctaText, uniqueValueProposition, heroImageUrl).
+    - Input fields for `activePageBlueprint.heroConfig` (headline, subHeadline, ctaText, uniqueValueProposition, heroImageUrl, heroImageAltText).
     - Input fields for `activePageBlueprint.benefits` (title, description, icon for each benefit).
     - Input fields for `activePageBlueprint.testimonials` (name, location, quote, avatarImageUrl, avatarInitial, since for each testimonial).
     - Input fields for `activePageBlueprint.trustSignals` (text, details, source, imageUrl, type for each signal).
@@ -168,13 +169,13 @@ This Next.js application serves as a comprehensive platform for creating, config
 ### 3.9. Guided Walkthrough (`src/contexts/WalkthroughContext.tsx`, `src/components/walkthrough/*`)
 - **Purpose:** To provide an interactive onboarding experience for new users.
 - **Features:**
-    - Welcome modal.
+    - Welcome modal (`WelcomeModal.tsx`).
     - Step-by-step guidance through the 5-step workflow.
-    - Highlighting of key UI elements.
+    - Highlighting of key UI elements using `HighlightCallout.tsx`.
     - Text callouts explaining features.
     - Ability to start/end the tour.
     - Auto-loading of sample data for a hands-on experience.
-    - Managed via React Context for global state.
+    - Managed via React Context (`WalkthroughContext.tsx`) for global state.
 
 ## 4. Setup & Configuration
 
@@ -204,7 +205,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit flow for AI suggestions.
 - **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages state for the guided walkthrough.
-- **`src/components/walkthrough/`:** Contains UI components for the walkthrough.
+- **`src/components/walkthrough/`:** Contains UI components for the walkthrough (WelcomeModal, HighlightCallout).
 - Other files as previously listed.
 
 ## 7. Branding Guidelines Reference
@@ -218,10 +219,10 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Error Handling & Validation:** Enhance error handling for JSON parsing (Step 1), AI flows, and localStorage operations. Implement more robust validation for the `PageBlueprint` structure.
 - **AI Theme Generation:** Explore AI capabilities to suggest campaign themes or focus areas based on product information or goals, rather than just generating copy based on a user-provided theme.
 - **Direct Integration with Keyword Platforms (Backend Task):** Requires backend development for secure API access to platforms like Google Ads API to fetch keywords.
-- **Advanced UX Analysis AI (External Tool):** The "Recommendations Engine" is envisioned to perform advanced UX evaluations (Nielsen's Heuristics, WCAG, COM-B model). The output of this engine (the `PageBlueprint`) is consumed by this application.
+- **Advanced UX Analysis AI (External Tool):** The "Recommendations Engine" is envisioned to perform advanced UX evaluations (Nielsen's Heuristics, WCAG, COM-B model), as described by the user. The output of this engine (the `PageBlueprint`) is consumed by this application. This application does not implement these UX analysis rubrics itself but provides the UI to work with the resulting content recommendations.
 - **Rate Limiting/Cost for AI:** Monitor and manage if using paid AI models extensively.
 - The `useRemoteConfigValue` hook is not currently used by the main landing page structure in the 5-step workflow (as content comes from `activePageBlueprint`) but remains available for other potential uses.
-- **Walkthrough Enhancements:** More sophisticated element highlighting, dynamic step generation based on app state.
+- **Walkthrough Enhancements:** More sophisticated element highlighting (e.g., using SVG overlays for non-rectangular shapes), dynamic step generation based on app state, better handling of scrolling and off-screen elements.
 
 ## 9. User Flow Diagram (Conceptual for 5-Step Workflow)
 
