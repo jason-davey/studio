@@ -3,9 +3,17 @@
 
 This playbook guides you through using the in-app tools to create landing page content, configure A/B tests for its Hero Section, and then deploy these tests using Firebase. It also explains how to use the Guided Walkthrough and Feedback features.
 
-## 0. Overview of the In-App Workflow
+## 0. Getting Started: Login & Overview
 
-The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to the "Guided Walkthrough" and "Provide Feedback" features at all times.
+Before you can use the landing page builder, you'll need to log in or register for an account.
+
+- **Login:** If you have an account, navigate to `/login`.
+- **Register:** If you're a new user, navigate to `/register` to create an account.
+
+Once logged in, you will be directed to the main application.
+
+### 0.1. Overview of the In-App Workflow
+The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to the "Guided Walkthrough," "Provide Feedback," your user email, and a "Logout" button at all times.
 
 1.  **Step 1: Review Recommendations:** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections. The Guided Walkthrough can also load a sample blueprint for you.
 2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
@@ -13,7 +21,7 @@ The application provides a 5-step guided workflow using an accordion interface o
 4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions and manage configurations locally.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
 
-## 0.1. Using the Guided Walkthrough (Recommended for First-Time Users)
+### 0.2. Using the Guided Walkthrough (Recommended for First-Time Users)
 The application includes a Guided Walkthrough to help you learn its features.
 - **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon and text label) located in the **fixed top bar** of the application.
 - **Welcome Modal:** A welcome message will appear. Click "Start Tour" to begin.
@@ -21,7 +29,7 @@ The application includes a Guided Walkthrough to help you learn its features.
 - **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
 - **Re-accessing:** You can start the walkthrough again at any time by clicking the "Guided Walkthrough" button in the top bar.
 
-## 0.2. Providing Feedback or Reporting Issues
+### 0.3. Providing Feedback or Reporting Issues
 If you encounter any issues, have suggestions, or want to provide general feedback:
 - Click the **"Provide Feedback" button** (with MessageSquare icon and text label) located in the **fixed top bar** of the application.
 - A modal dialog will appear.
@@ -48,6 +56,7 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 ### 2.1. Firebase Project Setup
 - Ensure you have a Firebase project created. If not, create one at [https://console.firebase.google.com/](https://console.firebase.google.com/).
 - Your project should have Billing enabled if you plan to use Firebase A/B Testing features extensively.
+- **Enable Firebase Authentication:** In your Firebase project, go to "Authentication" (under Build) and enable the "Email/Password" sign-in provider. You'll need to add users here manually for now, or they can register through the app's `/register` page.
 - Ensure Genkit AI models (like Gemini via Google AI plugin) are configured if you intend to use the AI suggestion features and are outside any free quotas or need specific project billing.
 
 ### 2.2. Add Firebase to Your Next.js App
@@ -64,7 +73,7 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 
 ## 3. Using the In-App Landing Page Workflow Tool (Root `/` path)
 
-Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool, organized into 5 accordion steps. The "Guided Walkthrough" and "Provide Feedback" buttons are always available in the top bar.
+Navigate to the root of your application (e.g., `http://localhost:9002/`) after logging in. This is the main tool, organized into 5 accordion steps. The "Guided Walkthrough" and "Provide Feedback" buttons are always available in the top bar.
 
 ### 3.1. Step 1: Review Recommendations
 - This is the first panel in the accordion.
@@ -195,6 +204,9 @@ When designing new content variations for your A/B tests, ensure they align with
     *   Ensure "Publish changes" in Firebase Remote Config. Note fetch intervals.
 - **A/B Test Not Starting/No Data:**
     *   Check activation event. Verify Firebase Analytics.
+- **Login/Registration Issues:**
+    *   Ensure Firebase Authentication is enabled in your Firebase project (Email/Password provider).
+    *   Verify `.env.local` Firebase configuration is correct and the dev server was restarted.
 - **Preview Page (`/landing-preview`) Not Showing Correct Content:**
     *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `configA` and `configB`. The preview page currently only shows Hero section variations by default (other sections are based on a default or static blueprint).
 - **AI Suggestions Not Working:**

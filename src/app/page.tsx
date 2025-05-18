@@ -15,11 +15,14 @@ import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
+import Header from '@/components/landing/Header'; // Not used in 5-step, but keep for /landing-preview
 import HeroSection from '@/components/landing/HeroSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
+import Footer from '@/components/landing/Footer'; // Not used in 5-step, but keep for /landing-preview
+
 
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig } from '@/types/recommendations';
 
@@ -29,18 +32,20 @@ import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
+import { useAuth } from '@/contexts/AuthContext'; // Import useAuth
+import { useRouter } from 'next/navigation'; // Import useRouter
 
 
 interface ABTestHeroConfig {
   headline: string;
   subHeadline: string;
   ctaText: string;
+  campaignFocus?: string;
 }
 
 interface ManagedABTestHeroConfig extends ABTestHeroConfig {
   id: string;
   name: string;
-  campaignFocus?: string;
 }
 
 const AB_TEST_LOCAL_STORAGE_KEY = 'heroConfigManager';
@@ -355,7 +360,6 @@ function LandingPageWorkflowPageContent() {
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-
   useEffect(() => {
     if (uiActions.showWelcomeModal) {
       walkthrough.startWalkthrough();
@@ -464,7 +468,6 @@ function LandingPageWorkflowPageContent() {
         toast({ title: 'Invalid File Type', description: 'Please upload a .json file.', variant: 'destructive' });
       }
     }
-    // Reset file input to allow re-uploading the same file if needed
     if (event.target) {
         event.target.value = '';
     }
@@ -542,15 +545,23 @@ function LandingPageWorkflowPageContent() {
     }
   }, [savedABTestConfigs, isLoadingABTestConfigs, toast]);
 
-  const generateABTestJson = (headline: string, subHeadline: string, ctaText: string): string => {
-    if (!headline.trim() && !subHeadline.trim() && !ctaText.trim()) {
-      return JSON.stringify({ headline: '', subHeadline: '', ctaText: '' } as ABTestHeroConfig, null, 2);
+  const generateABTestJson = (headline: string, subHeadline: string, ctaText: string, campaignFocus: string): string => {
+    const config: ABTestHeroConfig = {
+        headline: headline.trim(),
+        subHeadline: subHeadline.trim(),
+        ctaText: ctaText.trim(),
+    };
+    if (campaignFocus.trim()) {
+        config.campaignFocus = campaignFocus.trim();
     }
-    return JSON.stringify({ headline: headline.trim(), subHeadline: subHeadline.trim(), ctaText: ctaText.trim() } as ABTestHeroConfig, null, 2);
+    if (!config.headline && !config.subHeadline && !config.ctaText && !config.campaignFocus) {
+        return JSON.stringify({ headline: '', subHeadline: '', ctaText: '', campaignFocus: '' } as ABTestHeroConfig, null, 2);
+    }
+    return JSON.stringify(config, null, 2);
   };
 
-  useEffect(() => { setGeneratedJsonA(generateABTestJson(headlineA, subHeadlineA, ctaTextA)); }, [headlineA, subHeadlineA, ctaTextA]);
-  useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB)); }, [headlineB, subHeadlineB, ctaTextB]);
+  useEffect(() => { setGeneratedJsonA(generateABTestJson(headlineA, subHeadlineA, ctaTextA, campaignFocusA)); }, [headlineA, subHeadlineA, ctaTextA, campaignFocusA]);
+  useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB, campaignFocusB)); }, [headlineB, subHeadlineB, ctaTextB, campaignFocusB]);
 
   const handleRenderABTestPreview = () => {
     let configAIsValid = false;
@@ -642,7 +653,7 @@ function LandingPageWorkflowPageContent() {
             <CardDescription>Upload the JSON file containing recommendations for your landing page. This blueprint will populate the content for subsequent steps.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="flex items-center space-x-3">
+             <div className="flex items-center space-x-3">
                 <Input
                   id="blueprint-upload-input"
                   type="file"
@@ -1054,6 +1065,9 @@ function LandingPageWorkflowPageContent() {
 
 export default function LandingPageWorkflowPage() {
     console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
+    const { currentUser, loading: authLoading } = useAuth();
+    const router = useRouter();
+
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
 
@@ -1070,6 +1084,21 @@ export default function LandingPageWorkflowPage() {
         }
         setBlueprintForWalkthrough(blueprint);
     }, []);
+
+    useEffect(() => {
+      if (!authLoading && !currentUser) {
+        router.push('/login');
+      }
+    }, [currentUser, authLoading, router]);
+
+    if (authLoading || !currentUser) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-foreground">Loading Application...</p>
+        </div>
+      );
+    }
 
     return (
         <WalkthroughProvider

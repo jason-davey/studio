@@ -6,9 +6,12 @@
 ### 1.1. Purpose of the Application
 This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content, configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords) and includes a guided walkthrough for new users. It also integrates Datadog RUM for performance monitoring and includes a client-side feedback mechanism, both accessible via a fixed top navigation bar.
 
+The application is designed with a UX-AI collaborative development approach, aiming for rapid prototyping and iterative feature enhancement to quickly deliver value.
+
 ### 1.2. High-Level Functionality
-- **Global Fixed Top Bar:** Contains buttons for "Provide Feedback" and "Guided Walkthrough," always visible.
-- **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy) on the main page.
+- **User Authentication:** Users can register and log in using Firebase Authentication. Access to the main application features requires authentication.
+- **Global Fixed Top Bar:** Contains buttons for "Provide Feedback," "Guided Walkthrough," user status, and "Logout." Always visible.
+- **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy) on the main page (`/`).
 - **Recommendation Ingestion (Step 1):** Allows users to upload a JSON file (`PageBlueprint`) containing recommendations for landing page content.
 - **Page Preview (Step 2):** Displays a preview of the landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on the ingested or adjusted blueprint.
 - **Content Adjustment (Step 3):** Enables users to fine-tune the content of the landing page blueprint for all major sections via input fields.
@@ -19,7 +22,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Side-by-Side A/B Preview (Step 4):** Renders two selected A/B content variations on a dedicated preview page (`/landing-preview`) for visual comparison.
 - **Deployment Guidance (Step 5):** Provides instructions for using the generated JSON in Firebase.
 - **Guided Walkthrough:** An interactive, step-by-step tour of the application's features, highlighting key UI elements and explaining their purpose. Includes a welcome modal and can auto-load sample data. Triggered from the fixed top bar.
-- **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing.
+- **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Firebase Auth for user management.
 - **AB Tasty Integration Point:** Placeholder for AB Tasty's JavaScript snippet.
 - **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
 - **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console. Triggered from the fixed top bar.
@@ -29,7 +32,8 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **UI Library:** React
 - **UI Components:** ShadCN UI
 - **Styling:** Tailwind CSS
-- **State Management:** React Hooks (useState, useEffect, useCallback), React Context (`UIActionContext` for global modal triggers, `WalkthroughContext` for tour logic).
+- **State Management:** React Hooks (useState, useEffect, useCallback), React Context (`UIActionContext` for global modal triggers, `WalkthroughContext` for tour logic, `AuthContext` for user session).
+- **Authentication:** Firebase Authentication (Email/Password).
 - **A/B Test Content Delivery (Primary Method):** Firebase Remote Config
 - **A/B Test Management (Primary Method):** Firebase A/B Testing
 - **Client-Side A/B Testing (Alternative/External):** Placeholder for AB Tasty
@@ -38,36 +42,84 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Performance Monitoring:** Datadog RUM Browser SDK.
 - **Forms:** React Hook Form with Zod for validation.
 
+### 1.4. Development Approach & Methodology
+This application has been developed using a highly iterative and collaborative UX-AI model:
+- **UX-Driven Requirements:** User experience (UX) defines the core needs, user flows, and desired outcomes.
+- **AI-Assisted Implementation:** The AI partner (Firebase Studio App Prototyper) translates these requirements into functional code, including React components, Next.js pages, Genkit flows, and state management logic.
+- **Rapid Prototyping & Iteration:** Features are built incrementally, allowing for quick feedback loops and adjustments. This contrasts with traditional waterfall models by delivering working software faster.
+- **Conversational Development:** Changes and new features are discussed and refined through natural language interaction, with the AI generating code changes in a structured format (XML).
+- **Focus on Value:** Prioritizes features that deliver direct value to the end-users (e.g., marketing team) and the business.
+
+### 1.5. Development Chronology & Key Milestones (Conceptual)
+This provides a high-level overview of the development journey:
+- **Phase 0 (Foundation - Initial Setup):**
+    - Basic Next.js project structure.
+    - ShadCN UI and Tailwind CSS integration.
+- **Phase 1 (Core A/B Content Preparation - Approx. Day 1):**
+    - `/admin/ab-test-configurator` page for generating `heroConfig` JSON.
+    - Client-side Hero section preview on `/landing-preview`.
+    - `PLAYBOOK.md` drafted for Firebase A/B test setup.
+    - *Value:* Empowered marketing to generate Firebase-compatible JSON.
+- **Phase 2 (Integrated Workflow & Content Structure - Approx. Day 2-3):**
+    - Refactored UI into a 5-Step Accordion Workflow on the main page (`/`).
+    - Defined `PageBlueprint` type for ingesting external recommendations (Step 1).
+    - Implemented multi-section preview (Hero, Benefits, Testimonials, Trust Signals, Form) in Step 2.
+    - Created multi-section content adjustment UI in Step 3.
+    - Migrated A/B Hero configurator to Step 4.
+    - *Value:* Structured app around a clear user journey, enabling intake of external recommendations and holistic page content management.
+- **Phase 3 (AI Integration & Usability Enhancements - Approx. Day 3-4):**
+    - Genkit AI flow (`suggestHeroCopy`) for content suggestions (Headline, Sub-Headline, CTA) in Step 4.
+    - Added "Campaign Focus" input to tailor AI suggestions.
+    - Implemented Local Storage for saving/loading A/B Hero configurations (including campaign focus).
+    - Guided Walkthrough feature (Top Bar button, Welcome Modal, `WalkthroughContext`, `HighlightCallout`).
+    - User Feedback Modal (Top Bar button, `UIActionContext`, mailto link for submission).
+    - Globally Fixed Top Bar for Walkthrough and Feedback.
+    - Datadog RUM integration for performance monitoring.
+    - *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability.
+- **Phase 4 (Authentication & Role Foundation - Current):**
+    - Implementation of Firebase Authentication (Login, Register).
+    - `AuthContext` for managing user sessions.
+    - Basic route protection for main application content.
+    - *Value:* Establishes foundation for multi-user application and future role-based access.
+
 ## 2. Application Architecture
 
 ### 2.1. Frontend Structure
 - **Next.js App Router:**
-    - `/` (root): Main 5-step workflow application (`src/app/page.tsx`).
-    - `/landing-preview`: Side-by-side A/B test preview page.
+    - `/`: Main 5-step workflow application (`src/app/page.tsx`). Requires authentication.
+    - `/landing-preview`: Side-by-side A/B test preview page. Publicly accessible.
+    - `/login`: User login page (`src/app/login/page.tsx`).
+    - `/register`: User registration page (`src/app/register/page.tsx`).
+    - *(Future)* `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md` for admin users.
 - **Key Directories:**
     - `src/app/`: Page components and layouts.
-        - `layout.tsx`: Root layout, includes `UIActionProvider`, `TopBar`, `Toaster`, AB Tasty script placeholder, and Datadog RUM initialization.
+        - `layout.tsx`: Root layout, includes `UIActionProvider`, `AuthProvider`, `TopBar`, `Toaster`, AB Tasty script placeholder, and Datadog RUM initialization.
         - `page.tsx`: Main 5-step workflow application with `WalkthroughProvider`.
+        - `login/page.tsx`, `register/page.tsx`: Authentication pages.
     - `src/components/`:
-        - `landing/`: Components specific to the landing page sections.
+        - `landing/`: Components specific to the landing page sections (Hero, Benefits, etc.).
         - `ui/`: ShadCN UI components.
-        - `walkthrough/`: Components for the guided walkthrough.
+        - `walkthrough/`: Components for the guided walkthrough (`WelcomeModal`, `HighlightCallout`).
         - `shared/`: Components like `FeedbackModal.tsx`.
         - `layout/`: Global layout components like `TopBar.tsx`.
     - `src/contexts/`:
+        - `AuthContext.tsx`: Manages user authentication state (currentUser, loading).
         - `UIActionContext.tsx`: Manages global UI states like feedback/welcome modal visibility.
         - `WalkthroughContext.tsx`: Manages state and logic for the guided walkthrough.
     - `src/lib/`: Utilities and integrations (Firebase, Datadog).
-    - `src/hooks/`: Custom React hooks.
-    - `src/ai/`: Genkit related files.
-    - `src/types/`: TypeScript type definitions.
+    - `src/hooks/`: Custom React hooks (`useToast`, `useRemoteConfigValue`, `useMobile`).
+    - `src/ai/`: Genkit related files (flows, base configuration).
+    - `src/types/`: TypeScript type definitions (`recommendations.ts`).
 
 ### 2.2. Data Flow & State Management
+- **`AuthContext` (`src/contexts/AuthContext.tsx`):** Globally manages `currentUser` and authentication loading state. Populated by Firebase `onAuthStateChanged`.
 - **`UIActionContext` (`src/contexts/UIActionContext.tsx`):** Manages visibility of `FeedbackModal` and `WelcomeModal` (for walkthrough), triggered by `TopBar`.
 - **`WalkthroughContext` (`src/contexts/WalkthroughContext.tsx`):** Manages the state of the interactive guided tour, including current step and active status. Triggered by `WelcomeModal` via `UIActionContext`.
 - **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds `PageBlueprint` data, loaded in Step 1, previewed in Step 2, modified in Step 3.
-- **A/B Test Configurations (Step 4 in `src/app/page.tsx`):** Local storage management for A/B Hero variants.
-- **Firebase Integration:** Prepares JSON for `heroConfig`. Actual A/B test setup in Firebase Console.
+- **A/B Test Configurations (Step 4 in `src/app/page.tsx`):** Local storage management for A/B Hero variants (headline, sub-headline, CTA, campaignFocus). *(Future: Could be migrated to Firestore per user).*
+- **Firebase Integration:**
+    - Firebase Authentication for user login/registration.
+    - Prepares JSON for `heroConfig` (Remote Config). Actual A/B test setup in Firebase Console.
 - **Genkit/AI:** `suggestHeroCopyFlow` called from client-side in Step 4.
 - **Datadog RUM:** Initialized in `layout.tsx`.
 
@@ -77,16 +129,88 @@ This Next.js application serves as a comprehensive platform for creating, config
 3.  **Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`.
 4.  **Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local configs, preview on `/landing-preview`.
 5.  **Step 5: Prepare for Deployment:** Guidance for Firebase.
-- **Global Top Bar:** Provides access to Guided Walkthrough (via `WelcomeModal`) and Feedback (via `FeedbackModal`).
+- **Global Top Bar:** Provides access to Guided Walkthrough (via `WelcomeModal`), Feedback (via `FeedbackModal`), User Status, and Logout.
+
+### 2.4. System Architecture & Connections
+
+```mermaid
+graph TD
+    subgraph UserBrowser [User's Browser - Next.js App]
+        App[Landing Page Workflow App]
+        App_PageTsx["src/app/page.tsx (Main Workflow)"]
+        App_LayoutTsx["src/app/layout.tsx (Global Layout)"]
+        App_AuthContext["AuthContext"]
+        App_UIActionContext["UIActionContext"]
+        App_WalkthroughContext["WalkthroughContext"]
+        App_TopBar["TopBar Component"]
+        App_FeedbackModal["FeedbackModal Component"]
+        App_WelcomeModal["WelcomeModal Component"]
+        App_GenkitFlow["Genkit: suggestHeroCopyFlow (Client Call)"]
+        App_LocalStorage["Browser Local Storage (A/B Hero Configs)"]
+        App_DatadogLib["Datadog RUM SDK"]
+
+        App_LayoutTsx --> App_AuthContext
+        App_LayoutTsx --> App_UIActionContext
+        App_LayoutTsx --> App_TopBar
+        App_LayoutTsx --> App_DatadogLib
+
+        App_PageTsx --> App_WalkthroughContext
+        App_PageTsx --> App_FeedbackModal
+        App_PageTsx --> App_WelcomeModal
+        App_PageTsx <--> App_LocalStorage
+        App_PageTsx --> App_GenkitFlow
+
+        App_TopBar --> App_UIActionContext
+        App_TopBar --> App_AuthContext
+
+        App_WelcomeModal --> App_UIActionContext
+        App_WelcomeModal --> App_WalkthroughContext
+        App_FeedbackModal --> App_UIActionContext
+    end
+
+    subgraph FirebaseServices [Firebase Project]
+        FB_Auth[Firebase Authentication]
+        FB_RemoteConfig[Firebase Remote Config (heroConfig)]
+        FB_ABTesting[Firebase A/B Testing (via Console)]
+        FB_Hosting[Firebase Hosting (Next.js App Deployed)]
+        FB_AI_Models["Google AI Models (via GoogleAI Plugin for Genkit)"]
+    end
+
+    subgraph ExternalSystems [External Systems & Tools]
+        RecommendationsEngine["External: Recommendations Engine (Generates PageBlueprint JSON)"]
+        DatadogPlatform["Datadog Platform"]
+        ServiceNow["ServiceNow (Conceptual - via Backend)"]
+        UserEmailClient["User's Email Client"]
+    end
+
+    UserBrowser -- Firebase SDK Calls --> FB_Auth
+    UserBrowser -- Firebase SDK Calls --> FB_RemoteConfig
+    App_GenkitFlow -- API Call via Genkit --> FB_AI_Models
+    App_DatadogLib -- Sends RUM Data --> DatadogPlatform
+
+    RecommendationsEngine -- "*.json File Upload" --> App_PageTsx
+
+    App_FeedbackModal -- "mailto: (current)" --> UserEmailClient
+    %% App_FeedbackModal -- "HTTPS to Backend (future)" --> ServiceNow_Backend[Backend API for ServiceNow]
+    %% ServiceNow_Backend -- "ServiceNow API" --> ServiceNow
+    
+    style UserBrowser fill:#e6f7ff,stroke:#0052cc
+    style FirebaseServices fill:#fff0e6,stroke:#ff6600
+    style ExternalSystems fill:#e6ffe6,stroke:#006400
+```
 
 ## 3. Core Features & Functionality
 
+(Sections 3.1 to 3.10 from previous version of this spec remain largely relevant, with updates to reflect context changes and authentication.)
+
 ### 3.1. Global Top Bar (`src/components/layout/TopBar.tsx`)
-- **Purpose:** Provides persistent access to global application utilities.
+- **Purpose:** Provides persistent access to global application utilities and user session info.
 - **Features:**
     - Fixed position at the top of the viewport.
+    - Displays logged-in user's email (if authenticated).
     - "Provide Feedback" button: Triggers `FeedbackModal` via `UIActionContext`.
     - "Guided Walkthrough" button: Triggers `WelcomeModal` via `UIActionContext`.
+    - "Logout" button: Signs out the user via Firebase Auth.
     - Styled with background and bottom border for visual separation.
 
 ### 3.2. User Feedback Mechanism (`src/components/shared/FeedbackModal.tsx`)
@@ -95,7 +219,7 @@ This Next.js application serves as a comprehensive platform for creating, config
     - Triggered from the global `TopBar`.
     - Modal dialog managed by `UIActionContext`.
     - Form for feedback type, description, email (uses `react-hook-form`).
-    - On submission: logs to console, generates `mailto:` link, shows toast.
+    - On submission: logs to console, generates `mailto:` link, shows toast. *(Future: Could send to backend for ServiceNow integration).*
 
 ### 3.3. Guided Walkthrough (`src/contexts/WalkthroughContext.tsx`, `src/components/walkthrough/*`)
 - **Purpose:** Interactive onboarding for new users.
@@ -105,47 +229,61 @@ This Next.js application serves as a comprehensive platform for creating, config
     - `WalkthroughContext.tsx`: Manages tour state, step definitions, and progression.
     - Auto-loads sample `PageBlueprint` for demonstration.
 
-### 3.4. Step 1: Review Recommendations (in `src/app/page.tsx`)
-- File input for JSON `PageBlueprint`. Parsing and storage in `activePageBlueprint`.
+ (Rest of Step-by-Step feature descriptions largely remain the same, now framed within an authenticated context)
 
-### 3.5. Step 2: Build & Preview Page (in `src/app/page.tsx`)
-- Renders `HeroSection`, `BenefitsSection`, `TestimonialsSection`, `TrustSignalsSection`, `QuoteFormSection` from `activePageBlueprint`.
-
-### 3.6. Step 3: Adjust Content (in `src/app/page.tsx`)
-- Input fields for `activePageBlueprint` (Page Info, Hero, Benefits, Testimonials, Trust Signals, Form Config).
-
-### 3.7. Step 4: Configure A/B Test (in `src/app/page.tsx`)
-- Dual Version Input (A & B) for Hero content.
-- Campaign Focus Input for AI tailoring.
-- AI Content Suggestions (`suggestHeroCopyFlow`).
-- JSON Generation, Copy & Download.
-- Local Configuration Management (includes `campaignFocus`).
-- "Render Pages for Preview" button to `/landing-preview`.
-
-### 3.8. Step 5: Prepare for Deployment (in `src/app/page.tsx`)
-- Instructional text, link to Firebase Console, reference to `PLAYBOOK.md`.
-
-### 3.9. Landing Preview Page (`src/app/landing-preview/page.tsx`)
-- Displays two Hero Section versions side-by-side from URL query parameters.
-
-### 3.10. Performance Monitoring (`src/lib/datadog.ts`, `src/app/layout.tsx`)
-- Datadog RUM Browser SDK integration.
 
 ## 4. Setup & Configuration
 
 ### 4.1. Environment Variables (`.env.local`)
-- Required for Firebase SDK.
+- **Required for Firebase SDK (Auth, Remote Config etc.):**
+    - `NEXT_PUBLIC_FIREBASE_API_KEY`
+    - `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN`
+    - `NEXT_PUBLIC_FIREBASE_PROJECT_ID`
+    - `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET`
+    - `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID`
+    - `NEXT_PUBLIC_FIREBASE_APP_ID`
+    - `NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID`
 - Genkit flows using Google AI require API key setup.
-- Datadog RUM Integration: `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`, etc.
+- **Datadog RUM Integration:**
+    - `NEXT_PUBLIC_DATADOG_CLIENT_TOKEN`
+    - `NEXT_PUBLIC_DATADOG_APPLICATION_ID`
+    - `NEXT_PUBLIC_DATADOG_SITE` (e.g., 'datadoghq.com')
+    - `NEXT_PUBLIC_DATADOG_SERVICE_NAME` (e.g., 'securetomorrow-landing-builder')
+    - `NEXT_PUBLIC_APP_ENV` (e.g., 'development', 'production')
+    - `NEXT_PUBLIC_APP_VERSION` (e.g., '1.0.0')
 
 ### 4.2. Firebase Project Setup
-- See `PLAYBOOK.md`. Remote Config for `heroConfig`.
+- See `PLAYBOOK.md`.
+- Firebase Authentication must be enabled (e.g., Email/Password provider).
+- Remote Config for `heroConfig`.
 
 ### 4.3. AB Tasty Integration
 - Placeholder in `src/app/layout.tsx`.
 
 ### 4.4. Datadog Setup
 - Datadog account and RUM application setup required.
+
+### 4.5. Considerations for Scalability, Risk, Compliance, & Data
+- **Scalability:**
+    - Client-side focus with reliance on scalable cloud services (Firebase, Datadog).
+    - User-specific data (A/B Hero configs) stored in browser Local Storage. *(Future: Migrating this to Firestore per user would enhance scalability and cross-device access but adds complexity).*
+    - Future token-based design system (mentioned by UX) could aid multi-brand scalability.
+- **Risk Mitigation:**
+    - No direct client-side modification of Firebase A/B tests or sensitive Remote Config parameters. Users are guided to the secure Firebase Console.
+    - Generated JSON is for content; platform management for Firebase is separate.
+    - Firebase Auth handles secure user authentication.
+- **Compliance & Data Sovereignty:**
+    - The app primarily handles content configuration.
+    - Data entered by users for A/B Hero configs is stored in their browser's Local Storage.
+    - Feedback data (if email provided) is currently handled via `mailto:` or console.
+    - User authentication data (email, hashed password) is managed by Firebase Authentication, subject to Firebase's data handling policies and your project's region settings.
+    - Firebase/Datadog data residency depends on their respective configurations.
+    - Any production deployment must adhere to Greenstone's data governance policies.
+- **Legal:** The "free legal will" mentioned in example content is illustrative; actual legal product details are external to this tool's function.
+- **APIs:**
+    - Internal: Genkit flow for AI suggestions.
+    - External (Conceptual/Future): ServiceNow (via backend), Google Keyword platforms (via backend).
+- **Tracking:** Datadog RUM for performance and errors.
 
 ## 5. Development & Build
 - App: `npm run dev` (or `yarn dev`) - `http://localhost:9002`.
@@ -155,8 +293,10 @@ This Next.js application serves as a comprehensive platform for creating, config
 ## 6. Key Files & Directories
 - **`PLAYBOOK.md`:** User-focused guide for A/B testing and app features.
 - **`TECHNICAL_SPEC.md`:** (This document).
-- **`src/app/layout.tsx`:** Root layout, global providers (`UIActionProvider`), `TopBar`.
+- **`src/app/layout.tsx`:** Root layout, global providers (`UIActionProvider`, `AuthProvider`), `TopBar`.
 - **`src/app/page.tsx`:** Main 5-step workflow application, `WalkthroughProvider`.
+- **`src/app/login/page.tsx`, `src/app/register/page.tsx`:** Authentication pages.
+- **`src/contexts/AuthContext.tsx`:** Manages user authentication session.
 - **`src/contexts/UIActionContext.tsx`:** Manages global modal states.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages guided tour state.
 - **`src/components/layout/TopBar.tsx`:** Fixed top navigation bar.
@@ -164,70 +304,86 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **`src/components/walkthrough/`:** Walkthrough UI components.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit AI flow.
 - **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
+- **`src/lib/firebase.ts`:** Firebase SDK initialization (App, Auth, Remote Config).
 - **`src/lib/datadog.ts`:** Datadog RUM initialization.
 
 ## 7. Branding Guidelines Reference
 - Defined in `PLAYBOOK.md`.
 
 ## 8. Future Considerations / Roadmap
+- **Role-Based Access Control (RBAC):**
+    - **Admin Role:** Access to a rendered version of `TECHNICAL_SPEC.md` in-app.
+    - **Creator Role:** Access to the main 5-step workflow.
+    - Secure role management (potentially via Firebase Admin SDK on a backend or custom claims).
+- **User-Specific Data Persistence (Firestore):**
+    - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs, instead of Local Storage.
+    - Store feedback submissions in Firestore, potentially linking to user IDs.
+- **Backend for ServiceNow Integration:** Create a Firebase Cloud Function or other backend service to securely create ServiceNow tickets from feedback submissions.
 - **Design System Tokens Integration:** Foundation laid by component structure. Future work could involve defining and consuming brand tokens for multi-brand theming.
 - **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider more conversational AI interaction for content adjustments.
 - **Full Blueprint Editing (Step 3):** Allow adding/deleting items in lists (Benefits, Testimonials, Trust Signals).
-- **Backend for Firebase Management & ServiceNow Integration:** For direct Remote Config updates and ServiceNow ticket creation.
-- **Error Handling & Validation:** Enhance for JSON parsing, AI flows, localStorage.
 - **AI Theme Generation:** AI to suggest campaign themes.
 - **Direct Integration with Keyword Platforms (Backend Task):** For fetching keywords.
-- **Advanced UX Analysis AI (External Tool):** The "Recommendations Engine" (external to this app) is envisioned to perform advanced UX evaluations.
-- **Walkthrough Enhancements:** More sophisticated highlighting, dynamic steps.
-- **UX Rubrics for Recommendations Engine:** The external "Recommendations Engine" (which produces the `PageBlueprint`) is responsible for incorporating analysis based on Usability Heuristics (Nielsen), Accessibility (WCAG), and behavioral models like COM-B. This application consumes the resulting content recommendations from the `PageBlueprint`. Future enhancements to the *engine* could feed even more refined blueprints into this application.
+- **Advanced UX Analysis AI (External Tool - Recommendations Engine):** The external "Recommendations Engine" (which produces the `PageBlueprint`) is responsible for incorporating analysis based on Usability Heuristics (Nielsen), Accessibility (WCAG), and behavioral models like COM-B, as detailed by UX. This application consumes the resulting content recommendations from the `PageBlueprint`.
 
-## 9. User Flow Diagram (Conceptual for 5-Step Workflow with Top Bar)
+## 9. User Flow Diagram (Conceptual for 5-Step Workflow with Top Bar & Auth)
 ```mermaid
 graph TD
-    subgraph Global UI
-        TopBar[Fixed Top Bar]
-        TopBar -- Click Guided Walkthrough --> WT_Trigger(UIAction: Show Welcome Modal)
-        TopBar -- Click Provide Feedback --> FB_Trigger(UIAction: Show Feedback Modal)
+    subgraph GlobalUI [Global UI & Auth]
+        UserNav["User visits /"]
+        UserNav -- No Auth --> LoginPage["/login Page"]
+        UserNav -- Auth --> AppLoad["Load Main App (/ page.tsx)"]
+        LoginPage -- Credentials --> FirebaseSDK_Auth["Firebase Auth SDK"]
+        FirebaseSDK_Auth -- Success --> AppLoad
+        FirebaseSDK_Auth -- Failure --> LoginPage
+        RegisterPage["/register Page"] -- Credentials --> FirebaseSDK_Auth
+        TopBarComp["TopBar Component"]
+        TopBarComp -- Click Guided Walkthrough --> UIAction_ShowWelcomeModal["UIAction: Show Welcome Modal"]
+        TopBarComp -- Click Provide Feedback --> UIAction_ShowFeedbackModal["UIAction: Show Feedback Modal"]
+        TopBarComp -- Click Logout --> FirebaseSDK_Auth_SignOut["Firebase Auth SDK: Sign Out"]
+        FirebaseSDK_Auth_SignOut --> LoginPage
     end
 
-    subgraph Main Application Flow
-        Start(User Navigates to App /) --> PageLoad(Page Loads with Accordion)
-        PageLoad --> AccordionInterface(5-Step Accordion UI)
+    subgraph MainApp [Main Application Flow (Authenticated)]
+        AppLoad --> AccordionInterface["5-Step Accordion UI (page.tsx)"]
         
-        AccordionInterface -- Step 1 --> R_Panel(Step 1: Review Recommendations Panel)
-        R_Panel -- Upload JSON Blueprint / Walkthrough Loads Sample --> R_Loaded{Blueprint Loaded?}
-        R_Loaded -- Yes --> ABP_State(State: activePageBlueprint Updated)
+        AccordionInterface -- Step 1 --> Step1Panel["Step 1: Review Recommendations Panel"]
+        Step1Panel -- Upload JSON Blueprint / Walkthrough Loads Sample --> BlueprintState["State: activePageBlueprint Updated"]
         
-        ABP_State --> P_Panel(Step 2: Build & Preview Panel)
-        P_Panel -- Display Full Page Preview from activePageBlueprint --> P_Reviewed{User Reviews Preview}
+        BlueprintState --> Step2Panel["Step 2: Build & Preview Panel"]
+        Step2Panel -- Display Full Page Preview --> UserReviewsPreview{"User Reviews Preview"}
         
-        P_Reviewed --> A_Panel(Step 3: Adjust Content Panel)
-        A_Panel -- User Edits Content Sections --> ABP_State
+        UserReviewsPreview --> Step3Panel["Step 3: Adjust Content Panel"]
+        Step3Panel -- User Edits Content Sections --> BlueprintState
         
-        ABP_State --> AB_Panel(Step 4: Configure A/B Test Panel)
-        AB_Panel -- Pre-fill Version A --> AB_Config{User Configures Version B, Uses AI, Saves/Loads Local}
-        AB_Config -- Render A/B Preview --> PreviewPage[/landing-preview Page]
-        AB_Config -- Generate/Copy/Download JSON --> D_Panel(Step 5: Prepare for Deployment Panel)
+        BlueprintState --> Step4Panel["Step 4: Configure A/B Test Panel"]
+        Step4Panel -- Pre-fill Version A --> UserConfiguresAB{"User Configures Version B, Uses AI, Saves/Loads Local"}
+        UserConfiguresAB -- Render A/B Preview --> PreviewPage["/landing-preview Page"]
+        UserConfiguresAB -- Generate/Copy/Download JSON --> Step5Panel["Step 5: Prepare for Deployment Panel"]
         
-        D_Panel -- User Takes JSON to Firebase --> FirebaseSetup[Firebase A/B Test Setup]
-        FirebaseSetup -- Refer to PLAYBOOK.md --> FirebaseSetup
-        R_Loaded -- No / Error --> R_Panel
+        Step5Panel -- User Takes JSON to Firebase --> FirebaseConsoleSetup["External: Firebase A/B Test Setup"]
+        FirebaseConsoleSetup -- Refer to PLAYBOOK.md --> FirebaseConsoleSetup
     end
 
-    subgraph Walkthrough Sub-Flow
-        WT_Trigger --> WC_Modal_Display(UIActionContext -> WelcomeModal Displays)
-        WC_Modal_Display -- Start Tour --> WC_StartTour(WalkthroughContext: actuallyStartWalkthrough)
-        WC_StartTour --> WT_Active(Walkthrough Active: HighlightCallout shows step 1)
-        WT_Active -- Next/Prev --> WT_Active
-        WT_Active -- End Tour --> WT_End(Walkthrough Ends)
-        WC_Modal_Display -- Skip Tour --> WT_End
+    subgraph WalkthroughFlow [Walkthrough Sub-Flow]
+        UIAction_ShowWelcomeModal --> WelcomeModalDisplay["UIActionContext -> WelcomeModal Displays"]
+        WelcomeModalDisplay -- Start Tour --> WalkthroughStart["WalkthroughContext: actuallyStartWalkthrough"]
+        WalkthroughStart --> WalkthroughActive["Walkthrough Active: HighlightCallout shows steps"]
+        WalkthroughActive -- Next/Prev/End --> WalkthroughEnd["Walkthrough Ends / Modal Closes"]
+        WelcomeModalDisplay -- Skip Tour --> WalkthroughEnd
     end
 
-    subgraph Feedback Sub-Flow
-        FB_Trigger --> FB_Modal_Display(UIActionContext -> FeedbackModal Displays)
-        FB_Modal_Display -- User Fills Form & Submits --> FB_Action{Feedback Action}
-        FB_Action -- Log to Console & Generate Mailto --> FB_Toast(Toast with Mailto Link)
-        FB_Toast -- User Clicks Link --> FB_EmailClient(Opens User's Email Client)
-        FB_Modal_Display -- User Cancels/Closes --> PageLoad
+    subgraph FeedbackFlow [Feedback Sub-Flow]
+        UIAction_ShowFeedbackModal --> FeedbackModalDisplay["UIActionContext -> FeedbackModal Displays"]
+        FeedbackModalDisplay -- User Fills Form & Submits --> FeedbackAction{"Feedback Action: Log & Mailto"}
+        FeedbackAction --> FeedbackToast["Toast with Mailto Link"]
+        FeedbackToast -- User Clicks Link --> UserEmailClient_External["External: User's Email Client"]
+        FeedbackModalDisplay -- User Cancels/Closes --> FeedbackModalDisplay
     end
+
+    style GlobalUI fill:#f0f8ff,stroke:#4682b4
+    style MainApp fill:#e6ffe6,stroke:#2e8b57
+    style WalkthroughFlow fill:#fff0f5,stroke:#db7093
+    style FeedbackFlow fill:#fffff0,stroke:#ffd700
 ```
+
