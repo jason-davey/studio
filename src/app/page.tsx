@@ -475,7 +475,8 @@ function LandingPageWorkflowPageContent() {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...prev[section], 
+        // Ensure the nested object exists before spreading
+        ...(prev[section] || {}), 
         [field]: value,
       },
     }));
@@ -568,7 +569,7 @@ function LandingPageWorkflowPageContent() {
     }
   };
 
-  const saveConfiguration = (version: 'A' | 'B') => {
+ const saveConfiguration = (version: 'A' | 'B') => {
     const name = (version === 'A' ? nameForConfigA : nameForConfigB).trim();
     const currentHeadline = version === 'A' ? headlineA : headlineB;
     const currentSubHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
@@ -579,28 +580,30 @@ function LandingPageWorkflowPageContent() {
     if (!currentHeadline.trim() && !currentSubHeadline.trim() && !currentCtaText.trim()) {
       toast({ title: 'Content Missing', description: `Please fill in Headline, Sub-Headline, and CTA Text for Version ${version} before saving.`, variant: 'destructive' }); return;
     }
-
-    const newConfig: ManagedABTestHeroConfig = { 
-      id: Date.now().toString(), 
-      name, 
-      headline: currentHeadline.trim(), 
-      subHeadline: currentSubHeadline.trim(), 
-      ctaText: currentCtaText.trim(),
-      campaignFocus: currentCampaignFocus || undefined 
+    
+    const newConfigData: Omit<ManagedABTestHeroConfig, 'id' | 'name'> = {
+        headline: currentHeadline.trim(),
+        subHeadline: currentSubHeadline.trim(),
+        ctaText: currentCtaText.trim(),
+        campaignFocus: currentCampaignFocus || undefined,
     };
 
     setSavedABTestConfigs(prev => {
       const existingConfigIndex = prev.findIndex(c => c.name === name);
       if (existingConfigIndex !== -1) {
+        // Update existing config
         const updatedConfigs = [...prev];
-        updatedConfigs[existingConfigIndex] = { ...prev[existingConfigIndex], ...newConfig, id: prev[existingConfigIndex].id }; 
+        updatedConfigs[existingConfigIndex] = { ...prev[existingConfigIndex], ...newConfigData };
         toast({ title: 'A/B Config Updated!', description: `Local configuration "${name}" has been updated.` });
         return updatedConfigs;
       } else {
+        // Add new config
+        const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, ...newConfigData };
         toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
         return [...prev, newConfig];
       }
     });
+
     if (version === 'A') setNameForConfigA(''); else setNameForConfigB('');
   };
 
@@ -1067,3 +1070,5 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
+
+    
