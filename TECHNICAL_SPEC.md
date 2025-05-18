@@ -17,11 +17,11 @@ This Next.js application serves as a comprehensive platform for creating, config
 - **Local Configuration Management (Step 4):** Enables users to save, load, and manage different A/B test content configurations (including campaign focus) directly in their browser's local storage.
 - **Side-by-Side A/B Preview (Step 4):** Renders two selected A/B content variations on a dedicated preview page (`/landing-preview`) for visual comparison.
 - **Deployment Guidance (Step 5):** Provides instructions for using the generated JSON in Firebase.
-- **Guided Walkthrough:** An interactive, step-by-step tour of the application's features, highlighting key UI elements and explaining their purpose. Includes a welcome modal and can auto-load sample data.
+- **Guided Walkthrough:** An interactive, step-by-step tour of the application's features, highlighting key UI elements and explaining their purpose. Includes a welcome modal and can auto-load sample data. Triggered by a "Guided Walkthrough" button with icon and text.
 - **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Actual test setup and management occur in the Firebase console.
 - **AB Tasty Integration Point:** Includes a placeholder for integrating AB Tasty's JavaScript snippet for client-side A/B testing.
 - **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
-- **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console.
+- **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console. Triggered by a "Provide Feedback" button with icon and text.
 
 ### 1.3. Key Technologies Used
 - **Frontend Framework:** Next.js (with App Router)
@@ -185,11 +185,12 @@ This Next.js application serves as a comprehensive platform for creating, config
     - Ability to start/end the tour.
     - Auto-loading of sample data for a hands-on experience.
     - Managed via React Context (`WalkthroughContext.tsx`) for global state.
+    - Triggered by a "Guided Walkthrough" button with icon and text in the main app header.
 
 ### 3.10. User Feedback Mechanism (`src/components/shared/FeedbackModal.tsx`)
 - **Purpose:** Allow users to report issues, suggest features, or provide general feedback.
 - **Features:**
-    - Triggered by a "Provide Feedback" button in the main app header.
+    - Triggered by a "Provide Feedback" button with icon and text in the main app header.
     - Modal dialog with fields for feedback type, description, and optional email.
     - Uses `react-hook-form` for validation.
     - On submission, logs data to the console and generates a `mailto:` link for sending to a pre-configured service desk email.

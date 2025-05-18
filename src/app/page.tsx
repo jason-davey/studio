@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, LifeBuoy, MessageSquare } from 'lucide-react'; // Added MessageSquare
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, LifeBuoy, MessageSquare } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -26,7 +26,7 @@ import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, Re
 import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
 import WelcomeModal from '@/components/walkthrough/WelcomeModal';
 import HighlightCallout from '@/components/walkthrough/HighlightCallout';
-import FeedbackModal from '@/components/shared/FeedbackModal'; // Import FeedbackModal
+import FeedbackModal from '@/components/shared/FeedbackModal';
 
 
 // Types for A/B Test Configurator (Step 4)
@@ -213,7 +213,7 @@ const ABTestConfigForm = ({
       <Separator />
       <div>
         <div className="flex items-center justify-between">
-          <Label htmlFor={`headline${version}`} className="text-base font-medium text-foreground">Headline</Label>
+          <Label htmlFor={`headline${version}-input`} className="text-base font-medium text-foreground">Headline</Label>
           {renderAISuggestionPopover(headline, 'headline', aiStateHeadline, setAiStateHeadline, setHeadline, version === 'A' ? 'ai-suggest-headlineA-button' : 'ai-suggest-headlineB-button')}
         </div>
         <Input
@@ -227,7 +227,7 @@ const ABTestConfigForm = ({
       </div>
       <div>
         <div className="flex items-center justify-between">
-          <Label htmlFor={`subHeadline${version}`} className="text-base font-medium text-foreground">Sub-Headline</Label>
+          <Label htmlFor={`subHeadline${version}-input`} className="text-base font-medium text-foreground">Sub-Headline</Label>
           {renderAISuggestionPopover(subHeadline, 'subHeadline', aiStateSubHeadline, setAiStateSubHeadline, setSubHeadline)}
         </div>
         <Input
@@ -241,7 +241,7 @@ const ABTestConfigForm = ({
       </div>
       <div>
         <div className="flex items-center justify-between">
-         <Label htmlFor={`ctaText${version}`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
+         <Label htmlFor={`ctaText${version}-input`} className="text-base font-medium text-foreground">Call to Action (CTA) Text</Label>
          {renderAISuggestionPopover(ctaText, 'ctaText', aiStateCtaText, setAiStateCtaText, setCtaText)}
         </div>
         <Input
@@ -276,7 +276,7 @@ const ABTestConfigForm = ({
         </div>
       )}
       <div className="mt-6 pt-4 border-t border-border space-y-3">
-        <Label htmlFor={`configName${version}`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
+        <Label htmlFor={`configName${version}-input`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
         <div className="flex gap-2">
           <Input
             id={`configName${version}-input`} 
@@ -383,9 +383,11 @@ function LandingPageWorkflowPageContent() {
   }, [toast]);
 
   useEffect(() => {
+    // This effect ensures that if the walkthrough context tries to load a blueprint
+    // before this component is fully ready, we still capture and apply it.
     if ((window as any).__blueprintForWalkthrough && !uploadedBlueprint) {
         handleLoadBlueprintFromWalkthrough((window as any).__blueprintForWalkthrough);
-        delete (window as any).__blueprintForWalkthrough; 
+        delete (window as any).__blueprintForWalkthrough; // Clean up global flag
     }
   }, [uploadedBlueprint, handleLoadBlueprintFromWalkthrough]);
 
@@ -424,8 +426,10 @@ function LandingPageWorkflowPageContent() {
           try {
             const content = e.target?.result as string;
             const parsedJson = JSON.parse(content) as PageBlueprint;
-            if (parsedJson.pageName) { 
+            // Basic validation: check for a few key properties to ensure it's likely our blueprint
+            if (parsedJson.pageName && parsedJson.heroConfig) { 
               setUploadedBlueprint(parsedJson);
+              // Ensure all parts of activePageBlueprint are initialized to avoid undefined issues
               setActivePageBlueprint({
                 pageName: parsedJson.pageName || 'Untitled Page',
                 targetUrl: parsedJson.targetUrl || '',
@@ -441,7 +445,7 @@ function LandingPageWorkflowPageContent() {
               toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
               setActiveAccordionItem('step-2'); 
             } else {
-              throw new Error('Invalid blueprint structure. Missing pageName.');
+              throw new Error('Invalid blueprint structure. Missing required fields like pageName or heroConfig.');
             }
           } catch (error: any) {
             console.error('Error parsing JSON file:', error);
@@ -459,54 +463,63 @@ function LandingPageWorkflowPageContent() {
         toast({ title: 'Invalid File Type', description: 'Please upload a .json file.', variant: 'destructive' });
       }
     }
-    event.target.value = ''; 
+    event.target.value = ''; // Reset file input
   };
 
+  // --- Step 3 Logic ---
+  // Generic handler for simple top-level string fields in activePageBlueprint
   const handleSimpleBlueprintFieldChange = <K extends keyof PageBlueprint>(field: K, value: PageBlueprint[K]) => {
     setActivePageBlueprint(prev => ({ ...prev, [field]: value }));
   };
 
+  // Handler for nested objects like heroConfig and formConfig
   const handleNestedObjectChange = <S extends 'heroConfig' | 'formConfig'>(
     section: S,
-    field: keyof NonNullable<PageBlueprint[S]>,
+    field: keyof NonNullable<PageBlueprint[S]>, // Ensures field is a key of heroConfig or formConfig
     value: string
   ) => {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...prev[section],
+        ...prev[section], // Spread existing properties of the section
         [field]: value,
       },
     }));
   };
 
+  // Handler for arrays of objects like benefits, testimonials, trustSignals
   const handleArrayObjectChange = <S extends 'benefits' | 'testimonials' | 'trustSignals'>(
     section: S,
     index: number,
-    field: keyof NonNullable<PageBlueprint[S]>[number],
+    field: keyof NonNullable<PageBlueprint[S]>[number], // Ensures field is a key of an item in the array
     value: string | boolean // Updated to allow boolean for potential future checkbox use
   ) => {
     setActivePageBlueprint(prev => {
-      const newArray = [...(prev[section] || [])];
+      const newArray = [...(prev[section] || [])]; // Clone the array
       if (newArray[index]) {
         // Create a new object for the item being changed to ensure immutability
         newArray[index] = {
-          ...newArray[index],
+          ...newArray[index], // Spread existing properties of the item
           [field]: value,
         };
       }
-      return { ...prev, [section]: newArray as any }; 
+      return { ...prev, [section]: newArray as any }; // Cast as any due to complex typing, ensure it matches defined types
     });
   };
 
+
+  // --- Step 4 Logic ---
+  // Populate Step 4's Version A from activePageBlueprint when Step 4 opens or blueprint changes
   useEffect(() => {
     if (activePageBlueprint.heroConfig && (activeAccordionItem === 'step-4' || (walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.requiresAccordionOpen === 'step-4'))) {
       setHeadlineA(activePageBlueprint.heroConfig.headline || '');
       setSubHeadlineA(activePageBlueprint.heroConfig.subHeadline || '');
       setCtaTextA(activePageBlueprint.heroConfig.ctaText || '');
+      // CampaignFocusA is user-managed and not directly from the blueprint's heroConfig
     }
   }, [activePageBlueprint.heroConfig, activeAccordionItem, walkthrough.isWalkthroughActive, walkthrough.currentStepIndex, walkthrough.steps]);
 
+  // Load and save A/B test configurations from/to localStorage
   useEffect(() => {
     setIsLoadingABTestConfigs(true);
     try {
@@ -516,25 +529,28 @@ function LandingPageWorkflowPageContent() {
       }
     } catch (error) {
       console.error("Error loading A/B test configs from localStorage:", error);
-      toast({ title: 'Error Loading Saved A/B Configurations', variant: 'destructive' });
+      toast({ title: 'Error Loading Saved A/B Configurations', description: 'Could not load configurations from your browser storage.', variant: 'destructive' });
     } finally {
       setIsLoadingABTestConfigs(false);
     }
   }, [toast]);
 
   useEffect(() => {
+    // Avoid saving during initial load before configs are fetched
     if(!isLoadingABTestConfigs) { 
       try {
         localStorage.setItem(AB_TEST_LOCAL_STORAGE_KEY, JSON.stringify(savedABTestConfigs));
       } catch (error) {
         console.error("Error saving A/B configs to localStorage:", error);
-        toast({ title: 'Error Persisting A/B Configurations', variant: 'destructive'});
+        toast({ title: 'Error Persisting A/B Configurations', description: 'Could not save configurations to your browser storage.', variant: 'destructive'});
       }
     }
   }, [savedABTestConfigs, isLoadingABTestConfigs, toast]);
 
+  // Generate JSON for A/B test versions
   const generateABTestJson = (headline: string, subHeadline: string, ctaText: string): string => {
     if (!headline.trim() && !subHeadline.trim() && !ctaText.trim()) {
+      // Return an empty-like structure if all fields are blank to avoid errors with JSON.parse later if needed
       return JSON.stringify({ headline: '', subHeadline: '', ctaText: '' } as ABTestHeroConfig, null, 2);
     }
     return JSON.stringify({ headline: headline.trim(), subHeadline: subHeadline.trim(), ctaText: ctaText.trim() } as ABTestHeroConfig, null, 2);
@@ -550,7 +566,7 @@ function LandingPageWorkflowPageContent() {
     try { const d = JSON.parse(generatedJsonB); if(d.headline && d.subHeadline && d.ctaText) configBIsValid = true; } catch (e) {}
 
     if (!configAIsValid || !configBIsValid) {
-         toast({ title: 'A/B Config Incomplete for Preview', description: 'Please ensure all fields for both Version A and B are filled.', variant: 'destructive'});
+         toast({ title: 'A/B Config Incomplete for Preview', description: 'Please ensure all fields for both Version A and B Hero sections are filled to generate a preview.', variant: 'destructive'});
         return;
     }
     try {
@@ -559,7 +575,7 @@ function LandingPageWorkflowPageContent() {
         query.set('configB', generatedJsonB);
         window.open(`/landing-preview?${query.toString()}`, '_blank');
     } catch (error) {
-        toast({ title: 'Error Preparing A/B Preview', variant: 'destructive'});
+        toast({ title: 'Error Preparing A/B Preview', description: 'Could not prepare the link for the A/B preview page.', variant: 'destructive'});
         console.error("Error preparing A/B preview link: ", error);
     }
   };
@@ -571,31 +587,34 @@ function LandingPageWorkflowPageContent() {
     const currentCtaText = version === 'A' ? ctaTextA : ctaTextB;
     const currentCampaignFocus = version === 'A' ? campaignFocusA : campaignFocusB;
 
-    if (!name) { toast({ title: 'Config Name Missing', description: `Enter name for Version ${version}.`, variant: 'destructive' }); return; }
+    if (!name) { toast({ title: 'Config Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' }); return; }
     if (!currentHeadline.trim() || !currentSubHeadline.trim() || !currentCtaText.trim()) {
-      toast({ title: 'Content Missing', description: `Fill content for Version ${version}.`, variant: 'destructive' }); return;
+      toast({ title: 'Content Missing', description: `Please fill in Headline, Sub-Headline, and CTA Text for Version ${version} before saving.`, variant: 'destructive' }); return;
     }
 
     const existingConfigIndex = savedABTestConfigs.findIndex(c => c.name === name);
     if (existingConfigIndex !== -1) {
+      // Update existing configuration
       const updatedConfigs = savedABTestConfigs.map((config, index) => 
         index === existingConfigIndex 
         ? { ...config, id: config.id, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || undefined }
         : config
       );
       setSavedABTestConfigs(updatedConfigs);
-      toast({ title: 'A/B Config Updated!', description: `"${name}" updated.` });
+      toast({ title: 'A/B Config Updated!', description: `Local configuration "${name}" has been updated.` });
     } else {
+      // Add new configuration
       const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || undefined };
       setSavedABTestConfigs(prev => [...prev, newConfig]);
       toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
     }
+    // Clear the name input field after saving
     if (version === 'A') setNameForConfigA(''); else setNameForConfigB('');
   };
 
   const loadABTestConfigIntoVersion = (configId: string, versionToLoadInto: 'A' | 'B') => {
     const configToLoad = savedABTestConfigs.find(c => c.id === configId);
-    if (!configToLoad) { toast({ title: 'Error', description: 'Could not find A/B config.', variant: 'destructive'}); return; }
+    if (!configToLoad) { toast({ title: 'Error', description: 'Could not find the selected A/B configuration.', variant: 'destructive'}); return; }
     if (versionToLoadInto === 'A') {
       setHeadlineA(configToLoad.headline); setSubHeadlineA(configToLoad.subHeadline); setCtaTextA(configToLoad.ctaText);
       setCampaignFocusA(configToLoad.campaignFocus || ''); setNameForConfigA(configToLoad.name); 
@@ -609,9 +628,11 @@ function LandingPageWorkflowPageContent() {
   const deleteSavedABTestConfig = (configId: string) => {
     const configToDelete = savedABTestConfigs.find(c => c.id === configId);
     setSavedABTestConfigs(prev => prev.filter(c => c.id !== configId));
-    toast({ title: 'A/B Config Deleted', description: `"${configToDelete?.name || 'Config'}" deleted.` });
+    toast({ title: 'A/B Config Deleted', description: `Local configuration "${configToDelete?.name || 'Config'}" has been deleted.` });
   };
 
+
+  // --- Accordion Content Definitions ---
   const accordionItems = [
     {
       value: "step-1",
@@ -665,9 +686,10 @@ function LandingPageWorkflowPageContent() {
                 <BenefitsSection benefits={activePageBlueprint.benefits} />
                 <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
                 <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
-                 {activePageBlueprint.formConfig && (
+                 {/* Conditional rendering for the form headline if it exists in the blueprint */}
+                 {activePageBlueprint.formConfig && activePageBlueprint.formConfig.headline && (
                     <div className="text-center my-4 py-8 bg-background">
-                        <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline || "Get Your Personalized Quote"}</h3>
+                        <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline}</h3>
                     </div>
                  )}
                 <QuoteFormSection 
@@ -699,14 +721,16 @@ function LandingPageWorkflowPageContent() {
             {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
             {activePageBlueprint?.pageName && (
               <>
+                {/* Page Information */}
                 <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5" /> Page Information</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
-                    <div><Label htmlFor="bpPageName">Page Name</Label><Input id="bpPageName" value={activePageBlueprint.pageName} onChange={(e) => handleSimpleBlueprintFieldChange('pageName', e.target.value)} /></div>
-                    <div><Label htmlFor="bpSeoTitle">SEO Title</Label><Input id="bpSeoTitle" value={activePageBlueprint.seoTitle || ''} onChange={(e) => handleSimpleBlueprintFieldChange('seoTitle', e.target.value)} /></div>
+                    <div><Label htmlFor="bpPageName-adjust-input">Page Name</Label><Input id="bpPageName-adjust-input" value={activePageBlueprint.pageName} onChange={(e) => handleSimpleBlueprintFieldChange('pageName', e.target.value)} /></div>
+                    <div><Label htmlFor="bpSeoTitle-adjust-input">SEO Title</Label><Input id="bpSeoTitle-adjust-input" value={activePageBlueprint.seoTitle || ''} onChange={(e) => handleSimpleBlueprintFieldChange('seoTitle', e.target.value)} /></div>
                   </CardContent>
                 </Card>
 
+                {/* Hero Section */}
                 <Card className="bg-muted/50 p-1"> 
                   <CardHeader><CardTitle className="text-lg flex items-center"><ImageIconLucide className="mr-2 h-5 w-5" /> Hero Section</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
@@ -719,6 +743,7 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
+                {/* Benefits Section */}
                 <Card className="bg-muted/50 p-1"> 
                   <CardHeader><CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
@@ -735,6 +760,7 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
+                {/* Testimonials Section */}
                 <Card className="bg-muted/50 p-1"> 
                     <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquareIconLucide className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
@@ -754,6 +780,7 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
+                {/* Trust Signals Section */}
                  <Card className="bg-muted/50 p-1">
                     <CardHeader><CardTitle className="text-lg flex items-center"><AwardIcon className="mr-2 h-5 w-5"/> Trust Signals Section</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
@@ -786,6 +813,7 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
+                {/* Quote Form Section */}
                 <Card className="bg-muted/50 p-1"> 
                   <CardHeader><CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
@@ -966,7 +994,7 @@ function LandingPageWorkflowPageContent() {
       <FeedbackModal 
         isOpen={isFeedbackModalOpen}
         onOpenChange={setIsFeedbackModalOpen}
-        serviceDeskEmail="feedback@realinsurance.com.au" // Replace with actual email
+        serviceDeskEmail="feedback@realinsurance.com.au" 
       />
 
 
@@ -976,24 +1004,24 @@ function LandingPageWorkflowPageContent() {
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
           </CardDescription>
-          <div className="absolute top-4 right-4 flex gap-2">
+          <div className="absolute top-4 right-4 flex flex-wrap items-center gap-2">
             <Button 
               variant="outline" 
-              size="icon" 
               onClick={() => setIsFeedbackModalOpen(true)} 
-              title="Provide Feedback"
               id="provide-feedback-button"
+              className="h-auto py-1.5 px-3 text-xs sm:text-sm"
             >
-              <MessageSquare className="h-5 w-5" />
+              <MessageSquare className="mr-1.5 h-4 w-4" />
+              Provide Feedback
             </Button>
             <Button 
               variant="outline" 
-              size="icon" 
               onClick={walkthrough.startWalkthrough} 
-              title="Start Guided Walkthrough"
               id="start-walkthrough-button"
+              className="h-auto py-1.5 px-3 text-xs sm:text-sm"
             >
-              <HelpCircle className="h-5 w-5" />
+              <HelpCircle className="mr-1.5 h-4 w-4" />
+              Guided Walkthrough
             </Button>
            </div>
         </CardHeader>
@@ -1009,7 +1037,7 @@ function LandingPageWorkflowPageContent() {
                 if (walkthrough.isWalkthroughActive && newActiveItem) {
                   walkthrough.setAccordionToOpen(newActiveItem);
                 } else if (walkthrough.isWalkthroughActive && !newActiveItem) {
-                  // Walkthrough active but accordion closed, context handles if it needs to reopen
+                  // Walkthrough active but accordion closed by user, context handles if it needs to reopen.
                 }
             }}
           >
@@ -1034,7 +1062,12 @@ function LandingPageWorkflowPageContent() {
 }
 
 export default function LandingPageWorkflowPage() {
+    // This state is used by the WalkthroughContext to control which accordion item is open
+    // and to trigger blueprint loading. It's separate from the internal activeAccordionItem
+    // used by the Accordion component itself within LandingPageWorkflowPageContent.
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
+    // This state is a trick to help signal to the LandingPageWorkflowPageContent
+    // that the blueprint has been loaded by the walkthrough, especially if the context loads it early.
     const [, setBlueprintForWalkthroughTrigger] = useState<PageBlueprint | null>(null);
 
 
@@ -1042,11 +1075,17 @@ export default function LandingPageWorkflowPage() {
         setActiveAccordionItemForWalkthrough(value);
     }, []);
 
+    // This function is called by the WalkthroughContext to inform the page component
+    // that a blueprint should be loaded. We use a global flag as a simple mechanism
+    // for the page component to pick it up if the context provider initialized first.
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
         if (typeof window !== 'undefined') {
+            // Using a temporary global flag as a simple bridge if the context
+            // attempts to load blueprint before page component is fully ready.
             (window as any).__blueprintForWalkthrough = blueprint;
         }
-        setBlueprintForWalkthroughTrigger(blueprint);
+        // Also update a state here to ensure re-render if component is already mounted.
+        setBlueprintForWalkthroughTrigger(blueprint); 
     }, []);
 
 

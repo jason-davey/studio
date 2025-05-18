@@ -15,15 +15,15 @@ The application provides a 5-step guided workflow using an accordion interface:
 
 ## 0.1. Using the Guided Walkthrough (Recommended for First-Time Users)
 The application includes a Guided Walkthrough to help you learn its features.
-- **Starting the Walkthrough:** Click the **Help icon** (HelpCircle) located in the top-right corner of the main application card (within the "Landing Page Creation & A/B Testing Workflow" header).
+- **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon) located in the top-right corner of the main application card (within the "Landing Page Creation & A/B Testing Workflow" header).
 - **Welcome Modal:** A welcome message will appear. Click "Start Tour" to begin.
 - **Navigation:** Follow the on-screen callouts. Use "Next" and "Previous" buttons in the callouts to move through the steps. You can "End Walkthrough" at any time.
 - **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
-- **Re-accessing:** You can start the walkthrough again at any time by clicking the Help icon.
+- **Re-accessing:** You can start the walkthrough again at any time by clicking the "Guided Walkthrough" button.
 
 ## 0.2. Providing Feedback or Reporting Issues
 If you encounter any issues, have suggestions, or want to provide general feedback:
-- Click the **Feedback icon** (MessageSquare) located in the top-right corner of the main application card.
+- Click the **"Provide Feedback" button** (with MessageSquare icon) located in the top-right corner of the main application card.
 - A modal dialog will appear.
 - **Select Feedback Type:** Choose from "Bug Report," "Feature Request," or "General Feedback."
 - **Description:** Provide a detailed description of the issue or your feedback.
@@ -212,3 +212,5 @@ When designing new content variations for your A/B tests, ensure they align with
     *   Confirm the RUM application is correctly set up in your Datadog account.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
+
+```
