@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, type ChangeEvent, useEffect, useCallback } from 'react';
+import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -95,8 +95,8 @@ const ABTestConfigForm = ({
         copyType,
         currentText: currentValue,
         campaignFocus: currentCampaignFocus,
-        productName: "SecureTomorrow Life Insurance", 
-        productDescription: "Life insurance for families, offering cashback and a free will.", 
+        productName: "SecureTomorrow Life Insurance",
+        productDescription: "Life insurance for families, offering cashback and a free will.",
         count: 3,
       });
       if (result.suggestions && result.suggestions.length > 0) {
@@ -217,7 +217,7 @@ const ABTestConfigForm = ({
           {renderAISuggestionPopover(headline, 'headline', aiStateHeadline, setAiStateHeadline, setHeadline, version === 'A' ? 'ai-suggest-headlineA-button' : 'ai-suggest-headlineB-button')}
         </div>
         <Input
-          id={`headline${version}-input`} 
+          id={`headline${version}-input`}
           type="text"
           value={headline}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setHeadline(e.target.value)}
@@ -231,7 +231,7 @@ const ABTestConfigForm = ({
           {renderAISuggestionPopover(subHeadline, 'subHeadline', aiStateSubHeadline, setAiStateSubHeadline, setSubHeadline)}
         </div>
         <Input
-          id={`subHeadline${version}-input`} 
+          id={`subHeadline${version}-input`}
           type="text"
           value={subHeadline}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setSubHeadline(e.target.value)}
@@ -245,7 +245,7 @@ const ABTestConfigForm = ({
          {renderAISuggestionPopover(ctaText, 'ctaText', aiStateCtaText, setAiStateCtaText, setCtaText)}
         </div>
         <Input
-          id={`ctaText${version}-input`} 
+          id={`ctaText${version}-input`}
           type="text"
           value={ctaText}
           onChange={(e: ChangeEvent<HTMLInputElement>) => setCtaText(e.target.value)}
@@ -253,7 +253,7 @@ const ABTestConfigForm = ({
           className="mt-1 text-base"
         />
       </div>
-      
+
       {generatedJson && (JSON.parse(generatedJson).headline !== "" || JSON.parse(generatedJson).subHeadline !== "" || JSON.parse(generatedJson).ctaText !== "") && (
         <div className="mt-6 pt-4 border-t border-border space-y-3">
           <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version}</Label>
@@ -279,7 +279,7 @@ const ABTestConfigForm = ({
         <Label htmlFor={`configName${version}-input`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
         <div className="flex gap-2">
           <Input
-            id={`configName${version}-input`} 
+            id={`configName${version}-input`}
             type="text"
             value={configName}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setConfigName(e.target.value)}
@@ -347,21 +347,18 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 function LandingPageWorkflowPageContent() {
-  console.log("Rendering LandingPageWorkflowPageContent (inside provider)"); 
+  console.log("Rendering LandingPageWorkflowPageContent (inside provider)");
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
-  
+
   const walkthrough = useWalkthrough();
   const uiActions = useUIActions();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
 
   useEffect(() => {
     if (uiActions.showWelcomeModal) {
-      // Check if walkthrough context is available before calling its methods
-      if (walkthrough && typeof walkthrough.startWalkthrough === 'function') {
-        walkthrough.startWalkthrough(); // This will show the WelcomeModal via WalkthroughContext
-      } else {
-        console.warn("Walkthrough context or startWalkthrough function not available when trying to show welcome modal.");
-      }
+      walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
@@ -387,7 +384,7 @@ function LandingPageWorkflowPageContent() {
 
   const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
     setActivePageBlueprint(blueprint);
-    setUploadedBlueprint(blueprint); 
+    setUploadedBlueprint(blueprint);
     setFileName("sample-blueprint.json");
     toast({ title: 'Sample Blueprint Loaded!', description: 'A sample blueprint has been loaded for the walkthrough.' });
   }, [toast]);
@@ -395,7 +392,7 @@ function LandingPageWorkflowPageContent() {
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).__blueprintForWalkthrough && !uploadedBlueprint) {
         handleLoadBlueprintFromWalkthrough((window as any).__blueprintForWalkthrough);
-        delete (window as any).__blueprintForWalkthrough; 
+        delete (window as any).__blueprintForWalkthrough;
     }
   }, [uploadedBlueprint, handleLoadBlueprintFromWalkthrough]);
 
@@ -413,14 +410,14 @@ function LandingPageWorkflowPageContent() {
   const [campaignFocusB, setCampaignFocusB] = useState<string>('');
   const [generatedJsonB, setGeneratedJsonB] = useState<string>('');
   const [nameForConfigB, setNameForConfigB] = useState<string>('');
-  
+
   const [savedABTestConfigs, setSavedABTestConfigs] = useState<ManagedABTestHeroConfig[]>([]);
   const [isLoadingABTestConfigs, setIsLoadingABTestConfigs] = useState(true);
 
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
-    setUploadedBlueprint(null); 
-    setActivePageBlueprint(initialBlueprintState); 
+    setUploadedBlueprint(null);
+    setActivePageBlueprint(initialBlueprintState);
     setFileName('');
 
     const file = event.target.files?.[0];
@@ -432,7 +429,7 @@ function LandingPageWorkflowPageContent() {
           try {
             const content = e.target?.result as string;
             const parsedJson = JSON.parse(content) as PageBlueprint;
-            if (parsedJson.pageName && parsedJson.heroConfig) { 
+            if (parsedJson.pageName && parsedJson.heroConfig) {
               setUploadedBlueprint(parsedJson);
               setActivePageBlueprint({
                 pageName: parsedJson.pageName || 'Untitled Page',
@@ -447,7 +444,7 @@ function LandingPageWorkflowPageContent() {
                 formConfig: parsedJson.formConfig || initialBlueprintState.formConfig,
               });
               toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
-              setActiveAccordionItem('step-2'); 
+              setActiveAccordionItem('step-2');
             } else {
               throw new Error('Invalid blueprint structure. Missing required fields like pageName or heroConfig.');
             }
@@ -467,7 +464,10 @@ function LandingPageWorkflowPageContent() {
         toast({ title: 'Invalid File Type', description: 'Please upload a .json file.', variant: 'destructive' });
       }
     }
-    event.target.value = ''; 
+    // Reset file input to allow re-uploading the same file if needed
+    if (event.target) {
+        event.target.value = '';
+    }
   };
 
   const handleSimpleBlueprintFieldChange = <K extends keyof PageBlueprint>(field: K, value: PageBlueprint[K]) => {
@@ -476,13 +476,13 @@ function LandingPageWorkflowPageContent() {
 
   const handleNestedObjectChange = <S extends 'heroConfig' | 'formConfig'>(
     section: S,
-    field: keyof NonNullable<PageBlueprint[S]>, 
+    field: keyof NonNullable<PageBlueprint[S]>,
     value: string
   ) => {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...(prev[section] || {}), 
+        ...(prev[section] || {}),
         [field]: value,
       },
     }));
@@ -491,18 +491,18 @@ function LandingPageWorkflowPageContent() {
   const handleArrayObjectChange = <S extends 'benefits' | 'testimonials' | 'trustSignals'>(
     section: S,
     index: number,
-    field: keyof NonNullable<PageBlueprint[S]>[number], 
-    value: string | boolean 
+    field: keyof NonNullable<PageBlueprint[S]>[number],
+    value: string | boolean
   ) => {
     setActivePageBlueprint(prev => {
-      const newArray = [...(prev[section] || [])]; 
+      const newArray = [...(prev[section] || [])];
       if (newArray[index]) {
         newArray[index] = {
-          ...newArray[index], 
+          ...newArray[index],
           [field]: value,
         };
       }
-      return { ...prev, [section]: newArray as any }; 
+      return { ...prev, [section]: newArray as any };
     });
   };
 
@@ -512,7 +512,7 @@ function LandingPageWorkflowPageContent() {
       setHeadlineA(activePageBlueprint.heroConfig.headline || '');
       setSubHeadlineA(activePageBlueprint.heroConfig.subHeadline || '');
       setCtaTextA(activePageBlueprint.heroConfig.ctaText || '');
-      setCampaignFocusA((activePageBlueprint.heroConfig as any)?.campaignFocus || ''); 
+      setCampaignFocusA((activePageBlueprint.heroConfig as any)?.campaignFocus || '');
     }
   }, [activePageBlueprint.heroConfig, activeAccordionItem, walkthrough?.isWalkthroughActive, walkthrough?.currentStepIndex, walkthrough?.steps]);
 
@@ -532,7 +532,7 @@ function LandingPageWorkflowPageContent() {
   }, [toast]);
 
   useEffect(() => {
-    if(!isLoadingABTestConfigs) { 
+    if(!isLoadingABTestConfigs) {
       try {
         localStorage.setItem(AB_TEST_LOCAL_STORAGE_KEY, JSON.stringify(savedABTestConfigs));
       } catch (error) {
@@ -585,7 +585,7 @@ function LandingPageWorkflowPageContent() {
     if (!currentHeadline.trim() && !currentSubHeadline.trim() && !currentCtaText.trim()) {
       toast({ title: 'Content Missing', description: `Please fill in Headline, Sub-Headline, and CTA Text for Version ${version} before saving.`, variant: 'destructive' }); return;
     }
-    
+
     const newConfigData: Omit<ManagedABTestHeroConfig, 'id' | 'name'> = {
         headline: currentHeadline.trim(),
         subHeadline: currentSubHeadline.trim(),
@@ -615,7 +615,7 @@ function LandingPageWorkflowPageContent() {
     if (!configToLoad) { toast({ title: 'Error', description: 'Could not find the selected A/B configuration.', variant: 'destructive'}); return; }
     if (versionToLoadInto === 'A') {
       setHeadlineA(configToLoad.headline); setSubHeadlineA(configToLoad.subHeadline); setCtaTextA(configToLoad.ctaText);
-      setCampaignFocusA(configToLoad.campaignFocus || ''); setNameForConfigA(configToLoad.name); 
+      setCampaignFocusA(configToLoad.campaignFocus || ''); setNameForConfigA(configToLoad.name);
     } else {
       setHeadlineB(configToLoad.headline); setSubHeadlineB(configToLoad.subHeadline); setCtaTextB(configToLoad.ctaText);
       setCampaignFocusB(configToLoad.campaignFocus || ''); setNameForConfigB(configToLoad.name);
@@ -642,7 +642,27 @@ function LandingPageWorkflowPageContent() {
             <CardDescription>Upload the JSON file containing recommendations for your landing page. This blueprint will populate the content for subsequent steps.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <Input id="blueprint-upload-input" type="file" accept=".json" onChange={handleFileUpload} className="text-base" />
+            <div className="flex items-center space-x-3">
+                <Input
+                  id="blueprint-upload-input"
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileUpload}
+                  className="hidden"
+                  ref={fileInputRef}
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => fileInputRef.current?.click()}
+                  id="blueprint-upload-button"
+                >
+                  <UploadCloud className="mr-2 h-4 w-4" /> Choose File
+                </Button>
+                <span id="blueprint-file-name-indicator" className="text-sm text-muted-foreground">
+                  {fileName || "No file chosen"}
+                </span>
+            </div>
             {fileError && <p className="text-sm text-destructive">{fileError}</p>}
             {uploadedBlueprint && (
               <div className="mt-4 p-4 border rounded-md bg-muted/50">
@@ -672,7 +692,7 @@ function LandingPageWorkflowPageContent() {
             {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
             {activePageBlueprint?.pageName && (
               <div id="step-2-preview-area" className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
-                <HeroSection 
+                <HeroSection
                   headline={activePageBlueprint.heroConfig?.headline}
                   subHeadline={activePageBlueprint.heroConfig?.subHeadline}
                   ctaText={activePageBlueprint.heroConfig?.ctaText}
@@ -688,10 +708,10 @@ function LandingPageWorkflowPageContent() {
                         <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline}</h3>
                     </div>
                  )}
-                <QuoteFormSection 
-                    headline={activePageBlueprint.formConfig?.headline} 
+                <QuoteFormSection
+                    headline={activePageBlueprint.formConfig?.headline}
                     ctaText={activePageBlueprint.formConfig?.ctaText}
-                /> 
+                />
 
                 <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
                   Proceed to Adjust Content <ChevronRight className="ml-2 h-4 w-4" />
@@ -722,10 +742,13 @@ function LandingPageWorkflowPageContent() {
                   <CardContent className="space-y-3">
                     <div><Label htmlFor="bpPageName-adjust-input">Page Name</Label><Input id="bpPageName-adjust-input" value={activePageBlueprint.pageName} onChange={(e) => handleSimpleBlueprintFieldChange('pageName', e.target.value)} /></div>
                     <div><Label htmlFor="bpSeoTitle-adjust-input">SEO Title</Label><Input id="bpSeoTitle-adjust-input" value={activePageBlueprint.seoTitle || ''} onChange={(e) => handleSimpleBlueprintFieldChange('seoTitle', e.target.value)} /></div>
+                    <div><Label htmlFor="bpTargetUrl-adjust-input">Target URL</Label><Input id="bpTargetUrl-adjust-input" value={activePageBlueprint.targetUrl || ''} onChange={(e) => handleSimpleBlueprintFieldChange('targetUrl', e.target.value)} /></div>
+                    <div><Label htmlFor="bpExecSummary-adjust-input">Executive Summary</Label><Textarea id="bpExecSummary-adjust-input" value={activePageBlueprint.executiveSummary || ''} onChange={(e) => handleSimpleBlueprintFieldChange('executiveSummary', e.target.value)} rows={3}/></div>
+                    <div><Label htmlFor="bpKeyRecs-adjust-input">Key Recommendations Summary</Label><Textarea id="bpKeyRecs-adjust-input" value={activePageBlueprint.keyRecommendationsSummary || ''} onChange={(e) => handleSimpleBlueprintFieldChange('keyRecommendationsSummary', e.target.value)} rows={3}/></div>
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> 
+                <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><ImageIconLucide className="mr-2 h-5 w-5" /> Hero Section</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     <div><Label htmlFor="heroHeadline-adjust-input">Headline</Label><Input id="heroHeadline-adjust-input" value={activePageBlueprint.heroConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'headline', e.target.value)} /></div>
@@ -737,7 +760,7 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> 
+                <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     {activePageBlueprint.benefits?.map((benefit, index) => (
@@ -753,7 +776,7 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                 <Card className="bg-muted/50 p-1"> 
+                 <Card className="bg-muted/50 p-1">
                     <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquareIconLucide className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         {activePageBlueprint.testimonials?.map((testimonial, index) => (
@@ -785,9 +808,9 @@ function LandingPageWorkflowPageContent() {
                                     <div><Label htmlFor={`trustSignalImageUrl${index}-adjust-input`}>Image URL</Label><Input id={`trustSignalImageUrl${index}-adjust-input`} value={signal.imageUrl || ''} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'imageUrl', e.target.value)} /></div>
                                     <div>
                                         <Label htmlFor={`trustSignalType${index}-adjust-input`}>Type</Label>
-                                        <select 
-                                            id={`trustSignalType${index}-adjust-input`} 
-                                            value={signal.type} 
+                                        <select
+                                            id={`trustSignalType${index}-adjust-input`}
+                                            value={signal.type}
                                             onChange={(e) => handleArrayObjectChange('trustSignals', index, 'type', e.target.value as RecommendationTrustSignal['type'])}
                                             className="w-full mt-1 p-2 border border-input rounded-md text-base bg-background text-foreground"
                                         >
@@ -804,7 +827,7 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
-                <Card className="bg-muted/50 p-1"> 
+                <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
                     <div><Label htmlFor="formHeadline-adjust-input">Form Headline</Label><Input id="formHeadline-adjust-input" value={activePageBlueprint.formConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'headline', e.target.value)} /></div>
@@ -863,10 +886,10 @@ function LandingPageWorkflowPageContent() {
                   onSave={() => saveConfiguration('B')}
                 />
                 <div className="mt-8 pt-6 border-t border-border text-center">
-                  <Button 
+                  <Button
                     id="render-ab-preview-button"
-                    onClick={handleRenderABTestPreview} 
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap" 
+                    onClick={handleRenderABTestPreview}
+                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap"
                   >
                     <Eye className="mr-2 h-5 w-5" /> Render A/B Versions for Preview
                   </Button>
@@ -883,14 +906,14 @@ function LandingPageWorkflowPageContent() {
                     {!isLoadingABTestConfigs && savedABTestConfigs.length > 0 && (
                        <div className="border border-border rounded-lg overflow-hidden">
                         {savedABTestConfigs.map((config, index) => (
-                          <div 
-                            key={config.id} 
+                          <div
+                            key={config.id}
                             id={`managed-config-${config.id}`}
                             className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-4 gap-3 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/50'} ${index < savedABTestConfigs.length - 1 ? 'border-b border-border' : ''}`}
                           >
-                            <div className="flex-grow mb-3 sm:mb-0 min-w-0"> 
+                            <div className="flex-grow mb-3 sm:mb-0 min-w-0">
                               <p className="font-semibold text-foreground">{config.name}</p>
-                              <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p> 
+                              <p className="text-sm text-muted-foreground break-words">Headline: {config.headline}</p>
                               {config.campaignFocus && <p className="text-xs text-muted-foreground mt-1">Focus: {config.campaignFocus}</p>}
                             </div>
                             <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
@@ -917,7 +940,7 @@ function LandingPageWorkflowPageContent() {
       value: "step-5",
       title: "Step 5: Prepare for Deployment",
       icon: <Rocket className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !generatedJsonA || !generatedJsonB, 
+      disabled: !generatedJsonA || !generatedJsonB,
       content: (
         <Card id="step-5-card">
           <CardHeader>
@@ -971,7 +994,7 @@ function LandingPageWorkflowPageContent() {
   return (
     <div className={`container mx-auto py-8 px-4 md:px-6 lg:px-8 ${mainCardMarginTop}`}>
       <div id="walkthrough-end-target" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
-      
+
       <WelcomeModal />
       {walkthrough?.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex] && (
         <HighlightCallout
@@ -984,10 +1007,8 @@ function LandingPageWorkflowPageContent() {
         />
       )}
 
-      <FeedbackModal 
-        isOpen={uiActions.isFeedbackModalOpen}
-        onOpenChange={uiActions.setIsFeedbackModalOpen}
-        serviceDeskEmail="feedback@realinsurance.com.au" 
+      <FeedbackModal
+        serviceDeskEmail="feedback@realinsurance.com.au"
       />
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
@@ -998,13 +1019,13 @@ function LandingPageWorkflowPageContent() {
           </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
-          <Accordion 
-            type="single" 
-            collapsible 
-            className="w-full" 
+          <Accordion
+            type="single"
+            collapsible
+            className="w-full"
             value={activeAccordionItem}
             onValueChange={(value) => {
-                const newActiveItem = value === activeAccordionItem ? undefined : value; 
+                const newActiveItem = value === activeAccordionItem ? undefined : value;
                 setActiveAccordionItem(newActiveItem);
                 if (walkthrough?.isWalkthroughActive && newActiveItem && walkthrough.setAccordionToOpen) {
                   walkthrough.setAccordionToOpen(newActiveItem);
@@ -1039,22 +1060,19 @@ export default function LandingPageWorkflowPage() {
 
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
         console.log("Walkthrough wants to change accordion to:", value);
-        setActiveAccordionItemForWalkthrough(value); 
+        setActiveAccordionItemForWalkthrough(value);
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
         console.log("Walkthrough wants to load blueprint:", blueprint);
-        // This function now directly sets a state that the content component can react to.
-        // However, the primary mechanism for blueprint loading remains the file input in Step 1
-        // for actual user interaction. This is specifically for the walkthrough.
         if (typeof window !== 'undefined') {
-            (window as any).__blueprintForWalkthrough = blueprint; // Keep for immediate effect if needed
+            (window as any).__blueprintForWalkthrough = blueprint;
         }
-        setBlueprintForWalkthrough(blueprint); // Update state
+        setBlueprintForWalkthrough(blueprint);
     }, []);
-    
+
     return (
-        <WalkthroughProvider 
+        <WalkthroughProvider
             onAccordionChange={handleAccordionChangeForWalkthrough}
             onLoadBlueprint={handleLoadBlueprintForWalkthrough}
         >
@@ -1062,4 +1080,3 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
-
