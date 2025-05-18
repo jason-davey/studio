@@ -15,7 +15,7 @@ The application provides a 5-step guided workflow using an accordion interface:
 
 ## 0.1. Using the Guided Walkthrough (Recommended for First-Time Users)
 The application includes a Guided Walkthrough to help you learn its features.
-- **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon) located in the top-right corner of the main application card (within the "Landing Page Creation & A/B Testing Workflow" header).
+- **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon and text label) located in the top bar of the main application card's header (within the "Landing Page Creation & A/B Testing Workflow" card, above the title).
 - **Welcome Modal:** A welcome message will appear. Click "Start Tour" to begin.
 - **Navigation:** Follow the on-screen callouts. Use "Next" and "Previous" buttons in the callouts to move through the steps. You can "End Walkthrough" at any time.
 - **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
@@ -23,7 +23,7 @@ The application includes a Guided Walkthrough to help you learn its features.
 
 ## 0.2. Providing Feedback or Reporting Issues
 If you encounter any issues, have suggestions, or want to provide general feedback:
-- Click the **"Provide Feedback" button** (with MessageSquare icon) located in the top-right corner of the main application card.
+- Click the **"Provide Feedback" button** (with MessageSquare icon and text label) located in the top bar of the main application card's header (within the "Landing Page Creation & A/B Testing Workflow" card, above the title).
 - A modal dialog will appear.
 - **Select Feedback Type:** Choose from "Bug Report," "Feature Request," or "General Feedback."
 - **Description:** Provide a detailed description of the issue or your feedback.

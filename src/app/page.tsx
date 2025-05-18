@@ -59,6 +59,7 @@ const initialAISuggestionState: AISuggestionState = {
 };
 
 // --- Reusable ConfigForm for A/B Testing (Step 4) ---
+// Moved ABTestConfigForm outside the main component to prevent focus issues
 const ABTestConfigForm = ({
   version,
   headline, setHeadline,
@@ -580,39 +581,46 @@ function LandingPageWorkflowPageContent() {
     }
   };
 
-  const saveABTestConfiguration = (version: 'A' | 'B') => {
+  const saveConfiguration = (version: 'A' | 'B') => {
     const name = (version === 'A' ? nameForConfigA : nameForConfigB).trim();
     const currentHeadline = version === 'A' ? headlineA : headlineB;
     const currentSubHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
     const currentCtaText = version === 'A' ? ctaTextA : ctaTextB;
-    const currentCampaignFocus = version === 'A' ? campaignFocusA : campaignFocusB;
+    const currentCampaignFocus = (version === 'A' ? campaignFocusA : campaignFocusB).trim();
 
     if (!name) { toast({ title: 'Config Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' }); return; }
     if (!currentHeadline.trim() || !currentSubHeadline.trim() || !currentCtaText.trim()) {
       toast({ title: 'Content Missing', description: `Please fill in Headline, Sub-Headline, and CTA Text for Version ${version} before saving.`, variant: 'destructive' }); return;
     }
 
-    const existingConfigIndex = savedABTestConfigs.findIndex(c => c.name === name);
-    if (existingConfigIndex !== -1) {
-      // Update existing configuration
-      const updatedConfigs = savedABTestConfigs.map((config, index) => 
-        index === existingConfigIndex 
-        ? { ...config, id: config.id, name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || undefined }
-        : config
-      );
-      setSavedABTestConfigs(updatedConfigs);
-      toast({ title: 'A/B Config Updated!', description: `Local configuration "${name}" has been updated.` });
-    } else {
-      // Add new configuration
-      const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, headline: currentHeadline.trim(), subHeadline: currentSubHeadline.trim(), ctaText: currentCtaText.trim(), campaignFocus: currentCampaignFocus.trim() || undefined };
-      setSavedABTestConfigs(prev => [...prev, newConfig]);
-      toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
-    }
+    const newConfig: ManagedABTestHeroConfig = { 
+      id: Date.now().toString(), 
+      name, 
+      headline: currentHeadline.trim(), 
+      subHeadline: currentSubHeadline.trim(), 
+      ctaText: currentCtaText.trim(),
+      campaignFocus: currentCampaignFocus || undefined // Save empty string as undefined for consistency
+    };
+
+    setSavedABTestConfigs(prev => {
+      const existingConfigIndex = prev.findIndex(c => c.name === name);
+      if (existingConfigIndex !== -1) {
+        // Update existing configuration
+        const updatedConfigs = [...prev];
+        updatedConfigs[existingConfigIndex] = { ...prev[existingConfigIndex], ...newConfig, id: prev[existingConfigIndex].id }; // Retain original ID but update content
+        toast({ title: 'A/B Config Updated!', description: `Local configuration "${name}" has been updated.` });
+        return updatedConfigs;
+      } else {
+        // Add new configuration
+        toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
+        return [...prev, newConfig];
+      }
+    });
     // Clear the name input field after saving
     if (version === 'A') setNameForConfigA(''); else setNameForConfigB('');
   };
 
-  const loadABTestConfigIntoVersion = (configId: string, versionToLoadInto: 'A' | 'B') => {
+  const loadConfigIntoVersion = (configId: string, versionToLoadInto: 'A' | 'B') => {
     const configToLoad = savedABTestConfigs.find(c => c.id === configId);
     if (!configToLoad) { toast({ title: 'Error', description: 'Could not find the selected A/B configuration.', variant: 'destructive'}); return; }
     if (versionToLoadInto === 'A') {
@@ -860,7 +868,7 @@ function LandingPageWorkflowPageContent() {
                   campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA}
                   generatedJson={generatedJsonA}
                   configName={nameForConfigA} setConfigName={setNameForConfigA}
-                  onSave={() => saveABTestConfiguration('A')}
+                  onSave={() => saveConfiguration('A')}
                 />
                 <ABTestConfigForm
                   version="B"
@@ -870,7 +878,7 @@ function LandingPageWorkflowPageContent() {
                   campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB}
                   generatedJson={generatedJsonB}
                   configName={nameForConfigB} setConfigName={setNameForConfigB}
-                  onSave={() => saveABTestConfiguration('B')}
+                  onSave={() => saveConfiguration('B')}
                 />
                 <div className="mt-8 pt-6 border-t border-border text-center">
                   <Button 
@@ -904,8 +912,8 @@ function LandingPageWorkflowPageContent() {
                               {config.campaignFocus && <p className="text-xs text-muted-foreground mt-1">Focus: {config.campaignFocus}</p>}
                             </div>
                             <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
-                              <Button onClick={() => loadABTestConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
-                              <Button onClick={() => loadABTestConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
+                              <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
+                              <Button onClick={() => loadConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
                               <Button onClick={() => deleteSavedABTestConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto"><Trash2 className="h-4 w-4" /> Delete</Button>
                             </div>
                           </div>
@@ -999,12 +1007,8 @@ function LandingPageWorkflowPageContent() {
 
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
-        <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center relative">
-          <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
-          <CardDescription className="text-muted-foreground mt-2">
-            Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
-          </CardDescription>
-          <div className="absolute top-4 right-4 flex flex-wrap items-center gap-2">
+        <CardHeader className="bg-muted/30 p-6 rounded-t-lg text-center">
+          <div className="flex justify-end mb-4 gap-2"> {/* Top bar for buttons */}
             <Button 
               variant="outline" 
               onClick={() => setIsFeedbackModalOpen(true)} 
@@ -1024,6 +1028,10 @@ function LandingPageWorkflowPageContent() {
               Guided Walkthrough
             </Button>
            </div>
+          <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
+          <CardDescription className="text-muted-foreground mt-2">
+            Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
+          </CardDescription>
         </CardHeader>
         <CardContent className="p-4 sm:p-6">
           <Accordion 
