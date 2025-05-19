@@ -122,11 +122,11 @@ This provides a high-level overview of the development journey:
 - **Mermaid.js:** Used in `/admin/tech-spec` page to render diagrams client-side from Markdown.
 
 ### 2.3. Workflow Overview (5-Step Accordion on `/`)
-1.  **Step 1: Review Recommendations:** Upload `PageBlueprint` JSON.
-2.  **Step 2: Build & Preview Page:** Renders full landing page preview from `activePageBlueprint`.
-3.  **Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`.
-4.  **Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local configs, preview on `/landing-preview`.
-5.  **Step 5: Prepare for Deployment:** Guidance for Firebase.
+- **1. Step 1: Review Recommendations:** Upload `PageBlueprint` JSON.
+- **2. Step 2: Build & Preview Page:** Renders full landing page preview from `activePageBlueprint`.
+- **3. Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`.
+- **4. Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local configs, preview on `/landing-preview`.
+- **5. Step 5: Prepare for Deployment:** Guidance for Firebase.
 - **Global Fixed Top Bar:** Provides navigation ("Workflow", "Tech Spec") and access to Guided Walkthrough (via `WelcomeModal`), Feedback (via `FeedbackModal`).
 
 ### 2.4. System Architecture & Connections
@@ -175,11 +175,10 @@ graph TD
     end
 
     subgraph FirebaseServices [Firebase Project]
-        FB_RemoteConfig[Firebase Remote Config (heroConfig)]
-        FB_ABTesting[Firebase A/B Testing (via Console)]
-        FB_Hosting[Firebase Hosting (Next.js App Deployed)]
+        FB_RemoteConfig["Firebase Remote Config (heroConfig)"]
+        FB_ABTesting["Firebase A/B Testing (via Console)"]
+        FB_Hosting["Firebase Hosting (Next.js App Deployed)"]
         FB_AI_Models["Google AI Models (via GoogleAI Plugin for Genkit)"]
-        %% FB_Auth[Firebase Authentication (Paused)]
     end
 
     subgraph ExternalSystems [External Systems & Tools]
