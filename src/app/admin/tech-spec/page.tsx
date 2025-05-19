@@ -10,7 +10,7 @@ import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 // This page is a Server Component by default in Next.js App Router
 
 interface ParsedLine {
-  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty' | 'pre'; // Added 'pre' for potential future use
+  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty';
   content: string;
   id?: string; // For ToC linking
 }
@@ -42,30 +42,55 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const tocEntries: TocEntry[] = [];
   let headingCounter = 0; // Shared counter for unique IDs
 
+  const h2NumPattern = /^\d+\.\d+\.\s+(.*)/;
+  const h1NumPattern = /^\d+\.\s+(.*)/;
+
   for (const line of lines) {
     let id: string | undefined;
-    // Check for H2: starts with '## ' and not '### '
-    if (line.startsWith('## ') && !line.startsWith('### ')) {
-      const content = line.substring(3); // Get content after '## '
-      id = slugify(content) + `-${headingCounter++}`;
-      parsedLines.push({ type: 'h2', content, id });
-      tocEntries.push({ id, text: content, level: 2 });
-    // Check for H1: starts with '# ' and not '## '
-    } else if (line.startsWith('# ') && !line.startsWith('## ')) {
-      const content = line.substring(2); // Get content after '# '
-      id = slugify(content) + `-${headingCounter++}`;
-      parsedLines.push({ type: 'h1', content, id });
-      tocEntries.push({ id, text: content, level: 1 });
-    // Check for H3: starts with '### '
-    } else if (line.startsWith('### ')) {
-      const content = line.substring(4); // Get content after '### '
-      // H3s are not included in ToC for now, but parsed for rendering
-      parsedLines.push({ type: 'h3', content });
+    let content = line.trim();
+    let type: ParsedLine['type'] | null = null;
+    let tocLevel: TocEntry['level'] | null = null;
+
+    const h2NumMatch = content.match(h2NumPattern);
+    const h1NumMatch = content.match(h1NumPattern);
+
+    if (h2NumMatch) {
+      content = h2NumMatch[1];
+      type = 'h2';
+      tocLevel = 2;
+    } else if (h1NumMatch) {
+      content = h1NumMatch[1];
+      type = 'h1';
+      tocLevel = 1;
+    } else if (content.startsWith('### ')) {
+      content = content.substring(4);
+      type = 'h3';
+    } else if (content.startsWith('## ')) {
+      content = content.substring(3);
+      type = 'h2';
+      tocLevel = 2;
+    } else if (content.startsWith('# ')) {
+      content = content.substring(2);
+      type = 'h1';
+      tocLevel = 1;
     } else if (line.trim() === '') {
-      parsedLines.push({ type: 'empty', content: '' });
+      type = 'empty';
+      content = '';
     } else {
-      // Default to paragraph
-      parsedLines.push({ type: 'p', content: line });
+      type = 'p';
+      content = line; // Use original line for paragraphs to preserve leading spaces if any for pre-wrap
+    }
+
+    if (type && (type === 'h1' || type === 'h2' || type === 'h3')) {
+      if (tocLevel) { // Only add H1 and H2 to ToC
+        id = slugify(content) + `-${headingCounter++}`;
+        tocEntries.push({ id, text: content, level: tocLevel });
+      }
+      parsedLines.push({ type, content, id });
+    } else if (type === 'empty') {
+      parsedLines.push({ type: 'empty', content: '' });
+    } else if (type === 'p') {
+      parsedLines.push({ type: 'p', content: line }); // Use original line for 'p'
     }
   }
   return { parsedLines, tocEntries };
@@ -130,7 +155,7 @@ export default async function AdminTechSpecPage() {
                         href={`#${entry.id}`}
                         className="text-sm text-foreground hover:text-primary hover:underline transition-colors"
                       >
-                        {entry.text}
+                        {entry.text} {/* Display the content stripped of the prefix */}
                       </a>
                     </li>
                   ))}
@@ -140,7 +165,7 @@ export default async function AdminTechSpecPage() {
           )}
 
           {parseResult.parsedLines.length > 0 && !errorMessage && (
-            <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50"> {/* Adjusted height for ToC */}
+            <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50">
               {parseResult.parsedLines.map((line, index) => {
                 if (line.type === 'h1') {
                   return <h1 key={index} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
@@ -170,4 +195,3 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
-
