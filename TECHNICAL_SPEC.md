@@ -25,7 +25,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **AB Tasty Integration Point:** Placeholder for AB Tasty's JavaScript snippet.
 - **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
 - **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console. Triggered from the fixed top bar.
-- **Admin Technical Specification View:** A page (`/admin/tech-spec`) that renders this `TECHNICAL_SPEC.md` document. Accessible via the Top Bar.
+- **Admin Technical Specification View:** A page (`/admin/tech-spec`) that renders this `TECHNICAL_SPEC.md` document, including dynamic Mermaid diagram rendering. Accessible via the Top Bar.
 - **Login/Register Pages (Paused):** `/login` and `/register` pages exist but are currently non-functional as user authentication feature development is paused (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 
 ### 1.3. Key Technologies Used
@@ -41,6 +41,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **Guided Walkthrough:** Custom implementation using React Context and DOM manipulation.
 - **Performance Monitoring:** Datadog RUM Browser SDK.
 - **Forms:** React Hook Form with Zod for validation (in Quote Form and Feedback Modal).
+- **Dynamic Diagram Rendering:** Mermaid.js (for rendering diagrams from text in `TECHNICAL_SPEC.md`).
 
 ### 1.4. Development Approach & Methodology
 This application has been developed using a highly iterative and collaborative UX-AI model:
@@ -49,6 +50,7 @@ This application has been developed using a highly iterative and collaborative U
 - **Rapid Prototyping & Iteration:** Features are built incrementally, allowing for quick feedback loops and adjustments. This contrasts with traditional waterfall models by delivering working software faster.
 - **Conversational Development:** Changes and new features are discussed and refined through natural language interaction, with the AI generating code changes in a structured format (XML).
 - **Focus on Value:** Prioritizes features that deliver direct value to the end-users (e.g., marketing team) and the business.
+- **Strategic Pausing and Resumption of Features:** Our collaborative process allows for the exploration of features even if they have external dependencies (e.g., awaiting admin access for Firebase Authentication setup). Features can be conceptually designed and their initial code structure laid out, then 'paused' (e.g., by commenting out relevant code and adding clear feature flags/tags like `FEATURE_AUTH_ROLES_PAUSED`). This allows for continued progress on other fronts while keeping the context of the paused feature ready for future resumption, minimizing rework and maintaining development momentum.
 
 ### 1.5. Development Chronology & Key Milestones (Conceptual)
 This provides a high-level overview of the development journey:
@@ -62,21 +64,21 @@ This provides a high-level overview of the development journey:
     - *Value:* Empowered marketing to generate Firebase-compatible JSON.
 - **Phase 2 (Integrated Workflow & Content Structure):**
     - Refactored UI into a 5-Step Accordion Workflow on the main page (`/`).
-    - Defined `PageBlueprint` type for ingesting external recommendations (Step 1).
-    - Implemented multi-section preview (Hero, Benefits, Testimonials, Trust Signals, Form) in Step 2.
-    - Created multi-section content adjustment UI in Step 3.
-    - Migrated A/B Hero configurator to Step 4.
-    - *Value:* Structured app around a clear user journey, enabling intake of external recommendations and holistic page content management.
+    *   Defined `PageBlueprint` type for ingesting external recommendations (Step 1).
+    *   Implemented multi-section preview (Hero, Benefits, Testimonials, Trust Signals, Form) in Step 2.
+    *   Created multi-section content adjustment UI in Step 3.
+    *   Migrated A/B Hero configurator to Step 4.
+    *   *Value:* Structured app around a clear user journey, enabling intake of external recommendations and holistic page content management.
 - **Phase 3 (AI Integration & Usability Enhancements):**
-    - Genkit AI flow (`suggestHeroCopy`) for content suggestions (Headline, Sub-Headline, CTA) in Step 4.
-    - Added "Campaign Focus" input to tailor AI suggestions.
-    - Implemented Local Storage for saving/loading A/B Hero configurations (including campaign focus).
-    - Guided Walkthrough feature (Top Bar button, Welcome Modal, `WalkthroughContext`, `HighlightCallout`).
-    - User Feedback Modal (Top Bar button, `UIActionContext`, mailto link for submission).
-    - Globally Fixed Top Bar for Walkthrough and Feedback.
-    - Datadog RUM integration for performance monitoring.
-    - Admin page to render `TECHNICAL_SPEC.md`.
-    - *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability and admin view.
+    *   Genkit AI flow (`suggestHeroCopy`) for content suggestions (Headline, Sub-Headline, CTA) in Step 4.
+    *   Added "Campaign Focus" input to tailor AI suggestions.
+    *   Implemented Local Storage for saving/loading A/B Hero configurations (including campaign focus).
+    *   Guided Walkthrough feature (Top Bar button, Welcome Modal, `WalkthroughContext`, `HighlightCallout`).
+    *   User Feedback Modal (Top Bar button, `UIActionContext`, mailto link for submission).
+    *   Globally Fixed Top Bar for Walkthrough and Feedback.
+    *   Datadog RUM integration for performance monitoring.
+    *   Admin page to render `TECHNICAL_SPEC.md` (initially text, then Markdown parsing, then Mermaid diagrams).
+    *   *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability and admin view with dynamic diagram rendering.
 - **Phase 4 (Authentication & Role Foundation - Paused, Tag: `FEATURE_AUTH_ROLES_PAUSED`):**
     - Initial work on Firebase Authentication (Login, Register pages, AuthContext) was started and then paused due to external dependencies. These pages exist but are non-functional. The related `AuthContext.tsx` file also exists but is not currently used.
     - *Value (Future):* Foundation for multi-user application and role-based access.
@@ -87,7 +89,7 @@ This provides a high-level overview of the development journey:
 - **Next.js App Router:**
     - `/`: Main 5-step workflow application (`src/app/page.tsx`).
     - `/landing-preview`: Side-by-side A/B test preview page. Publicly accessible.
-    - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md`. Publicly accessible (pending roles).
+    - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md` (including dynamic Mermaid diagrams). Publicly accessible (pending roles).
     - `/login`, `/register`: User authentication pages. Currently exist but are non-functional (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 - **Key Directories:**
     - `src/app/`: Page components and layouts.
@@ -97,7 +99,7 @@ This provides a high-level overview of the development journey:
         - `landing/`: Components specific to the landing page sections (Hero, Benefits, etc.).
         - `ui/`: ShadCN UI components.
         - `walkthrough/`: Components for the guided walkthrough (`WelcomeModal`, `HighlightCallout`).
-        - `shared/`: Components like `FeedbackModal.tsx`.
+        - `shared/`: Components like `FeedbackModal.tsx`, `MermaidDiagram.tsx`.
         - `layout/`: Global layout components like `TopBar.tsx`.
     - `src/contexts/`:
         - `UIActionContext.tsx`: Manages global UI states like feedback/welcome modal visibility.
@@ -117,6 +119,7 @@ This provides a high-level overview of the development journey:
     - Prepares JSON for `heroConfig` (Remote Config). Actual A/B test setup in Firebase Console.
 - **Genkit/AI:** `suggestHeroCopyFlow` called from client-side in Step 4.
 - **Datadog RUM:** Initialized in `layout.tsx`.
+- **Mermaid.js:** Used in `/admin/tech-spec` page to render diagrams client-side from Markdown.
 
 ### 2.3. Workflow Overview (5-Step Accordion on `/`)
 1.  **Step 1: Review Recommendations:** Upload `PageBlueprint` JSON.
@@ -128,12 +131,13 @@ This provides a high-level overview of the development journey:
 
 ### 2.4. System Architecture & Connections
 
+This diagram illustrates the key components and their interactions:
 ```mermaid
 graph TD
     subgraph UserBrowser [User's Browser - Next.js App]
         App[Landing Page Workflow App]
         App_PageTsx["src/app/page.tsx (Main Workflow)"]
-        App_AdminSpecPage["src/app/admin/tech-spec/page.tsx (Tech Spec View)"]
+        App_AdminSpecPage["src/app/admin/tech-spec/page.tsx (Tech Spec View with Mermaid)"]
         App_LayoutTsx["src/app/layout.tsx (Global Layout)"]
         App_UIActionContext["UIActionContext"]
         App_WalkthroughContext["WalkthroughContext"]
@@ -144,6 +148,7 @@ graph TD
         App_LocalStorage["Browser Local Storage (A/B Hero Configs)"]
         App_DatadogLib["Datadog RUM SDK"]
         App_TechSpecFile["TECHNICAL_SPEC.md (File System - Read by Server Component)"]
+        App_MermaidLib["Mermaid.js Library (Client-side rendering)"]
 
         App_LayoutTsx --> App_UIActionContext
         App_LayoutTsx --> App_TopBar
@@ -156,6 +161,7 @@ graph TD
         App_PageTsx --> App_GenkitFlow
         
         App_AdminSpecPage -- Reads --> App_TechSpecFile
+        App_AdminSpecPage -- Uses --> App_MermaidLib
 
 
         App_TopBar --> App_UIActionContext
@@ -269,7 +275,7 @@ graph TD
 ### 3.8. Admin View for Technical Specification (`src/app/admin/tech-spec/page.tsx`)
 - **Purpose:** Allows viewing of the `TECHNICAL_SPEC.md` file rendered within the application.
 - **Access:** Via a "Tech Spec" link in the global `TopBar`. Currently public, intended for Admin role in the future when authentication is implemented.
-- **Functionality:** Reads `TECHNICAL_SPEC.md` from the file system (server-side) and displays its content, preserving formatting within `<pre>` tags.
+- **Functionality:** Reads `TECHNICAL_SPEC.md` from the file system (server-side) and displays its content, parsing basic Markdown (H1-H3, images) and dynamically rendering Mermaid diagrams from ` ```mermaid ` code blocks client-side. Includes a Table of Contents.
 
 ## 4. Setup & Configuration
 
@@ -334,13 +340,14 @@ graph TD
 - **`TECHNICAL_SPEC.md`:** (This document).
 - **`src/app/layout.tsx`:** Root layout, global providers (`UIActionProvider`), `TopBar`.
 - **`src/app/page.tsx`:** Main 5-step workflow application, `WalkthroughProvider`.
-- **`src/app/admin/tech-spec/page.tsx`:** Renders `TECHNICAL_SPEC.md`.
+- **`src/app/admin/tech-spec/page.tsx`:** Renders `TECHNICAL_SPEC.md` with dynamic Mermaid.
 - **`src/app/login/page.tsx` & `src/app/register/page.tsx`:** Exist but are non-functional due to paused authentication feature.
 - **`src/contexts/UIActionContext.tsx`:** Manages global modal states.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages guided tour state.
 - **`src/contexts/AuthContext.tsx`:** Exists but unused due to paused authentication feature.
 - **`src/components/layout/TopBar.tsx`:** Fixed top navigation bar.
 - **`src/components/shared/FeedbackModal.tsx`:** Feedback collection UI.
+- **`src/components/shared/MermaidDiagram.tsx`:** Renders Mermaid diagrams.
 - **`src/components/walkthrough/`:** Walkthrough UI components.
 - **`src/ai/flows/suggest-hero-copy-flow.ts`:** Genkit AI flow.
 - **`src/types/recommendations.ts`:** Defines `PageBlueprint`.
@@ -403,7 +410,7 @@ graph TD
     end
     
     subgraph AdminSpecView [Admin Tech Spec View at /admin/tech-spec]
-        AdminSpecNav --> RenderTechSpec["Render TECHNICAL_SPEC.md"]
+        AdminSpecNav --> RenderTechSpec["Render TECHNICAL_SPEC.md with Mermaid"]
     end
 
     subgraph WalkthroughFlow [Walkthrough Sub-Flow]

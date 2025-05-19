@@ -6,20 +6,22 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, List } from "lucide-react";
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
-import Image from 'next/image'; // Import next/image
+import Image from 'next/image';
+import MermaidDiagram from '@/components/shared/MermaidDiagram'; // Import the new component
 
 interface ParsedLine {
-  type: 'h1' | 'h2' | 'h3' | 'p' | 'img' | 'empty';
+  type: 'h1' | 'h2' | 'h3' | 'p' | 'img' | 'mermaid' | 'empty';
   content: string;
   id?: string;
-  alt?: string; // For images
-  src?: string; // For images
+  alt?: string; 
+  src?: string; 
+  level?: 1 | 2 | 3; 
 }
 
 interface TocEntry {
   id: string;
   text: string;
-  level: 1 | 2; 
+  level: 1 | 2 | 3; 
 }
 
 function slugify(text: string): string {
@@ -32,7 +34,6 @@ function slugify(text: string): string {
     .replace(/--+/g, '-');      
 }
 
-// Regex to match Markdown image syntax: ![alt text](src)
 const markdownImageRegex = /!\[(.*?)\]\((.*?)\)/;
 
 interface ParseMarkdownResult {
@@ -45,9 +46,28 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const parsedLines: ParsedLine[] = [];
   const tocEntries: TocEntry[] = [];
   let headingCounter = 0; 
+  let inMermaidBlock = false;
+  let currentMermaidContent = "";
 
   for (const line of lines) {
     const trimmedLine = line.trim();
+    
+    if (trimmedLine.startsWith('```mermaid')) {
+      inMermaidBlock = true;
+      currentMermaidContent = ""; // Reset for new block
+      continue; // Skip this line from being added as a paragraph
+    }
+
+    if (inMermaidBlock) {
+      if (trimmedLine.startsWith('```')) {
+        inMermaidBlock = false;
+        parsedLines.push({ type: 'mermaid', content: currentMermaidContent.trim() });
+      } else {
+        currentMermaidContent += line + '\n'; // Preserve original line breaks for Mermaid
+      }
+      continue;
+    }
+
     let content = trimmedLine;
     let type: ParsedLine['type'] | null = null;
     let tocLevel: TocEntry['level'] | null = null;
@@ -57,23 +77,23 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
 
     const imageMatch = trimmedLine.match(markdownImageRegex);
 
-    if (trimmedLine.startsWith('## ')) { // Main sections for ToC
-      content = trimmedLine.substring(3);
-      type = 'h1'; // Render as H1 style for main sections
-      tocLevel = 1; 
-    } else if (trimmedLine.startsWith('### ')) { // Sub-sections for ToC
+    if (trimmedLine.startsWith('### ')) {
       content = trimmedLine.substring(4);
-      type = 'h2'; // Render as H2 style for sub-sections
+      type = 'h3';
+      tocLevel = 3;
+    } else if (trimmedLine.startsWith('## ')) {
+      content = trimmedLine.substring(3);
+      type = 'h2';
       tocLevel = 2;
-    } else if (trimmedLine.startsWith('# ')) { // Document title, not in this specific ToC structure
+    } else if (trimmedLine.startsWith('# ')) {
       content = trimmedLine.substring(2);
-      type = 'h1'; // Render as H1 style
-      // Not added to tocEntries for this specific user request of ## and ### in ToC
+      type = 'h1';
+      tocLevel = 1;
     } else if (imageMatch) {
       type = 'img';
       altText = imageMatch[1];
       imgSrc = imageMatch[2];
-      content = ''; // Content is handled by alt/src
+      content = ''; 
     } else if (trimmedLine === '') {
       type = 'empty';
       content = '';
@@ -86,14 +106,9 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
       id = slugify(content) + `-${headingCounter++}`;
     }
     
-    if (tocLevel === 1 || tocLevel === 2) {
-      parsedLines.push({ type: type as 'h1' | 'h2', content, id: id! });
-      tocEntries.push({ id: id!, text: content, level: tocLevel as 1 | 2 });
-    } else if (type === 'h1' && !tocLevel) { 
-      parsedLines.push({ type: 'h1', content, id: id! });
-    } else if (type === 'h3' && !tocLevel) { 
-      // H3s are not in ToC by this logic, but will be rendered with IDs
-      parsedLines.push({ type: 'h3', content, id: id! });
+    if (tocLevel) {
+      parsedLines.push({ type: type as 'h1' | 'h2' | 'h3', content, id: id!, level: tocLevel });
+      tocEntries.push({ id: id!, text: content, level: tocLevel });
     } else if (type === 'img') {
       parsedLines.push({ type, content: '', alt: altText, src: imgSrc });
     } else if (type === 'p' || type === 'empty') {
@@ -135,7 +150,7 @@ export default async function AdminTechSpecPage() {
           <CardDescription>
             This document outlines the technical details, architecture, and features of the application.
             It is dynamically read and formatted from <code>TECHNICAL_SPEC.md</code> in the project root.
-            A Table of Contents is generated from H2 (##) and H3 (###) headings.
+            A Table of Contents is generated from H1, H2, and H3 headings.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -158,7 +173,11 @@ export default async function AdminTechSpecPage() {
               <CardContent className="p-2">
                 <ul className="space-y-1 list-none">
                   {parseResult.tocEntries.map((entry) => (
-                    <li key={entry.id} className={entry.level === 2 ? 'ml-4' : ''}>
+                    <li key={entry.id} 
+                        className={
+                          entry.level === 2 ? 'ml-4' : 
+                          entry.level === 3 ? 'ml-8' : ''
+                        }>
                       <a
                         href={`#${entry.id}`}
                         className="text-sm text-foreground hover:text-primary hover:underline transition-colors"
@@ -175,7 +194,7 @@ export default async function AdminTechSpecPage() {
           {parseResult.parsedLines.length > 0 && !errorMessage && (
             <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50">
               {parseResult.parsedLines.map((line, index) => {
-                const key = `${line.type}-${index}-${line.id || line.src || 'no-id'}`;
+                const key = `${line.type}-${index}-${line.id || line.src || 'mermaid-' + index}`;
                 if (line.type === 'h1') { 
                   return <h1 key={key} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
                 } else if (line.type === 'h2') {
@@ -183,22 +202,21 @@ export default async function AdminTechSpecPage() {
                 } else if (line.type === 'h3') {
                   return <h3 key={key} id={line.id} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
                 } else if (line.type === 'img' && line.src) {
-                  // Assuming local images in /public directory
-                  // next/image needs width & height. For simplicity if not known, we can use a wrapper or `fill`.
-                  // For now, let's try with inferred dimensions which works for static imports or if images have metadata.
-                  // If images are dynamic or sizes vary wildly, this might need adjustment (e.g., explicit w/h or fill + sized parent)
                   return (
                     <div key={key} className="my-4">
                       <Image 
                         src={line.src} 
                         alt={line.alt || 'Markdown Image'} 
-                        width={700} // Provide a default width or make it configurable
-                        height={400} // Provide a default height or make it configurable
-                        layout="responsive" // Adjust as needed, 'intrinsic' or 'fixed' might also work
+                        width={700} 
+                        height={400} 
+                        layout="responsive" 
                         className="rounded-md shadow-md"
                       />
                     </div>
                   );
+                } else if (line.type === 'mermaid') {
+                  // Use index for idSuffix to help with unique IDs if multiple diagrams
+                  return <MermaidDiagram key={key} chart={line.content} idSuffix={index.toString()} />;
                 } else if (line.type === 'p') {
                   return <p key={key} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
                 } else if (line.type === 'empty') {
@@ -221,4 +239,3 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
-
