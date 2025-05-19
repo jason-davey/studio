@@ -42,27 +42,14 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const tocEntries: TocEntry[] = [];
   let headingCounter = 0; // Shared counter for unique IDs
 
-  const h2NumPattern = /^\d+\.\d+\.\s+(.*)/;
-  const h1NumPattern = /^\d+\.\s+(.*)/;
-
   for (const line of lines) {
     let id: string | undefined;
     let content = line.trim();
     let type: ParsedLine['type'] | null = null;
     let tocLevel: TocEntry['level'] | null = null;
 
-    const h2NumMatch = content.match(h2NumPattern);
-    const h1NumMatch = content.match(h1NumPattern);
-
-    if (h2NumMatch) {
-      content = h2NumMatch[1];
-      type = 'h2';
-      tocLevel = 2;
-    } else if (h1NumMatch) {
-      content = h1NumMatch[1];
-      type = 'h1';
-      tocLevel = 1;
-    } else if (content.startsWith('### ')) {
+    // Prioritize hash-based headings for structure
+    if (content.startsWith('### ')) {
       content = content.substring(4);
       type = 'h3';
     } else if (content.startsWith('## ')) {
@@ -82,14 +69,22 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
     }
 
     if (type && (type === 'h1' || type === 'h2' || type === 'h3')) {
-      if (tocLevel) { // Only add H1 and H2 to ToC
-        id = slugify(content) + `-${headingCounter++}`;
+      if (tocLevel && (type === 'h1' || type === 'h2')) { // Only add H1 and H2 to ToC
+        // Ensure content used for slug is just the text, not prefixes
+        let slugContent = content;
+        const numH2Match = content.match(/^\d+\.\d+\.\s+(.*)/);
+        const numH1Match = content.match(/^\d+\.\s+(.*)/);
+        if (numH2Match) slugContent = numH2Match[1];
+        else if (numH1Match) slugContent = numH1Match[1];
+
+        id = slugify(slugContent) + `-${headingCounter++}`;
         tocEntries.push({ id, text: content, level: tocLevel });
       }
       parsedLines.push({ type, content, id });
     } else if (type === 'empty') {
       parsedLines.push({ type: 'empty', content: '' });
     } else if (type === 'p') {
+      // Any line not matching a heading or empty line is a paragraph
       parsedLines.push({ type: 'p', content: line }); // Use original line for 'p'
     }
   }
@@ -127,7 +122,7 @@ export default async function AdminTechSpecPage() {
           <CardDescription>
             This document outlines the technical details, architecture, and features of the application.
             It is dynamically read and formatted from <code>TECHNICAL_SPEC.md</code> in the project root.
-            A Table of Contents is generated from H1 and H2 headings.
+            A Table of Contents is generated from H1 and H2 headings (defined by '#' and '##' respectively).
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -155,7 +150,7 @@ export default async function AdminTechSpecPage() {
                         href={`#${entry.id}`}
                         className="text-sm text-foreground hover:text-primary hover:underline transition-colors"
                       >
-                        {entry.text} {/* Display the content stripped of the prefix */}
+                        {entry.text}
                       </a>
                     </li>
                   ))}
