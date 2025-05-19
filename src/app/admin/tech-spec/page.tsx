@@ -4,7 +4,7 @@ import path from 'path';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Terminal } from "lucide-react";
+import { Terminal, List } from "lucide-react";
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 
 // This page is a Server Component by default in Next.js App Router
@@ -12,36 +12,70 @@ import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 interface ParsedLine {
   type: 'h1' | 'h2' | 'h3' | 'p' | 'empty';
   content: string;
+  id?: string; // For ToC linking
 }
 
-function parseMarkdown(markdown: string): ParsedLine[] {
+interface TocEntry {
+  id: string;
+  text: string;
+  level: 1 | 2; // 1 for H1, 2 for H2
+}
+
+function slugify(text: string): string {
+  return text
+    .toString()
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-') // Replace spaces with -
+    .replace(/[^\w-]+/g, '') // Remove all non-word chars
+    .replace(/--+/g, '-'); // Replace multiple - with single -
+}
+
+interface ParseMarkdownResult {
+  parsedLines: ParsedLine[];
+  tocEntries: TocEntry[];
+}
+
+function parseMarkdown(markdown: string): ParseMarkdownResult {
   const lines = markdown.split('\n');
-  return lines.map(line => {
-    if (line.startsWith('### ')) {
-      return { type: 'h3', content: line.substring(4) };
-    } else if (line.startsWith('## ')) {
-      return { type: 'h2', content: line.substring(3) };
-    } else if (line.startsWith('# ')) {
-      return { type: 'h1', content: line.substring(2) };
+  const parsedLines: ParsedLine[] = [];
+  const tocEntries: TocEntry[] = [];
+  let headingCounter = 0; // To ensure unique IDs if headings are identical
+
+  for (const line of lines) {
+    let id: string | undefined;
+    if (line.startsWith('## ') && !line.startsWith('### ')) { // Ensure it's H2, not H3
+      const content = line.substring(3);
+      id = slugify(content) + (content === slugify(content) ? '' : `-${headingCounter++}`);
+      parsedLines.push({ type: 'h2', content, id });
+      tocEntries.push({ id, text: content, level: 2 });
+    } else if (line.startsWith('# ') && !line.startsWith('## ')) { // Ensure it's H1, not H2 or H3
+      const content = line.substring(2);
+      id = slugify(content) + (content === slugify(content) ? '' : `-${headingCounter++}`);
+      parsedLines.push({ type: 'h1', content, id });
+      tocEntries.push({ id, text: content, level: 1 });
+    } else if (line.startsWith('### ')) {
+      // H3s are not included in ToC for now, but parsed for rendering
+      parsedLines.push({ type: 'h3', content: line.substring(4) });
     } else if (line.trim() === '') {
-      // Keep empty lines to preserve some spacing, or they can be filtered out
-      return { type: 'empty', content: '' };
+      parsedLines.push({ type: 'empty', content: '' });
     } else {
-      return { type: 'p', content: line };
+      parsedLines.push({ type: 'p', content: line });
     }
-  });
+  }
+  return { parsedLines, tocEntries };
 }
 
 export default async function AdminTechSpecPage() {
   let specContent: string | null = null;
   let errorMessage: string | null = null;
-  let parsedLines: ParsedLine[] = [];
+  let parseResult: ParseMarkdownResult = { parsedLines: [], tocEntries: [] };
 
   try {
     const filePath = path.join(process.cwd(), 'TECHNICAL_SPEC.md');
     if (fs.existsSync(filePath)) {
       specContent = fs.readFileSync(filePath, 'utf8');
-      parsedLines = parseMarkdown(specContent);
+      parseResult = parseMarkdown(specContent);
     } else {
       errorMessage = "TECHNICAL_SPEC.md file not found in the project root. Please ensure it exists.";
       console.error(errorMessage);
@@ -63,38 +97,63 @@ export default async function AdminTechSpecPage() {
           <CardDescription>
             This document outlines the technical details, architecture, and features of the application.
             It is dynamically read and formatted from <code>TECHNICAL_SPEC.md</code> in the project root.
+            A Table of Contents is generated from H1 and H2 headings.
           </CardDescription>
         </CardHeader>
         <CardContent>
           {errorMessage && (
-            <Alert variant="destructive" className="mb-4">
+            <Alert variant="destructive" className="mb-6">
               <Terminal className="h-4 w-4" />
               <AlertTitle>Error Loading Specification</AlertTitle>
               <AlertDescription>{errorMessage}</AlertDescription>
             </Alert>
           )}
-          {parsedLines.length > 0 && !errorMessage && (
-            <ScrollArea className="h-[calc(100vh-20rem)] w-full rounded-md border p-4 bg-muted/50">
-              {parsedLines.map((line, index) => {
+
+          {parseResult.tocEntries.length > 0 && !errorMessage && (
+            <Card className="mb-8 bg-muted/30 p-4 rounded-md">
+              <CardHeader className="p-2 pb-3">
+                <CardTitle className="text-xl font-semibold text-primary flex items-center">
+                  <List className="mr-2 h-5 w-5" />
+                  Table of Contents
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-2">
+                <ul className="space-y-1 list-none">
+                  {parseResult.tocEntries.map((entry) => (
+                    <li key={entry.id} className={entry.level === 2 ? 'ml-4' : ''}>
+                      <a
+                        href={`#${entry.id}`}
+                        className="text-sm text-foreground hover:text-primary hover:underline transition-colors"
+                      >
+                        {entry.text}
+                      </a>
+                    </li>
+                  ))}
+                </ul>
+              </CardContent>
+            </Card>
+          )}
+
+          {parseResult.parsedLines.length > 0 && !errorMessage && (
+            <ScrollArea className="h-[calc(100vh-26rem)] w-full rounded-md border p-4 bg-muted/50">
+              {parseResult.parsedLines.map((line, index) => {
                 if (line.type === 'h1') {
-                  return <h1 key={index} className="text-3xl font-bold my-6 text-primary">{line.content}</h1>;
+                  return <h1 key={index} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
                 } else if (line.type === 'h2') {
-                  return <h2 key={index} className="text-2xl font-semibold my-4 text-foreground">{line.content}</h2>;
+                  return <h2 key={index} id={line.id} className="text-2xl font-semibold my-4 pt-2 text-foreground scroll-mt-20">{line.content}</h2>;
                 } else if (line.type === 'h3') {
-                  return <h3 key={index} className="text-xl font-medium my-3 text-foreground">{line.content}</h3>;
+                  return <h3 key={index} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
                 } else if (line.type === 'p') {
-                  // Using whitespace-pre-wrap to respect indentation and line breaks from MD
-                  // which is useful for code blocks or pre-formatted text in the MD.
                   return <p key={index} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
                 } else if (line.type === 'empty') {
-                  // Render a small break for empty lines, or skip if preferred
                   return <div key={index} className="h-3"></div>; 
                 }
                 return null;
               })}
             </ScrollArea>
           )}
-          {!specContent && !errorMessage && !parsedLines.length && (
+
+          {!specContent && !errorMessage && !parseResult.parsedLines.length && (
              <Alert className="mb-4">
               <Terminal className="h-4 w-4" />
               <AlertTitle>No Content</AlertTitle>
