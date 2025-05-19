@@ -7,18 +7,16 @@ import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, List } from "lucide-react";
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 
-// This page is a Server Component by default in Next.js App Router
-
 interface ParsedLine {
   type: 'h1' | 'h2' | 'h3' | 'p' | 'empty';
   content: string;
-  id?: string; // For ToC linking
+  id?: string;
 }
 
 interface TocEntry {
   id: string;
   text: string;
-  level: 1 | 2; // 1 for H1, 2 for H2
+  level: 1 | 2;
 }
 
 function slugify(text: string): string {
@@ -26,9 +24,9 @@ function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-') // Replace spaces with -
-    .replace(/[^\w-]+/g, '') // Remove all non-word chars
-    .replace(/--+/g, '-'); // Replace multiple - with single -
+    .replace(/\s+/g, '-')
+    .replace(/[^\w-]+/g, '')
+    .replace(/--+/g, '-');
 }
 
 interface ParseMarkdownResult {
@@ -40,53 +38,45 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const lines = markdown.split('\n');
   const parsedLines: ParsedLine[] = [];
   const tocEntries: TocEntry[] = [];
-  let headingCounter = 0; // Shared counter for unique IDs
+  let headingCounter = 0;
 
   for (const line of lines) {
     let id: string | undefined;
-    let content = line.trim(); // Trim initially to check for # prefixes
+    const trimmedLine = line.trim();
+    let content = trimmedLine;
     let type: ParsedLine['type'] | null = null;
     let tocLevel: TocEntry['level'] | null = null;
 
-    // Simplified heading detection: only #, ##, ###
-    if (content.startsWith('### ')) {
-      content = content.substring(4); // Get text after "### "
+    // Corrected order of checks: H3 -> H2 -> H1
+    if (trimmedLine.startsWith('### ')) {
+      content = trimmedLine.substring(4);
       type = 'h3';
-    } else if (content.startsWith('## ')) {
-      content = content.substring(3); // Get text after "## "
+    } else if (trimmedLine.startsWith('## ')) {
+      content = trimmedLine.substring(3);
       type = 'h2';
-      tocLevel = 2; // Mark for ToC
-    } else if (content.startsWith('# ')) {
-      content = content.substring(2); // Get text after "# "
+      tocLevel = 2;
+    } else if (trimmedLine.startsWith('# ')) {
+      content = trimmedLine.substring(2);
       type = 'h1';
-      tocLevel = 1; // Mark for ToC
-    } else if (line.trim() === '') {
+      tocLevel = 1;
+    } else if (trimmedLine === '') {
       type = 'empty';
       content = '';
     } else {
       type = 'p';
-      content = line; // Use original line for paragraphs to preserve leading spaces if any for pre-wrap
+      content = line; // Use original line for paragraphs to preserve leading spaces for pre-wrap
     }
 
-    if (type && (type === 'h1' || type === 'h2')) { // Only H1 and H2 go into ToC
-      if (tocLevel) { 
-        // Ensure content used for slug is just the text, not prefixes
-        // This part is crucial if headings in MD might include numbers like "1.1 My Heading"
-        // For now, assuming `content` is already the text part after "# " or "## "
-        id = slugify(content) + `-${headingCounter++}`;
+    if (type === 'h1' || type === 'h2' || type === 'h3') {
+      id = slugify(content) + `-${headingCounter++}`;
+      parsedLines.push({ type, content, id });
+      if (tocLevel) { // Only H1 and H2 (where tocLevel is set) go into ToC
         tocEntries.push({ id, text: content, level: tocLevel });
       }
-      parsedLines.push({ type, content, id }); // Add to parsed lines for rendering
-    } else if (type === 'h3') {
-      // H3s are rendered but not added to ToC
-      // Still give them an ID for potential deep linking if needed later
-      parsedLines.push({ type, content, id: slugify(content) + `-${headingCounter++}` });
-    }
-     else if (type === 'empty') {
+    } else if (type === 'empty') {
       parsedLines.push({ type: 'empty', content: '' });
     } else if (type === 'p') {
-      // Any line not matching a heading or empty line is a paragraph
-      parsedLines.push({ type: 'p', content: line }); // Use original line for 'p'
+      parsedLines.push({ type: 'p', content: line });
     }
   }
   return { parsedLines, tocEntries };
@@ -123,7 +113,7 @@ export default async function AdminTechSpecPage() {
           <CardDescription>
             This document outlines the technical details, architecture, and features of the application.
             It is dynamically read and formatted from <code>TECHNICAL_SPEC.md</code> in the project root.
-            A Table of Contents is generated from H1 and H2 headings (defined by '#' and '##' respectively).
+            A Table of Contents is generated from H1 and H2 headings.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -163,16 +153,17 @@ export default async function AdminTechSpecPage() {
           {parseResult.parsedLines.length > 0 && !errorMessage && (
             <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50">
               {parseResult.parsedLines.map((line, index) => {
+                const key = `${line.type}-${index}-${line.id || 'no-id'}`;
                 if (line.type === 'h1') {
-                  return <h1 key={index} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
+                  return <h1 key={key} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
                 } else if (line.type === 'h2') {
-                  return <h2 key={index} id={line.id} className="text-2xl font-semibold my-4 pt-2 text-foreground scroll-mt-20">{line.content}</h2>;
+                  return <h2 key={key} id={line.id} className="text-2xl font-semibold my-4 pt-2 text-foreground scroll-mt-20">{line.content}</h2>;
                 } else if (line.type === 'h3') {
-                  return <h3 key={index} id={line.id} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
+                  return <h3 key={key} id={line.id} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
                 } else if (line.type === 'p') {
-                  return <p key={index} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
+                  return <p key={key} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
                 } else if (line.type === 'empty') {
-                  return <div key={index} className="h-3"></div>; 
+                  return <div key={key} className="h-3"></div>; 
                 }
                 return null;
               })}
@@ -191,5 +182,3 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
-
-    
