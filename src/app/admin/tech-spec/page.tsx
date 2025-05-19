@@ -44,22 +44,22 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
 
   for (const line of lines) {
     let id: string | undefined;
-    let content = line.trim();
+    let content = line.trim(); // Trim initially to check for # prefixes
     let type: ParsedLine['type'] | null = null;
     let tocLevel: TocEntry['level'] | null = null;
 
-    // Prioritize hash-based headings for structure
+    // Simplified heading detection: only #, ##, ###
     if (content.startsWith('### ')) {
-      content = content.substring(4);
+      content = content.substring(4); // Get text after "### "
       type = 'h3';
     } else if (content.startsWith('## ')) {
-      content = content.substring(3);
+      content = content.substring(3); // Get text after "## "
       type = 'h2';
-      tocLevel = 2;
+      tocLevel = 2; // Mark for ToC
     } else if (content.startsWith('# ')) {
-      content = content.substring(2);
+      content = content.substring(2); // Get text after "# "
       type = 'h1';
-      tocLevel = 1;
+      tocLevel = 1; // Mark for ToC
     } else if (line.trim() === '') {
       type = 'empty';
       content = '';
@@ -68,20 +68,21 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
       content = line; // Use original line for paragraphs to preserve leading spaces if any for pre-wrap
     }
 
-    if (type && (type === 'h1' || type === 'h2' || type === 'h3')) {
-      if (tocLevel && (type === 'h1' || type === 'h2')) { // Only add H1 and H2 to ToC
+    if (type && (type === 'h1' || type === 'h2')) { // Only H1 and H2 go into ToC
+      if (tocLevel) { 
         // Ensure content used for slug is just the text, not prefixes
-        let slugContent = content;
-        const numH2Match = content.match(/^\d+\.\d+\.\s+(.*)/);
-        const numH1Match = content.match(/^\d+\.\s+(.*)/);
-        if (numH2Match) slugContent = numH2Match[1];
-        else if (numH1Match) slugContent = numH1Match[1];
-
-        id = slugify(slugContent) + `-${headingCounter++}`;
+        // This part is crucial if headings in MD might include numbers like "1.1 My Heading"
+        // For now, assuming `content` is already the text part after "# " or "## "
+        id = slugify(content) + `-${headingCounter++}`;
         tocEntries.push({ id, text: content, level: tocLevel });
       }
-      parsedLines.push({ type, content, id });
-    } else if (type === 'empty') {
+      parsedLines.push({ type, content, id }); // Add to parsed lines for rendering
+    } else if (type === 'h3') {
+      // H3s are rendered but not added to ToC
+      // Still give them an ID for potential deep linking if needed later
+      parsedLines.push({ type, content, id: slugify(content) + `-${headingCounter++}` });
+    }
+     else if (type === 'empty') {
       parsedLines.push({ type: 'empty', content: '' });
     } else if (type === 'p') {
       // Any line not matching a heading or empty line is a paragraph
@@ -167,7 +168,7 @@ export default async function AdminTechSpecPage() {
                 } else if (line.type === 'h2') {
                   return <h2 key={index} id={line.id} className="text-2xl font-semibold my-4 pt-2 text-foreground scroll-mt-20">{line.content}</h2>;
                 } else if (line.type === 'h3') {
-                  return <h3 key={index} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
+                  return <h3 key={index} id={line.id} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
                 } else if (line.type === 'p') {
                   return <p key={index} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
                 } else if (line.type === 'empty') {
@@ -190,3 +191,5 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
+
+    
