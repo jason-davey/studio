@@ -1,11 +1,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Star, ShieldCheck } from 'lucide-react'; 
+import { Trophy, Star, ShieldCheck, Award } from 'lucide-react'; 
 import Link from 'next/link';
 
 const awardsData = [
   {
-    icon: <Trophy className="h-10 w-10 text-primary mb-3" />,
+    icon: <ShieldCheck className="h-10 w-10 text-primary mb-3" />, // Changed from Trophy to ShieldCheck for diagnosis
     title: "Customer Satisfaction Award 2023 - Roy Morgan",
     details: "Risk & Life Insurer of the Year - 2023",
     description: "Real Insurance was awarded the 2023 Risk & Life Insurer of the Year winner at the Roy Morgan Customer Satisfaction Awards.",
@@ -61,4 +61,3 @@ export default function AwardsSection() {
     </section>
   );
 }
-
