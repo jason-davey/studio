@@ -6,17 +6,20 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Terminal, List } from "lucide-react";
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
+import Image from 'next/image'; // Import next/image
 
 interface ParsedLine {
-  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty'; // h1 for '## section' & '# title', h2 for '### subsection'
+  type: 'h1' | 'h2' | 'h3' | 'p' | 'img' | 'empty';
   content: string;
   id?: string;
+  alt?: string; // For images
+  src?: string; // For images
 }
 
 interface TocEntry {
   id: string;
   text: string;
-  level: 1 | 2; // Level 1 for '## section', Level 2 for '### subsection'
+  level: 1 | 2; 
 }
 
 function slugify(text: string): string {
@@ -24,10 +27,13 @@ function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')       // Replace spaces with -
-    .replace(/[^\w-]+/g, '')    // Remove all non-word chars
-    .replace(/--+/g, '-');      // Replace multiple - with single -
+    .replace(/\s+/g, '-')       
+    .replace(/[^\w-]+/g, '')    
+    .replace(/--+/g, '-');      
 }
+
+// Regex to match Markdown image syntax: ![alt text](src)
+const markdownImageRegex = /!\[(.*?)\]\((.*?)\)/;
 
 interface ParseMarkdownResult {
   parsedLines: ParsedLine[];
@@ -38,7 +44,7 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const lines = markdown.split('\n');
   const parsedLines: ParsedLine[] = [];
   const tocEntries: TocEntry[] = [];
-  let headingCounter = 0; // For unique IDs
+  let headingCounter = 0; 
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -46,53 +52,51 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
     let type: ParsedLine['type'] | null = null;
     let tocLevel: TocEntry['level'] | null = null;
     let id: string | undefined;
+    let altText: string | undefined;
+    let imgSrc: string | undefined;
 
-    // Check for ### (user's intended H2 for ToC and styling)
-    if (trimmedLine.startsWith('### ')) {
-      content = trimmedLine.substring(4);
-      type = 'h2'; // Render as H2 style
-      tocLevel = 2; // This is a level 2 item in the ToC
-    } 
-    // Else, check for ## (user's intended H1 for ToC and styling)
-    else if (trimmedLine.startsWith('## ')) {
+    const imageMatch = trimmedLine.match(markdownImageRegex);
+
+    if (trimmedLine.startsWith('## ')) { // Main sections for ToC
       content = trimmedLine.substring(3);
-      type = 'h1'; // Render as H1 style
-      tocLevel = 1; // This is a level 1 item in the ToC
-    } 
-    // Else, check for # (a main document title, not part of the ##/### ToC sections)
-    else if (trimmedLine.startsWith('# ')) {
+      type = 'h1'; // Render as H1 style for main sections
+      tocLevel = 1; 
+    } else if (trimmedLine.startsWith('### ')) { // Sub-sections for ToC
+      content = trimmedLine.substring(4);
+      type = 'h2'; // Render as H2 style for sub-sections
+      tocLevel = 2;
+    } else if (trimmedLine.startsWith('# ')) { // Document title, not in this specific ToC structure
       content = trimmedLine.substring(2);
       type = 'h1'; // Render as H1 style
-      // Not added to tocEntries for this specific user request
-    } 
-    // Else, handle paragraphs and empty lines
-    else if (trimmedLine === '') {
+      // Not added to tocEntries for this specific user request of ## and ### in ToC
+    } else if (imageMatch) {
+      type = 'img';
+      altText = imageMatch[1];
+      imgSrc = imageMatch[2];
+      content = ''; // Content is handled by alt/src
+    } else if (trimmedLine === '') {
       type = 'empty';
       content = '';
     } else {
       type = 'p';
-      content = line; // Use original line for paragraphs to preserve leading spaces for pre-wrap
+      content = line; 
     }
 
-    // Generate ID if it's any kind of heading that will be rendered with an ID
-    if (type === 'h1' || type === 'h2' || type === 'h3') { // h3 added in case of future use or direct # parsing
+    if (type === 'h1' || type === 'h2' || type === 'h3') {
       id = slugify(content) + `-${headingCounter++}`;
     }
     
-    // Add to parsedLines and tocEntries based on detected type and tocLevel
     if (tocLevel === 1 || tocLevel === 2) {
-      // For lines that go into ToC (## and ###)
       parsedLines.push({ type: type as 'h1' | 'h2', content, id: id! });
       tocEntries.push({ id: id!, text: content, level: tocLevel as 1 | 2 });
     } else if (type === 'h1' && !tocLevel) { 
-      // For lines that are just '#' (main document title, styled as H1 but not in this ToC)
       parsedLines.push({ type: 'h1', content, id: id! });
-    } else if (type === 'h3' && !tocLevel) {
-      // For lines that are '###' but somehow not caught as tocLevel 2 (should not happen with current logic but defensive)
-      // or if we decide to style raw '###' not part of ToC differently
+    } else if (type === 'h3' && !tocLevel) { 
+      // H3s are not in ToC by this logic, but will be rendered with IDs
       parsedLines.push({ type: 'h3', content, id: id! });
-    }
-     else if (type === 'p' || type === 'empty') {
+    } else if (type === 'img') {
+      parsedLines.push({ type, content: '', alt: altText, src: imgSrc });
+    } else if (type === 'p' || type === 'empty') {
       parsedLines.push({ type, content });
     }
   }
@@ -171,14 +175,30 @@ export default async function AdminTechSpecPage() {
           {parseResult.parsedLines.length > 0 && !errorMessage && (
             <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50">
               {parseResult.parsedLines.map((line, index) => {
-                const key = `${line.type}-${index}-${line.id || 'no-id'}`;
-                // Note: line.type 'h1' now corresponds to '##' markdown, and 'h2' to '###' markdown for styling
+                const key = `${line.type}-${index}-${line.id || line.src || 'no-id'}`;
                 if (line.type === 'h1') { 
                   return <h1 key={key} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
                 } else if (line.type === 'h2') {
                   return <h2 key={key} id={line.id} className="text-2xl font-semibold my-4 pt-2 text-foreground scroll-mt-20">{line.content}</h2>;
-                } else if (line.type === 'h3') { // This style is for any raw '###' not caught by the ToC mapping to h2, or if we decide to map some other Markdown to H3 style.
+                } else if (line.type === 'h3') {
                   return <h3 key={key} id={line.id} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
+                } else if (line.type === 'img' && line.src) {
+                  // Assuming local images in /public directory
+                  // next/image needs width & height. For simplicity if not known, we can use a wrapper or `fill`.
+                  // For now, let's try with inferred dimensions which works for static imports or if images have metadata.
+                  // If images are dynamic or sizes vary wildly, this might need adjustment (e.g., explicit w/h or fill + sized parent)
+                  return (
+                    <div key={key} className="my-4">
+                      <Image 
+                        src={line.src} 
+                        alt={line.alt || 'Markdown Image'} 
+                        width={700} // Provide a default width or make it configurable
+                        height={400} // Provide a default height or make it configurable
+                        layout="responsive" // Adjust as needed, 'intrinsic' or 'fixed' might also work
+                        className="rounded-md shadow-md"
+                      />
+                    </div>
+                  );
                 } else if (line.type === 'p') {
                   return <p key={key} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
                 } else if (line.type === 'empty') {
