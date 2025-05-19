@@ -34,7 +34,7 @@ export default async function AdminTechSpecPage() {
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8" style={marginTopStyle}>
       <Card className="w-full shadow-lg rounded-lg">
-        <CardHeader>
+        <CardHeader className="px-6 pb-6 pt-14"> {/* Added pt-14 for 3.5rem top padding, kept px-6 and pb-6 */}
           <CardTitle className="text-2xl font-bold text-primary">Application Technical Specification</CardTitle>
           <CardDescription>
             This document outlines the technical details, architecture, and features of the application.
@@ -68,3 +68,4 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
+
