@@ -8,7 +8,7 @@ import { Terminal, List } from "lucide-react";
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 
 interface ParsedLine {
-  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty';
+  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty'; // h1 for '## section' & '# title', h2 for '### subsection'
   content: string;
   id?: string;
 }
@@ -16,7 +16,7 @@ interface ParsedLine {
 interface TocEntry {
   id: string;
   text: string;
-  level: 1 | 2;
+  level: 1 | 2; // Level 1 for '## section', Level 2 for '### subsection'
 }
 
 function slugify(text: string): string {
@@ -24,9 +24,9 @@ function slugify(text: string): string {
     .toString()
     .toLowerCase()
     .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w-]+/g, '')
-    .replace(/--+/g, '-');
+    .replace(/\s+/g, '-')       // Replace spaces with -
+    .replace(/[^\w-]+/g, '')    // Remove all non-word chars
+    .replace(/--+/g, '-');      // Replace multiple - with single -
 }
 
 interface ParseMarkdownResult {
@@ -38,28 +38,35 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const lines = markdown.split('\n');
   const parsedLines: ParsedLine[] = [];
   const tocEntries: TocEntry[] = [];
-  let headingCounter = 0;
+  let headingCounter = 0; // For unique IDs
 
   for (const line of lines) {
-    let id: string | undefined;
     const trimmedLine = line.trim();
     let content = trimmedLine;
     let type: ParsedLine['type'] | null = null;
     let tocLevel: TocEntry['level'] | null = null;
+    let id: string | undefined;
 
-    // Corrected order of checks: H3 -> H2 -> H1
+    // Check for ### (user's intended H2 for ToC and styling)
     if (trimmedLine.startsWith('### ')) {
       content = trimmedLine.substring(4);
-      type = 'h3';
-    } else if (trimmedLine.startsWith('## ')) {
+      type = 'h2'; // Render as H2 style
+      tocLevel = 2; // This is a level 2 item in the ToC
+    } 
+    // Else, check for ## (user's intended H1 for ToC and styling)
+    else if (trimmedLine.startsWith('## ')) {
       content = trimmedLine.substring(3);
-      type = 'h2';
-      tocLevel = 2;
-    } else if (trimmedLine.startsWith('# ')) {
+      type = 'h1'; // Render as H1 style
+      tocLevel = 1; // This is a level 1 item in the ToC
+    } 
+    // Else, check for # (a main document title, not part of the ##/### ToC sections)
+    else if (trimmedLine.startsWith('# ')) {
       content = trimmedLine.substring(2);
-      type = 'h1';
-      tocLevel = 1;
-    } else if (trimmedLine === '') {
+      type = 'h1'; // Render as H1 style
+      // Not added to tocEntries for this specific user request
+    } 
+    // Else, handle paragraphs and empty lines
+    else if (trimmedLine === '') {
       type = 'empty';
       content = '';
     } else {
@@ -67,20 +74,31 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
       content = line; // Use original line for paragraphs to preserve leading spaces for pre-wrap
     }
 
-    if (type === 'h1' || type === 'h2' || type === 'h3') {
+    // Generate ID if it's any kind of heading that will be rendered with an ID
+    if (type === 'h1' || type === 'h2' || type === 'h3') { // h3 added in case of future use or direct # parsing
       id = slugify(content) + `-${headingCounter++}`;
-      parsedLines.push({ type, content, id });
-      if (tocLevel) { // Only H1 and H2 (where tocLevel is set) go into ToC
-        tocEntries.push({ id, text: content, level: tocLevel });
-      }
-    } else if (type === 'empty') {
-      parsedLines.push({ type: 'empty', content: '' });
-    } else if (type === 'p') {
-      parsedLines.push({ type: 'p', content: line });
+    }
+    
+    // Add to parsedLines and tocEntries based on detected type and tocLevel
+    if (tocLevel === 1 || tocLevel === 2) {
+      // For lines that go into ToC (## and ###)
+      parsedLines.push({ type: type as 'h1' | 'h2', content, id: id! });
+      tocEntries.push({ id: id!, text: content, level: tocLevel as 1 | 2 });
+    } else if (type === 'h1' && !tocLevel) { 
+      // For lines that are just '#' (main document title, styled as H1 but not in this ToC)
+      parsedLines.push({ type: 'h1', content, id: id! });
+    } else if (type === 'h3' && !tocLevel) {
+      // For lines that are '###' but somehow not caught as tocLevel 2 (should not happen with current logic but defensive)
+      // or if we decide to style raw '###' not part of ToC differently
+      parsedLines.push({ type: 'h3', content, id: id! });
+    }
+     else if (type === 'p' || type === 'empty') {
+      parsedLines.push({ type, content });
     }
   }
   return { parsedLines, tocEntries };
 }
+
 
 export default async function AdminTechSpecPage() {
   let specContent: string | null = null;
@@ -113,7 +131,7 @@ export default async function AdminTechSpecPage() {
           <CardDescription>
             This document outlines the technical details, architecture, and features of the application.
             It is dynamically read and formatted from <code>TECHNICAL_SPEC.md</code> in the project root.
-            A Table of Contents is generated from H1 and H2 headings.
+            A Table of Contents is generated from H2 (##) and H3 (###) headings.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -154,11 +172,12 @@ export default async function AdminTechSpecPage() {
             <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50">
               {parseResult.parsedLines.map((line, index) => {
                 const key = `${line.type}-${index}-${line.id || 'no-id'}`;
-                if (line.type === 'h1') {
+                // Note: line.type 'h1' now corresponds to '##' markdown, and 'h2' to '###' markdown for styling
+                if (line.type === 'h1') { 
                   return <h1 key={key} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
                 } else if (line.type === 'h2') {
                   return <h2 key={key} id={line.id} className="text-2xl font-semibold my-4 pt-2 text-foreground scroll-mt-20">{line.content}</h2>;
-                } else if (line.type === 'h3') {
+                } else if (line.type === 'h3') { // This style is for any raw '###' not caught by the ToC mapping to h2, or if we decide to map some other Markdown to H3 style.
                   return <h3 key={key} id={line.id} className="text-xl font-medium my-3 pt-2 text-foreground scroll-mt-20">{line.content}</h3>;
                 } else if (line.type === 'p') {
                   return <p key={key} className="text-base leading-relaxed mb-3 whitespace-pre-wrap">{line.content}</p>;
@@ -182,3 +201,4 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
+
