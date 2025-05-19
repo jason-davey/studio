@@ -131,7 +131,8 @@ This provides a high-level overview of the development journey:
 
 ### 2.4. System Architecture & Connections
 
-This diagram illustrates the key components and their interactions:
+This diagram illustrates the key components and their interactions. It is dynamically rendered using Mermaid.js from the code block below when viewing this spec in the application at `/admin/tech-spec`.
+
 ```mermaid
 graph TD
     subgraph UserBrowser [User's Browser - Next.js App]
@@ -300,7 +301,7 @@ graph TD
 ### 4.2. Firebase Project Setup
 - See `PLAYBOOK.md`.
 - Remote Config for `heroConfig`.
-- *(Future)* Firebase Authentication enablement (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
+- *(Future / Paused)* Firebase Authentication enablement (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 
 ### 4.3. AB Tasty Integration
 - Placeholder in `src/app/layout.tsx`.
@@ -316,12 +317,12 @@ graph TD
 - **Risk Mitigation:**
     - No direct client-side modification of Firebase A/B tests or sensitive Remote Config parameters. Users are guided to the secure Firebase Console.
     - Generated JSON is for content; platform management for Firebase is separate.
-    - *(Future)* Firebase Auth (when implemented) will handle secure user authentication.
+    - *(Future / Paused)* Firebase Auth (when implemented) will handle secure user authentication.
 - **Compliance & Data Sovereignty:**
     - The app primarily handles content configuration.
     - Data entered by users for A/B Hero configs is stored in their browser's Local Storage.
     - Feedback data (if email provided) is currently handled via `mailto:` or console.
-    - *(Future)* User authentication data will be managed by Firebase Authentication.
+    - *(Future / Paused)* User authentication data will be managed by Firebase Authentication.
     - Firebase/Datadog data residency depends on their respective configurations.
     - Any production deployment must adhere to Greenstone's data governance policies.
 - **Legal:** The "free legal will" mentioned in example content is illustrative; actual legal product details are external to this tool's function.
@@ -341,10 +342,10 @@ graph TD
 - **`src/app/layout.tsx`:** Root layout, global providers (`UIActionProvider`), `TopBar`.
 - **`src/app/page.tsx`:** Main 5-step workflow application, `WalkthroughProvider`.
 - **`src/app/admin/tech-spec/page.tsx`:** Renders `TECHNICAL_SPEC.md` with dynamic Mermaid.
-- **`src/app/login/page.tsx` & `src/app/register/page.tsx`:** Exist but are non-functional due to paused authentication feature.
+- **`src/app/login/page.tsx` & `src/app/register/page.tsx`:** Exist but are non-functional due to paused authentication feature (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 - **`src/contexts/UIActionContext.tsx`:** Manages global modal states.
 - **`src/contexts/WalkthroughContext.tsx`:** Manages guided tour state.
-- **`src/contexts/AuthContext.tsx`:** Exists but unused due to paused authentication feature.
+- **`src/contexts/AuthContext.tsx`:** Exists but unused due to paused authentication feature (Ref: `FEATURE_AUTH_ROLES_PAUSED`).
 - **`src/components/layout/TopBar.tsx`:** Fixed top navigation bar.
 - **`src/components/shared/FeedbackModal.tsx`:** Feedback collection UI.
 - **`src/components/shared/MermaidDiagram.tsx`:** Renders Mermaid diagrams.
@@ -377,6 +378,9 @@ graph TD
 - **Enhanced Reporting Tool Integration:** The external "Recommendations Engine" could be enhanced with AI-led UX evaluation using frameworks like Nielsen's Heuristics, WCAG, and COM-B to generate more refined `PageBlueprint` data for this application.
 
 ## 9. User Flow Diagram (Conceptual for 5-Step Workflow with Top Bar)
+
+This diagram illustrates the user flow through the application. It is dynamically rendered using Mermaid.js from the code block below when viewing this spec in the application at `/admin/tech-spec`.
+
 ```mermaid
 graph TD
     subgraph GlobalUI [Global UI]
@@ -435,3 +439,4 @@ graph TD
     style WalkthroughFlow fill:#fff0f5,stroke:#db7093
     style FeedbackFlow fill:#fffff0,stroke:#ffd700
 ```
+
