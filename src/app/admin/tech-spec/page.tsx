@@ -10,7 +10,7 @@ import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 // This page is a Server Component by default in Next.js App Router
 
 interface ParsedLine {
-  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty';
+  type: 'h1' | 'h2' | 'h3' | 'p' | 'empty' | 'pre'; // Added 'pre' for potential future use
   content: string;
   id?: string; // For ToC linking
 }
@@ -40,26 +40,31 @@ function parseMarkdown(markdown: string): ParseMarkdownResult {
   const lines = markdown.split('\n');
   const parsedLines: ParsedLine[] = [];
   const tocEntries: TocEntry[] = [];
-  let headingCounter = 0; // To ensure unique IDs if headings are identical
+  let headingCounter = 0; // Shared counter for unique IDs
 
   for (const line of lines) {
     let id: string | undefined;
-    if (line.startsWith('## ') && !line.startsWith('### ')) { // Ensure it's H2, not H3
-      const content = line.substring(3);
-      id = slugify(content) + (content === slugify(content) ? '' : `-${headingCounter++}`);
+    // Check for H2: starts with '## ' and not '### '
+    if (line.startsWith('## ') && !line.startsWith('### ')) {
+      const content = line.substring(3); // Get content after '## '
+      id = slugify(content) + `-${headingCounter++}`;
       parsedLines.push({ type: 'h2', content, id });
       tocEntries.push({ id, text: content, level: 2 });
-    } else if (line.startsWith('# ') && !line.startsWith('## ')) { // Ensure it's H1, not H2 or H3
-      const content = line.substring(2);
-      id = slugify(content) + (content === slugify(content) ? '' : `-${headingCounter++}`);
+    // Check for H1: starts with '# ' and not '## '
+    } else if (line.startsWith('# ') && !line.startsWith('## ')) {
+      const content = line.substring(2); // Get content after '# '
+      id = slugify(content) + `-${headingCounter++}`;
       parsedLines.push({ type: 'h1', content, id });
       tocEntries.push({ id, text: content, level: 1 });
+    // Check for H3: starts with '### '
     } else if (line.startsWith('### ')) {
+      const content = line.substring(4); // Get content after '### '
       // H3s are not included in ToC for now, but parsed for rendering
-      parsedLines.push({ type: 'h3', content: line.substring(4) });
+      parsedLines.push({ type: 'h3', content });
     } else if (line.trim() === '') {
       parsedLines.push({ type: 'empty', content: '' });
     } else {
+      // Default to paragraph
       parsedLines.push({ type: 'p', content: line });
     }
   }
@@ -135,7 +140,7 @@ export default async function AdminTechSpecPage() {
           )}
 
           {parseResult.parsedLines.length > 0 && !errorMessage && (
-            <ScrollArea className="h-[calc(100vh-26rem)] w-full rounded-md border p-4 bg-muted/50">
+            <ScrollArea className="h-[calc(100vh-30rem)] w-full rounded-md border p-4 bg-muted/50"> {/* Adjusted height for ToC */}
               {parseResult.parsedLines.map((line, index) => {
                 if (line.type === 'h1') {
                   return <h1 key={index} id={line.id} className="text-3xl font-bold my-6 pt-2 text-primary scroll-mt-20">{line.content}</h1>;
@@ -165,3 +170,4 @@ export default async function AdminTechSpecPage() {
     </div>
   );
 }
+
