@@ -67,7 +67,7 @@ export default function LandingPreviewPage() {
             console.log('Read blueprintA_temp from localStorage:', localBlueprintAString ? localBlueprintAString.substring(0,200) + "..." : 'null');
             console.log('Read blueprintB_temp from localStorage:', localBlueprintBString ? localBlueprintBString.substring(0,200) + "..." : 'null');
 
-            // Temporarily disabling removeItem for diagnostics
+            // DIAGNOSTIC: Keep removeItem commented out
             // if (localBlueprintAString) localStorage.removeItem('previewBlueprintA_temp');
             // if (localBlueprintBString) localStorage.removeItem('previewBlueprintB_temp');
             // console.log('DIAGNOSTIC: Temporary blueprints NOT removed from localStorage.');
@@ -93,7 +93,7 @@ export default function LandingPreviewPage() {
                 ...fallbackBlueprint, 
                 ...parsedBP, 
                 sectionVisibility: { 
-                  ...fallbackBlueprint.sectionVisibility,
+                  ...(fallbackBlueprint.sectionVisibility || {}), 
                   ...(parsedBP.sectionVisibility || {}), 
                 },
               });
@@ -121,7 +121,7 @@ export default function LandingPreviewPage() {
         setError(null); 
       }
       setIsLoading(false);
-    }, 50); 
+    }, 100); // Increased delay slightly for diagnostics
 
     return () => clearTimeout(timerId); 
 

@@ -2,7 +2,6 @@
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -32,6 +31,7 @@ import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 
@@ -357,7 +357,6 @@ const handleDownloadJson = (jsonString: string, configType: string, toastFn: Fun
 
 
 function LandingPageWorkflowPageContent() {
-  console.log("Rendering LandingPageWorkflowPageContent");
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
 
@@ -366,22 +365,19 @@ function LandingPageWorkflowPageContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (uiActions.showWelcomeModal) {
-      // The walkthrough context now directly handles showing its own welcome modal
-      // This effect ensures that if the global UIActionContext requests it,
-      // the walkthrough starts its process (which begins with its welcome modal).
+    if (uiActions.showWelcomeModal && walkthrough) { // Added walkthrough null check
       walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
   useEffect(() => {
     // This effect syncs accordion changes driven by the walkthrough
-    if (walkthrough && walkthrough.isWalkthroughActive && walkthrough.accordionToOpen) {
-      if (activeAccordionItem !== walkthrough.accordionToOpen) {
-        setActiveAccordionItem(walkthrough.accordionToOpen);
+    if (walkthrough && walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.requiresAccordionOpen) {
+      if (activeAccordionItem !== walkthrough.steps[walkthrough.currentStepIndex].requiresAccordionOpen) {
+        setActiveAccordionItem(walkthrough.steps[walkthrough.currentStepIndex].requiresAccordionOpen);
       }
     }
-  }, [walkthrough?.isWalkthroughActive, walkthrough?.accordionToOpen, activeAccordionItem]);
+  }, [walkthrough?.isWalkthroughActive, walkthrough?.currentStepIndex, walkthrough?.steps, activeAccordionItem]);
 
 
   const [uploadedBlueprint, setUploadedBlueprint] = useState<PageBlueprint | null>(null);
@@ -412,9 +408,7 @@ function LandingPageWorkflowPageContent() {
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
 
   useEffect(() => {
-    // This effect handles loading the sample blueprint when requested by the walkthrough
     if (walkthrough && (window as any).__blueprintForWalkthrough) {
-      console.log("Walkthrough requested blueprint load. Applying sample blueprint.");
       const sampleBP = (window as any).__blueprintForWalkthrough as PageBlueprint;
       const blueprintWithVisibility = {
         ...initialBlueprintState, 
@@ -529,12 +523,12 @@ function LandingPageWorkflowPageContent() {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...(prev[section] as any || {}),
+        ...(prev[section] as any || {}), 
         [field]: value,
       },
     }));
   };
-
+  
   const handleSectionVisibilityChange = (section: keyof SectionVisibility, isVisible: boolean) => {
     setActivePageBlueprint(prev => ({
       ...prev,
@@ -646,29 +640,33 @@ function LandingPageWorkflowPageContent() {
     }
 
     try {
-      console.log("Current activePageBlueprint for preview construction:", JSON.parse(JSON.stringify(activePageBlueprint)));
-      console.log("Generated JSON A for Hero (to be used in override):", generatedJsonA);
-      console.log("Generated JSON B for Hero (to be used in override):", generatedJsonB);
-
-      const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint)); 
+      const baseBlueprint: PageBlueprint = JSON.parse(JSON.stringify({
+        ...activePageBlueprint,
+        sectionVisibility: { 
+          hero: activePageBlueprint.sectionVisibility?.hero ?? true,
+          benefits: activePageBlueprint.sectionVisibility?.benefits ?? true,
+          testimonials: activePageBlueprint.sectionVisibility?.testimonials ?? true,
+          trustSignals: activePageBlueprint.sectionVisibility?.trustSignals ?? true,
+          form: activePageBlueprint.sectionVisibility?.form ?? true,
+        },
+      }));
+      console.log("Current activePageBlueprint for preview construction:", baseBlueprint);
 
       let heroConfigAOverride: RecommendationHeroConfig = { headline: '', ctaText: '' };
       try {
-        const parsedA = JSON.parse(generatedJsonA);
+        const parsedA = generatedJsonA ? JSON.parse(generatedJsonA) : {};
         heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedA };
       } catch (e) {
         console.warn("Error parsing generatedJsonA for override, using base hero config for A:", e);
-        toast({ title: 'Warning: Hero A Config', description: 'Version A Hero JSON might be invalid or empty. Using current blueprint hero for A.', variant: 'default'});
         heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
       }
 
       let heroConfigBOverride: RecommendationHeroConfig = { headline: '', ctaText: ''};
       try {
-        const parsedB = JSON.parse(generatedJsonB);
+        const parsedB = generatedJsonB ? JSON.parse(generatedJsonB) : {};
         heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedB };
       } catch (e) {
         console.warn("Error parsing generatedJsonB for override, using base hero config for B:", e);
-        toast({ title: 'Warning: Hero B Config', description: 'Version B Hero JSON might be invalid or empty. Using current blueprint hero for B.', variant: 'default'});
          heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
       }
 
@@ -682,8 +680,8 @@ function LandingPageWorkflowPageContent() {
         heroConfig: heroConfigBOverride,
       };
 
-      console.log('Blueprint A for Preview (constructed):', JSON.parse(JSON.stringify(blueprintAForPreview)));
-      console.log('Blueprint B for Preview (constructed):', JSON.parse(JSON.stringify(blueprintBForPreview)));
+      console.log('Blueprint A for Preview (constructed):', blueprintAForPreview);
+      console.log('Blueprint B for Preview (constructed):', blueprintBForPreview);
 
       const stringifiedA = JSON.stringify(blueprintAForPreview);
       const stringifiedB = JSON.stringify(blueprintBForPreview);
@@ -699,29 +697,42 @@ function LandingPageWorkflowPageContent() {
           return;
       }
       
+      let verificationSuccessfulA = false;
+      let verificationSuccessfulB = false;
+
       if (typeof window !== 'undefined' && window.localStorage) {
-        console.log("Storing blueprintA_temp in localStorage (stringified):", stringifiedA.substring(0, 200) + "...");
+        console.log("Storing blueprintA_temp in localStorage (stringified):", stringifiedA ? stringifiedA.substring(0, 200) + "..." : 'NULL/EMPTY (A)');
         localStorage.setItem('previewBlueprintA_temp', stringifiedA);
         const verifyA = localStorage.getItem('previewBlueprintA_temp');
         console.log("VERIFIED blueprintA_temp in localStorage (after set):", verifyA ? verifyA.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (A)");
+        if (verifyA && verifyA.length > 10) verificationSuccessfulA = true;
 
-        console.log("Storing blueprintB_temp in localStorage (stringified):", stringifiedB.substring(0, 200) + "...");
+
+        console.log("Storing blueprintB_temp in localStorage (stringified):", stringifiedB ? stringifiedB.substring(0, 200) + "..." : 'NULL/EMPTY (B)');
         localStorage.setItem('previewBlueprintB_temp', stringifiedB);
         const verifyB = localStorage.getItem('previewBlueprintB_temp');
         console.log("VERIFIED blueprintB_temp in localStorage (after set):", verifyB ? verifyB.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (B)");
+        if (verifyB && verifyB.length > 10) verificationSuccessfulB = true;
 
-        if (!verifyA || verifyA.length < 10 || !verifyB || verifyB.length < 10) {
-            toast({ title: 'Preview Storage Error', description: 'Failed to verify storage of blueprint data. Preview may fail. Please check console.', variant: 'destructive'});
-             // return; // Uncomment this line to prevent opening window if verification fails
+
+        if (verificationSuccessfulA && verificationSuccessfulB) {
+          console.log("All items verified in localStorage. Opening preview window in 50ms...");
+          setTimeout(() => {
+              window.open('/landing-preview', '_blank');
+              // Check localStorage in this tab immediately after opening the new tab
+              const checkAAfterOpen = localStorage.getItem('previewBlueprintA_temp');
+              const checkBAfterOpen = localStorage.getItem('previewBlueprintB_temp');
+              console.log("Configurator tab: blueprintA_temp after window.open:", checkAAfterOpen ? 'EXISTS' : 'NULL/GONE');
+              console.log("Configurator tab: blueprintB_temp after window.open:", checkBAfterOpen ? 'EXISTS' : 'NULL/GONE');
+          }, 50); 
+        } else {
+          console.error("Local storage verification failed. Preview window not opened.");
+          toast({
+              title: 'Preview Storage Error',
+              description: 'Failed to reliably store blueprint data for preview. Please check console and try again.',
+              variant: 'destructive',
+          });
         }
-
-        window.open('/landing-preview', '_blank');
-        // Check localStorage in this tab immediately after opening the new tab
-        const checkAAfterOpen = localStorage.getItem('previewBlueprintA_temp');
-        const checkBAfterOpen = localStorage.getItem('previewBlueprintB_temp');
-        console.log("Configurator tab: blueprintA_temp after window.open:", checkAAfterOpen ? 'EXISTS' : 'NULL/GONE');
-        console.log("Configurator tab: blueprintB_temp after window.open:", checkBAfterOpen ? 'EXISTS' : 'NULL/GONE');
-
       } else {
         throw new Error("localStorage is not available.");
       }
@@ -874,7 +885,7 @@ function LandingPageWorkflowPageContent() {
             {uploadedBlueprint && (
               <div className="mt-4 p-4 border rounded-md bg-muted/50">
                 <h4 className="font-semibold text-lg mb-2">Blueprint Loaded: {fileName || uploadedBlueprint.pageName}</h4>
-                <pre className="text-xs bg-background p-3 rounded overflow-auto max-h-60">{JSON.stringify(uploadedBlueprint, null, 2)}</pre>
+                <Textarea value={JSON.stringify(uploadedBlueprint, null, 2)} readOnly rows={10} className="font-mono text-xs bg-background p-3 rounded overflow-auto max-h-60"/>
                 <Button onClick={() => setActiveAccordionItem('step-2')} className="mt-4">
                   Proceed to Build <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -916,11 +927,11 @@ function LandingPageWorkflowPageContent() {
                 {activePageBlueprint.sectionVisibility?.form && activePageBlueprint.formConfig && (
                    <QuoteFormSection {...activePageBlueprint.formConfig} />
                  )}
-                {!activePageBlueprint.sectionVisibility?.hero &&
-                 !activePageBlueprint.sectionVisibility?.benefits &&
-                 !activePageBlueprint.sectionVisibility?.testimonials &&
-                 !activePageBlueprint.sectionVisibility?.trustSignals &&
-                 !activePageBlueprint.sectionVisibility?.form && (
+                {!(activePageBlueprint.sectionVisibility?.hero ||
+                   activePageBlueprint.sectionVisibility?.benefits ||
+                   activePageBlueprint.sectionVisibility?.testimonials ||
+                   activePageBlueprint.sectionVisibility?.trustSignals ||
+                   activePageBlueprint.sectionVisibility?.form) && (
                   <p className="p-6 text-center text-muted-foreground">All sections are currently hidden. Toggle their visibility in Step 3 to preview.</p>
                 )}
                 <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
@@ -1201,7 +1212,7 @@ function LandingPageWorkflowPageContent() {
                   onSave={() => saveABHeroConfiguration('B')}
                 />
                 <div className="mt-8 pt-6 border-t border-border text-center">
-                  <Button
+                <Button
                     id="render-ab-preview-button"
                     onClick={handleRenderABTestPreview}
                     className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap"
@@ -1307,10 +1318,37 @@ function LandingPageWorkflowPageContent() {
     marginTop: `${TOP_BAR_HEIGHT_PX}px`,
   };
 
-  // console.log("Rendering LandingPageWorkflowPageContent");
-  // console.log("Current activePageBlueprint (before render):", activePageBlueprint);
-  // console.log("Current savedPageBlueprints (before render):", savedPageBlueprints);
+  console.log("Rendering LandingPageWorkflowPageContent");
+  
+  const { currentUser, loading: authLoading } = useAuth(); 
+  const router = useRouter(); 
 
+  useEffect(() => {
+    if (uiActions.showWelcomeModal && walkthrough) {
+      walkthrough.startWalkthrough();
+    }
+  }, [uiActions.showWelcomeModal, walkthrough]);
+
+
+    if (authLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background" style={mainCardMarginTopStyle}>
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-foreground">Loading Application...</p>
+        </div>
+      );
+    }
+
+    if (!currentUser) { 
+      if (typeof window !== 'undefined') router.push('/login');
+      return (
+         <div className="flex items-center justify-center min-h-screen bg-background" style={mainCardMarginTopStyle}>
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-foreground">Redirecting to login...</p>
+        </div>
+      );
+    }
+    
 
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8" style={mainCardMarginTopStyle}>
@@ -1375,8 +1413,19 @@ function LandingPageWorkflowPageContent() {
 
 
 export default function LandingPageWorkflowPage() {
-    console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
-    const router = useRouter();
+    const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>(walkthroughStepsDefinition[0]?.requiresAccordionOpen || 'step-1');
+
+    const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
+        setActiveAccordionItemForWalkthrough(value);
+    }, []);
+
+    const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
+        if (typeof window !== 'undefined') {
+            (window as any).__blueprintForWalkthrough = blueprint;
+        }
+    }, []);
+
+    const router = useRouter(); 
     const { currentUser, loading: authLoading } = useAuth();
     const [isMounted, setIsMounted] = useState(false);
 
@@ -1385,33 +1434,15 @@ export default function LandingPageWorkflowPage() {
     }, []);
 
     useEffect(() => {
-      // console.log("Auth Guard Effect: isMounted=", isMounted, "authLoading=", authLoading, "currentUser=", !!currentUser);
       if (!isMounted || authLoading) {
         return; 
       }
       if (!currentUser) {
-        // console.log("Redirecting to /login");
         router.push('/login');
       }
     }, [isMounted, currentUser, authLoading, router]);
 
-
-    const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>(walkthroughStepsDefinition[0]?.requiresAccordionOpen || 'step-1');
-
-    const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
-        // console.log("Walkthrough requests accordion change to:", value);
-        setActiveAccordionItemForWalkthrough(value);
-    }, []);
-
-    const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
-        // console.log("Walkthrough requests blueprint load:", blueprint);
-        if (typeof window !== 'undefined') {
-            (window as any).__blueprintForWalkthrough = blueprint;
-        }
-    }, []);
-
-
-    if (authLoading || !isMounted ) {
+    if (authLoading || !isMounted || !currentUser) { 
       return (
         <div className="flex items-center justify-center min-h-screen bg-background">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1419,28 +1450,14 @@ export default function LandingPageWorkflowPage() {
         </div>
       );
     }
-
-    if (!currentUser && isMounted) { 
-      return (
-         <div className="flex items-center justify-center min-h-screen bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="ml-4 text-lg text-foreground">Redirecting to login...</p>
-        </div>
-      );
-    }
     
-    if (!currentUser) return null;
-
-
     return (
         <WalkthroughProvider
             onAccordionChange={handleAccordionChangeForWalkthrough}
             onLoadBlueprint={handleLoadBlueprintForWalkthrough}
-            initialAccordionItem={activeAccordionItemForWalkthrough}
+            initialAccordionItem={activeAccordionItemForWalkthrough} 
         >
           <LandingPageWorkflowPageContent />
         </WalkthroughProvider>
     );
 }
-
-      
