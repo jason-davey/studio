@@ -8,9 +8,9 @@ This playbook guides you through using the in-app tools to create landing page c
 This application helps you prepare and configure landing page content. To use the main features, you will first need to register an account and log in.
 
 ### 0.1. Account Registration & Login
-- **Registration:** If you are a new user, navigate to the `/register` page (or click "Register" in the top bar) and create an account using your email and a password. You will also be asked to select your "Primary Interest" to help tailor future features.
+- **Registration:** If you are a new user, navigate to the `/register` page (or click "Register" in the top bar) and create an account using your email and a password. You will also be asked to select your "Primary Interest" to help tailor future features (note: this selection does not currently assign specific roles but helps us plan for future enhancements).
 - **Login:** If you already have an account, navigate to the `/login` page (or click "Login" in the top bar) and sign in.
-- **Access:** Once logged in, you will be directed to the main application workflow.
+- **Access:** Once logged in, you will be directed to the main application workflow. Users with admin privileges (currently, `jason.davey@greenstone.com.au`) will also see a "Tech Spec" link in the top bar.
 
 ### 0.2. Overview of the In-App Workflow
 The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to navigation, user actions (like Logout), and the "Guided Walkthrough" and "Provide Feedback" buttons at all times.

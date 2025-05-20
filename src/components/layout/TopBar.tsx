@@ -3,28 +3,27 @@
 
 import { Button } from '@/components/ui/button';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { useAuth } from '@/contexts/AuthContext'; 
-import { authInstance } from '@/lib/firebase'; 
-import { signOut } from 'firebase/auth'; 
+import { useAuth } from '@/contexts/AuthContext';
+import { authInstance } from '@/lib/firebase';
+import { signOut } from 'firebase/auth';
 import { MessageSquare, HelpCircle, LayoutDashboard, FileText, LogOut, LogIn, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 
-export const TOP_BAR_HEIGHT_PX = 60; 
+export const TOP_BAR_HEIGHT_PX = 60;
 
 export default function TopBar() {
   const { setIsFeedbackModalOpen, setShowWelcomeModal } = useUIActions();
-  const { currentUser, loading: authLoading } = useAuth(); 
-  const router = useRouter(); 
+  const { currentUser, userRole, loading: authLoading } = useAuth();
+  const router = useRouter();
 
   const handleLogout = async () => {
     if (authInstance) {
       try {
         await signOut(authInstance);
-        router.push('/login'); 
+        router.push('/login');
       } catch (error) {
         console.error("Error signing out: ", error);
-        // Optionally show a toast message for logout error
       }
     }
   };
@@ -41,7 +40,7 @@ export default function TopBar() {
             Workflow
           </Link>
         </Button>
-        {!authLoading && currentUser && ( 
+        {!authLoading && currentUser && userRole === 'admin' && (
           <Button variant="ghost" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
             <Link href="/admin/tech-spec">
               <FileText className="mr-1.5 h-4 w-4" />
