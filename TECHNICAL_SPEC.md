@@ -9,7 +9,7 @@ This Next.js application serves as a comprehensive platform for creating, config
 The application is designed with a UX-AI collaborative development approach, aiming for rapid prototyping and iterative feature enhancement to quickly deliver value.
 
 ### 1.2. High-Level Functionality
-- **User Authentication:** Users must register and log in using Firebase Authentication (Email/Password) to access the main application.
+- **User Authentication:** Users must register and log in using Firebase Authentication (Email/Password) to access the main application. (Login/Register pages exist at `/login` and `/register`).
 - **Fixed Top Bar:** Contains navigation links ("Workflow", "Tech Spec"), user status/auth actions ("Login", "Register", "Logout"), and action buttons ("Provide Feedback", "Guided Walkthrough"). Always visible.
 - **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy) on the main page (`/`).
 - **Recommendation Ingestion (Step 1):** Allows users to upload a JSON file (`PageBlueprint`) containing recommendations for landing page content.
@@ -26,7 +26,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **AB Tasty Integration Point:** Placeholder for AB Tasty's JavaScript snippet.
 - **Performance Monitoring:** Integrated with Datadog RUM for client-side performance and error tracking.
 - **User Feedback Mechanism:** Provides a modal for users to submit feedback, which currently generates a `mailto:` link and logs to console. Triggered from the fixed top bar.
-- **Admin Technical Specification View:** A page (`/admin/tech-spec`) that renders this `TECHNICAL_SPEC.md` document, including dynamic Mermaid diagram rendering. (Access intended for Admin role once roles are implemented).
+- **Admin Technical Specification View:** A page (`/admin/tech-spec`) that renders this `TECHNICAL_SPEC.md` document, including dynamic Mermaid diagram rendering. Accessible to logged-in users via the "Tech Spec" link in the TopBar (intended for Admin role once roles are fully implemented).
 - **Login/Register Pages:** `/login` and `/register` pages for Firebase Authentication.
 
 ### 1.3. Key Technologies Used
@@ -52,7 +52,7 @@ This application has been developed using a highly iterative and collaborative U
 - **Rapid Prototyping & Iteration:** Features are built incrementally, allowing for quick feedback loops and adjustments. This contrasts with traditional waterfall models by delivering working software faster.
 - **Conversational Development:** Changes and new features are discussed and refined through natural language interaction, with the AI generating code changes in a structured format (XML).
 - **Focus on Value:** Prioritizes features that deliver direct value to the end-users (e.g., marketing team) and the business.
-- **Strategic Pausing and Resumption of Features:** Our collaborative process allows for the exploration of features even if they have external dependencies (e.g., awaiting admin access for Firebase Authentication setup). Features can be conceptually designed and their initial code structure laid out, then 'paused' (e.g., by commenting out relevant code and adding clear feature flags/tags like `FEATURE_AUTH_ROLES_PAUSED`). This allows for continued progress on other fronts while keeping the context of the paused feature ready for future resumption, minimizing rework and maintaining development momentum.
+- **Strategic Pausing and Resumption of Features:** Our collaborative process allows for the exploration of features even if they have external dependencies (e.g., awaiting admin access for Firebase Authentication setup). Features can be conceptually designed and their initial code structure laid out, then 'paused' (e.g., by commenting out relevant code and adding clear feature tags like `FEATURE_AUTH_ROLES_PAUSED`). This allows for continued progress on other fronts while keeping the context of the paused feature ready for future resumption, minimizing rework and maintaining development momentum.
 
 ### 1.5. Development Chronology & Key Milestones (Conceptual)
 This provides a high-level overview of the development journey:
@@ -86,7 +86,8 @@ This provides a high-level overview of the development journey:
     - `AuthContext` manages user state.
     - Main application workflow (`/`) is protected and requires login.
     - TopBar updated to show auth status and provide Login/Register/Logout actions.
-    - *Value:* Secure access to the application, foundation for user-specific data and roles.
+    - "Tech Spec" link in TopBar now visible for logged-in users.
+    - *Value:* Secure access to the application, foundation for user-specific data and roles. The Tech Spec page is now accessible to authenticated users as a step towards Admin role functionality.
 
 ## 2. Application Architecture
 
@@ -94,7 +95,7 @@ This provides a high-level overview of the development journey:
 - **Next.js App Router:**
     - `/`: Main 5-step workflow application (`src/app/page.tsx`). Requires authentication.
     - `/landing-preview`: Side-by-side A/B test preview page. Publicly accessible.
-    - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md` (including dynamic Mermaid diagrams). Currently accessible if authenticated, intended for Admin role.
+    - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md` (including dynamic Mermaid diagrams). Accessible to logged-in users via the TopBar (intended for Admin role).
     - `/login`, `/register`: User authentication pages.
 - **Key Directories:**
     - `src/app/`: Page components and layouts.
@@ -151,7 +152,7 @@ graph TD
         App_AuthContext["AuthContext (Firebase Auth State)"]
         App_UIActionContext["UIActionContext"]
         App_WalkthroughContext["WalkthroughContext"]
-        App_TopBar["TopBar Component (Nav, Auth, Actions)"]
+        App_TopBar["TopBar Component (Nav: Workflow, Tech Spec; Actions: Feedback, Walkthrough)"]
         App_FeedbackModal["FeedbackModal Component"]
         App_WelcomeModal["WelcomeModal Component"]
         App_GenkitFlow["Genkit: suggestHeroCopyFlow (Client Call)"]
@@ -225,7 +226,7 @@ graph TD
 - **Pages:** `/login` for sign-in, `/register` for new user creation.
 - **Protection:** The main application workflow at `/` is protected. Users are redirected to `/login` if not authenticated.
 - **State Management:** `AuthContext` provides `currentUser` and `loading` state.
-- **UI:** `TopBar` displays user email and "Logout" button, or "Login"/"Register" links.
+- **UI:** `TopBar` displays user email and "Logout" button if logged in, or "Login"/"Register" links if not.
 
 ### 3.2. Global Fixed Top Bar (`src/components/layout/TopBar.tsx`)
 - **Purpose:** Provides persistent navigation, user authentication status/actions, and access to global application utilities.
@@ -233,7 +234,7 @@ graph TD
     - Fixed position at the top of the viewport.
     - Navigation links:
         - "Workflow": Navigates to the main 5-step application (`/`).
-        - "Tech Spec": Navigates to the rendered technical specification page (`/admin/tech-spec`). (Intended for Admin role).
+        - "Tech Spec": Navigates to the rendered technical specification page (`/admin/tech-spec`). Visible to logged-in users. (Intended for Admin role).
     - User Authentication:
         - Displays user email and "Logout" button if logged in.
         - Displays "Login" and "Register" links if not logged in.
@@ -298,7 +299,7 @@ graph TD
 
 ### 3.9. Admin View for Technical Specification (`src/app/admin/tech-spec/page.tsx`)
 - **Purpose:** Allows viewing of the `TECHNICAL_SPEC.md` file rendered within the application.
-- **Access:** Via a "Tech Spec" link in the global `TopBar`. Currently accessible if authenticated, intended for Admin role in the future.
+- **Access:** Via a "Tech Spec" link in the global `TopBar`. Currently accessible to all logged-in users (intended for Admin role in the future).
 - **Functionality:** Reads `TECHNICAL_SPEC.md` from the file system (server-side) and displays its content, parsing basic Markdown (H1-H3, images) and dynamically rendering Mermaid diagrams from ` ```mermaid ` code blocks client-side. Includes a Table of Contents.
 
 ## 4. Setup & Configuration
@@ -383,9 +384,9 @@ graph TD
 
 ## 8. Future Considerations / Roadmap
 - **Role-Based Access Control (RBAC):**
-    - **Admin Role:** Secure access to the rendered version of `TECHNICAL_SPEC.md` in-app (`/admin/tech-spec`). Potentially other admin functions.
+    - **Admin Role:** Secure access to the rendered version of `TECHNICAL_SPEC.md` in-app (`/admin/tech-spec`). Potentially other admin functions. (Currently, the link is visible to all logged-in users as an interim step).
     - **Creator Role:** Access to the main 5-step workflow (current default for authenticated users).
-    - Secure role management (e.g., using Firebase custom claims).
+    - Secure role management (e.g., using Firebase custom claims). This is part of the `FEATURE_AUTH_ROLES_PAUSED` context.
 - **User-Specific Data Persistence (Firestore):**
     - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs.
     - Store feedback submissions in Firestore.

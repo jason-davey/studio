@@ -3,25 +3,25 @@
 
 import { Button } from '@/components/ui/button';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { useAuth } from '@/contexts/AuthContext'; // Added
-import { authInstance } from '@/lib/firebase'; // Added
-import { signOut } from 'firebase/auth'; // Added
+import { useAuth } from '@/contexts/AuthContext'; 
+import { authInstance } from '@/lib/firebase'; 
+import { signOut } from 'firebase/auth'; 
 import { MessageSquare, HelpCircle, LayoutDashboard, FileText, LogOut, LogIn, UserPlus } from 'lucide-react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation'; // Added
+import { useRouter } from 'next/navigation'; 
 
 export const TOP_BAR_HEIGHT_PX = 60; 
 
 export default function TopBar() {
   const { setIsFeedbackModalOpen, setShowWelcomeModal } = useUIActions();
-  const { currentUser, loading: authLoading } = useAuth(); // Added
-  const router = useRouter(); // Added
+  const { currentUser, loading: authLoading } = useAuth(); 
+  const router = useRouter(); 
 
   const handleLogout = async () => {
     if (authInstance) {
       try {
         await signOut(authInstance);
-        router.push('/login'); // Redirect to login after logout
+        router.push('/login'); 
       } catch (error) {
         console.error("Error signing out: ", error);
         // Optionally show a toast message for logout error
@@ -41,7 +41,7 @@ export default function TopBar() {
             Workflow
           </Link>
         </Button>
-        {currentUser && ( // Conditionally render Tech Spec link for logged-in users
+        {!authLoading && currentUser && ( 
           <Button variant="ghost" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
             <Link href="/admin/tech-spec">
               <FileText className="mr-1.5 h-4 w-4" />
