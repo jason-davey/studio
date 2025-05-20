@@ -10,7 +10,7 @@ import QuoteFormSection from '@/components/landing/QuoteFormSection';
 import Footer from '@/components/landing/Footer';
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
-import type { PageBlueprint, SectionVisibility } from '@/types/recommendations';
+import type { PageBlueprint } from '@/types/recommendations';
 
 const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
   pageName: `Default Preview - ${versionLabel}`,
@@ -22,14 +22,14 @@ const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
     heroImageUrl: "https://placehold.co/1600x900.png",
     heroImageAltText: "Family enjoying time together"
   },
-  benefits: undefined, 
-  testimonials: undefined, 
-  trustSignals: undefined, 
+  benefits: undefined,
+  testimonials: undefined,
+  trustSignals: undefined,
   formConfig: {
     headline: `Default: Get Your Personalized Plan (${versionLabel})`,
     ctaText: `Default: See My Quote Today`
   },
-  sectionVisibility: { 
+  sectionVisibility: {
     hero: true,
     benefits: true,
     testimonials: true,
@@ -42,92 +42,91 @@ export default function LandingPreviewPage() {
   const [blueprintA, setBlueprintA] = useState<PageBlueprint>(() => createDefaultBlueprint('Version A - Fallback'));
   const [blueprintB, setBlueprintB] = useState<PageBlueprint>(() => createDefaultBlueprint('Version B - Fallback'));
   const [error, setError] = useState<string | null>(null);
-  const [isClient, setIsClient] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsClient(true);
-  }, []);
+    console.log('LandingPreviewPage: useEffect for localStorage read is running.');
 
-  useEffect(() => {
-    if (!isClient) return; 
-
-    
-    const timerId = setTimeout(() => {
-      setIsLoading(true);
-      setError(null);
-      let parseError = false;
-      let localBlueprintAString: string | null = null;
-      let localBlueprintBString: string | null = null;
-
-      try {
-        if (typeof window !== 'undefined' && window.localStorage) {
-            localBlueprintAString = localStorage.getItem('previewBlueprintA_temp');
-            localBlueprintBString = localStorage.getItem('previewBlueprintB_temp');
-            console.log('Read blueprintA_temp from localStorage:', localBlueprintAString ? localBlueprintAString.substring(0,200) + "..." : 'null');
-            console.log('Read blueprintB_temp from localStorage:', localBlueprintBString ? localBlueprintBString.substring(0,200) + "..." : 'null');
-
-            // DIAGNOSTIC: Keep removeItem commented out
-            // if (localBlueprintAString) localStorage.removeItem('previewBlueprintA_temp');
-            // if (localBlueprintBString) localStorage.removeItem('previewBlueprintB_temp');
-            // console.log('DIAGNOSTIC: Temporary blueprints NOT removed from localStorage.');
-        }
-      } catch (e) {
-        console.error("Error accessing or removing from localStorage:", e);
-        setError("Could not access local storage. Displaying fallback versions.");
-        parseError = true; 
-      }
-
-
-      const parseAndSetBlueprint = (
-        bpString: string | null,
-        setter: React.Dispatch<React.SetStateAction<PageBlueprint>>,
-        versionLabel: string,
-        fallbackBlueprint: PageBlueprint
-      ) => {
-        if (bpString && bpString.length > 10) { 
-          try {
-            const parsedBP = JSON.parse(bpString) as PageBlueprint;
-            if (parsedBP.pageName && parsedBP.heroConfig && parsedBP.formConfig) {
-              setter({
-                ...fallbackBlueprint, 
-                ...parsedBP, 
-                sectionVisibility: { 
-                  ...(fallbackBlueprint.sectionVisibility || {}), 
-                  ...(parsedBP.sectionVisibility || {}), 
-                },
-              });
-            } else {
-              throw new Error(`${versionLabel} blueprint from localStorage is missing required fields (pageName, heroConfig, or formConfig).`);
-            }
-          } catch (e) {
-            console.error(`Error parsing ${versionLabel} from localStorage:`, e);
-            setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}. Displaying fallback.`));
-            setter(fallbackBlueprint); 
-            parseError = true;
-          }
-        } else {
-          console.log(`${versionLabel} blueprint string not found or empty in localStorage. Using fallback.`);
-          setter(fallbackBlueprint); 
-        }
-      };
-
-      parseAndSetBlueprint(localBlueprintAString, setBlueprintA, 'Version A', createDefaultBlueprint('Version A - Fallback'));
-      parseAndSetBlueprint(localBlueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
-
-      if (!localBlueprintAString && !localBlueprintBString && !parseError) {
-        setError("No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
-      } else if (!parseError && (localBlueprintAString || localBlueprintBString)) {
-        setError(null); 
-      }
+    if (typeof window.localStorage === 'undefined') {
+      console.error('LandingPreviewPage: window.localStorage is not available!');
+      setError('Local storage is not available in this browser environment. Cannot load preview configurations.');
       setIsLoading(false);
-    }, 100); // Increased delay slightly for diagnostics
+      return;
+    }
+    console.log('LandingPreviewPage: window.localStorage is available.');
 
-    return () => clearTimeout(timerId); 
+    let localBlueprintAString: string | null = null;
+    let localBlueprintBString: string | null = null;
+    let parseError = false;
 
-  }, [isClient]); 
+    try {
+      localBlueprintAString = localStorage.getItem('previewBlueprintA_temp');
+      console.log('LandingPreviewPage: Read blueprintA_temp from localStorage:', localBlueprintAString ? localBlueprintAString.substring(0,100) + "..." : localBlueprintAString);
 
-  if (!isClient || isLoading) {
+      localBlueprintBString = localStorage.getItem('previewBlueprintB_temp');
+      console.log('LandingPreviewPage: Read blueprintB_temp from localStorage:', localBlueprintBString ? localBlueprintBString.substring(0,100) + "..." : localBlueprintBString);
+
+      // DIAGNOSTIC: Keep removeItem commented out for now to see if data ever makes it
+      // if (localBlueprintAString) localStorage.removeItem('previewBlueprintA_temp');
+      // if (localBlueprintBString) localStorage.removeItem('previewBlueprintB_temp');
+      // console.log('LandingPreviewPage: DIAGNOSTIC - Temporary blueprints NOT removed from localStorage.');
+
+    } catch (e) {
+      console.error("LandingPreviewPage: Error accessing localStorage:", e);
+      setError("Could not access local storage. Displaying fallback versions.");
+      parseError = true;
+    }
+
+    const parseAndSetBlueprint = (
+      bpString: string | null,
+      setter: React.Dispatch<React.SetStateAction<PageBlueprint>>,
+      versionLabel: string,
+      fallbackBlueprint: PageBlueprint
+    ) => {
+      if (bpString && bpString.length > 10) { 
+        try {
+          const parsedBP = JSON.parse(bpString) as PageBlueprint;
+          if (parsedBP.pageName && parsedBP.heroConfig && parsedBP.formConfig) {
+            setter({
+              ...fallbackBlueprint, 
+              ...parsedBP, 
+              sectionVisibility: { 
+                ...(fallbackBlueprint.sectionVisibility || {}),
+                ...(parsedBP.sectionVisibility || {}),
+              },
+            });
+          } else {
+            throw new Error(`${versionLabel} blueprint from localStorage is missing required fields (pageName, heroConfig, or formConfig). Parsed: ${JSON.stringify(parsedBP)}`);
+          }
+        } catch (e: any) {
+          console.error(`LandingPreviewPage: Error parsing ${versionLabel} from localStorage. String was:`, bpString, "Error:", e);
+          setError(prev => {
+            const newError = `Error parsing ${versionLabel} blueprint. Details in console. Displaying fallback.`;
+            return prev ? `${prev} ${newError}` : newError;
+          });
+          setter(fallbackBlueprint); 
+          parseError = true;
+        }
+      } else {
+        console.log(`LandingPreviewPage: ${versionLabel} blueprint string not found or empty in localStorage. Using fallback. String was: `, bpString);
+        setter(fallbackBlueprint); 
+      }
+    };
+
+    parseAndSetBlueprint(localBlueprintAString, setBlueprintA, 'Version A', createDefaultBlueprint('Version A - Fallback'));
+    parseAndSetBlueprint(localBlueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
+
+    if (!localBlueprintAString && !localBlueprintBString && !parseError) {
+      console.log("LandingPreviewPage: No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
+      setError("No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
+    } else if (!parseError && (localBlueprintAString || localBlueprintBString)) {
+      setError(null); 
+    }
+    setIsLoading(false);
+
+  }, []); // Runs once after component mounts on client
+
+  if (isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background justify-center items-center">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -184,4 +183,4 @@ export default function LandingPreviewPage() {
     </div>
   );
 }
-      
+    
