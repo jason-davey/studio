@@ -1,11 +1,11 @@
 
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Trophy, Star, ShieldCheck, Award } from 'lucide-react'; 
+import { Trophy, Star, ShieldCheck } from 'lucide-react'; // Removed Award as it's not used and was part of previous attempts
 import Link from 'next/link';
 
 const awardsData = [
   {
-    icon: <ShieldCheck className="h-10 w-10 text-primary mb-3" />, // Changed from Trophy to ShieldCheck for diagnosis
+    icon: <ShieldCheck className="h-10 w-10 text-primary mb-3" />, // Ensuring ShieldCheck for Roy Morgan
     title: "Customer Satisfaction Award 2023 - Roy Morgan",
     details: "Risk & Life Insurer of the Year - 2023",
     description: "Real Insurance was awarded the 2023 Risk & Life Insurer of the Year winner at the Roy Morgan Customer Satisfaction Awards.",
@@ -45,9 +45,13 @@ export default function AwardsSection() {
               <CardHeader className="items-center text-center">
                 {award.icon}
                 <CardTitle className="text-xl text-primary">
-                  <Link href={award.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
-                    {award.title}
-                  </Link>
+                  {index === 0 ? (
+                    award.title // Diagnostic: Render title as plain text for the first card
+                  ) : (
+                    <Link href={award.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {award.title}
+                    </Link>
+                  )}
                 </CardTitle>
                  <p className="text-sm font-semibold text-foreground mt-1">{award.details}</p>
               </CardHeader>
