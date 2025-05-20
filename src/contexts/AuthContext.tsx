@@ -1,7 +1,7 @@
 
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode, useCallback, useMemo } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
 import { authInstance } from '@/lib/firebase';
 import { Loader2 } from 'lucide-react';
@@ -10,7 +10,10 @@ type UserRole = 'admin' | 'creator' | null;
 
 interface AuthContextType {
   currentUser: User | null;
-  userRole: UserRole;
+  userRole: UserRole; // This will be the effective role for UI rendering
+  isActualAdmin: boolean; // True if the logged-in user IS jason.davey@greenstone.com.au
+  viewingAsRole: UserRole | null; // What role the admin is currently viewing as, if overriding
+  setViewOverride: (role: UserRole | null) => void; // Function for admin to set the override
   loading: boolean;
 }
 
@@ -22,26 +25,29 @@ interface AuthProviderProps {
 
 export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   const [currentUser, setCurrentUser] = useState<User | null>(null);
-  const [userRole, setUserRole] = useState<UserRole>(null);
   const [loading, setLoading] = useState(true);
+  const [actualUserRole, setActualUserRole] = useState<UserRole>(null);
+  const [viewingAsRole, setViewingAsRole] = useState<UserRole | null>(null); // Admin's override
 
   useEffect(() => {
     if (!authInstance) {
       console.warn("Firebase Auth instance not available. User authentication will not work.");
       setLoading(false);
-      setUserRole(null);
+      setActualUserRole(null);
+      setViewingAsRole(null);
       return () => {};
     }
     const unsubscribe = onAuthStateChanged(authInstance, (user) => {
       setCurrentUser(user);
+      setViewingAsRole(null); // Reset override on auth state change
       if (user) {
         if (user.email === 'jason.davey@greenstone.com.au') {
-          setUserRole('admin');
+          setActualUserRole('admin');
         } else {
-          setUserRole('creator');
+          setActualUserRole('creator');
         }
       } else {
-        setUserRole(null);
+        setActualUserRole(null);
       }
       setLoading(false);
     });
@@ -49,7 +55,22 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     return unsubscribe;
   }, []);
 
-  if (loading && typeof window !== 'undefined') { // Added typeof window !== 'undefined' to avoid SSR issues with loader
+  const isActualAdmin = useMemo(() => actualUserRole === 'admin', [actualUserRole]);
+
+  const effectiveUserRole = useMemo(() => {
+    if (isActualAdmin && viewingAsRole) {
+      return viewingAsRole;
+    }
+    return actualUserRole;
+  }, [isActualAdmin, viewingAsRole, actualUserRole]);
+
+  const setViewOverride = useCallback((role: UserRole | null) => {
+    if (isActualAdmin) {
+      setViewingAsRole(role);
+    }
+  }, [isActualAdmin]);
+
+  if (loading && typeof window !== 'undefined') {
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -59,7 +80,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
   }
 
   return (
-    <AuthContext.Provider value={{ currentUser, userRole, loading }}>
+    <AuthContext.Provider value={{ 
+        currentUser, 
+        userRole: effectiveUserRole, 
+        isActualAdmin,
+        viewingAsRole,
+        setViewOverride,
+        loading 
+      }}>
       {children}
     </AuthContext.Provider>
   );
