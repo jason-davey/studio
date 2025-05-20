@@ -70,7 +70,7 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     }
   }, [isActualAdmin]);
 
-  if (loading && typeof window !== 'undefined') {
+  if (loading) { // Simplified condition: only check loading state
     return (
       <div className="flex items-center justify-center min-h-screen bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
