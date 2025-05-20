@@ -9,11 +9,11 @@ This Next.js application serves as a comprehensive platform for creating, config
 The application is designed with a UX-AI collaborative development approach, aiming for rapid prototyping and iterative feature enhancement to quickly deliver value.
 
 ### 1.2. High-Level Functionality
-- **User Authentication:** Users must register and log in using Firebase Authentication (Email/Password) to access the main application. (Login/Register pages exist at `/login` and `/register`).
-- **Fixed Top Bar:** Contains navigation links ("Workflow", "Tech Spec"), user status/auth actions ("Login", "Register", "Logout"), and action buttons ("Provide Feedback", "Guided Walkthrough"). Always visible.
+- **User Authentication:** Users must register and log in using Firebase Authentication (Email/Password) to access the main application. (Login/Register pages exist at `/login` and `/register`). The registration form includes a field for "Primary Interest" as a preliminary step towards future role-based features.
+- **Fixed Top Bar:** Contains navigation links ("Workflow", "Tech Spec" - visible to logged-in users), user status/auth actions ("Login", "Register", "Logout"), and action buttons ("Provide Feedback", "Guided Walkthrough"). Always visible.
 - **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy) on the main page (`/`).
 - **Recommendation Ingestion (Step 1):** Allows users to upload a JSON file (`PageBlueprint`) containing recommendations for landing page content.
-- **Page Preview (Step 2):** Displays a preview of the landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on the ingested or adjusted blueprint.
+- **Page Preview (Step 2):** Displays a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on the ingested or adjusted blueprint.
 - **Content Adjustment (Step 3):** Enables users to fine-tune the content of the landing page blueprint for all major sections via input fields.
 - **A/B Test Content Configuration (Step 4):** Allows users to define two text versions for A/B testing (e.g., Hero Section headline, sub-headline, CTA). Version A is pre-filled from Step 3.
 - **AI-Assisted Content Generation (Step 4):** Provides AI-powered suggestions for A/B test copy using Genkit and Google's Gemini model. Users can provide an optional "Campaign Focus / Keywords" to further tailor these suggestions.
@@ -42,7 +42,7 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **Generative AI (Stack):** Genkit with Google AI (Gemini models)
 - **Guided Walkthrough:** Custom implementation using React Context and DOM manipulation.
 - **Performance Monitoring:** Datadog RUM Browser SDK.
-- **Forms:** React Hook Form with Zod for validation (in Quote Form and Feedback Modal).
+- **Forms:** React Hook Form with Zod for validation (in Quote Form, Feedback Modal, Register Form).
 - **Dynamic Diagram Rendering:** Mermaid.js (for rendering diagrams from text in `TECHNICAL_SPEC.md`).
 
 ### 1.4. Development Approach & Methodology
@@ -81,13 +81,14 @@ This provides a high-level overview of the development journey:
     *   Datadog RUM integration for performance monitoring.
     *   Admin page to render `TECHNICAL_SPEC.md` (initially text, then Markdown parsing, then Mermaid diagrams).
     *   *Value:* Boosted user productivity with AI; enhanced UX with onboarding and feedback; implemented observability and admin view with dynamic diagram rendering.
-- **Phase 4 (Authentication & Role Foundation - Implemented):**
+- **Phase 4 (Authentication & Role Foundation - Partially Implemented):**
     - Firebase Authentication (Email/Password) integrated for Login, Register pages.
     - `AuthContext` manages user state.
     - Main application workflow (`/`) is protected and requires login.
     - TopBar updated to show auth status and provide Login/Register/Logout actions.
     - "Tech Spec" link in TopBar now visible for logged-in users.
-    - *Value:* Secure access to the application, foundation for user-specific data and roles. The Tech Spec page is now accessible to authenticated users as a step towards Admin role functionality.
+    - Registration form includes a "Primary Interest" field as a UI placeholder for future role assignment; this selection is not currently persisted or used for access control.
+    - *Value:* Secure access to the application, foundation for user-specific data and roles. The Tech Spec page is now accessible to authenticated users as a step towards Admin role functionality. Full role assignment and enforcement (e.g., using custom claims or Firestore for role storage) is part of the `FEATURE_AUTH_ROLES_PAUSED` context.
 
 ## 2. Application Architecture
 
@@ -123,7 +124,7 @@ This provides a high-level overview of the development journey:
 - **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds `PageBlueprint` data, loaded in Step 1, previewed in Step 2, modified in Step 3.
 - **A/B Test Configurations (Step 4 in `src/app/page.tsx`):** Local storage management for A/B Hero variants (headline, sub-headline, CTA, campaignFocus). (Future: Could migrate to Firestore for authenticated users).
 - **Firebase Integration:**
-    - Firebase Authentication for user login/registration.
+    - Firebase Authentication for user login/registration. The selected "Primary Interest" during registration is not currently saved to the user profile.
     - Prepares JSON for `heroConfig` (Remote Config). Actual A/B test setup in Firebase Console.
 - **Genkit/AI:** `suggestHeroCopyFlow` called from client-side in Step 4.
 - **Datadog RUM:** Initialized in `layout.tsx`.
@@ -152,7 +153,7 @@ graph TD
         App_AuthContext["AuthContext (Firebase Auth State)"]
         App_UIActionContext["UIActionContext"]
         App_WalkthroughContext["WalkthroughContext"]
-        App_TopBar["TopBar Component (Nav: Workflow, Tech Spec; Actions: Feedback, Walkthrough)"]
+        App_TopBar["TopBar Component (Nav: Workflow, Tech Spec; Actions: Feedback, Walkthrough, Auth)"]
         App_FeedbackModal["FeedbackModal Component"]
         App_WelcomeModal["WelcomeModal Component"]
         App_GenkitFlow["Genkit: suggestHeroCopyFlow (Client Call)"]
@@ -160,6 +161,8 @@ graph TD
         App_DatadogLib["Datadog RUM SDK"]
         App_TechSpecFile["TECHNICAL_SPEC.md (File System - Read by Server Component)"]
         App_MermaidLib["Mermaid.js Library (Client-side rendering)"]
+        App_LoginRegister["Login/Register Pages"]
+
 
         App_LayoutTsx --> App_AuthContext
         App_LayoutTsx --> App_UIActionContext
@@ -180,6 +183,7 @@ graph TD
         App_TopBar --> App_UIActionContext
         App_TopBar -- Navigates to --> App_PageTsx
         App_TopBar -- Navigates to --> App_AdminSpecPage
+        App_TopBar -- Navigates to --> App_LoginRegister
 
         App_WelcomeModal --> App_UIActionContext
         App_WelcomeModal --> App_WalkthroughContext
@@ -192,7 +196,7 @@ graph TD
         FB_ABTesting["Firebase A/B Testing (via Console)"]
         FB_Hosting["Firebase Hosting (Next.js App Deployed)"]
         FB_AI_Models["Google AI Models (via GoogleAI Plugin for Genkit)"]
-        %% FB_Firestore["Firebase Firestore (Future for user data)"]
+        %% FB_Firestore["Firebase Firestore (Future for user data/roles)"]
     end
 
     subgraph ExternalSystems [External Systems & Tools]
@@ -224,6 +228,7 @@ graph TD
 ### 3.1. User Authentication
 - **Mechanism:** Firebase Authentication using Email/Password.
 - **Pages:** `/login` for sign-in, `/register` for new user creation.
+- **Registration Form:** Includes a "Primary Interest" field for users to indicate their intended use (e.g., "Creating and Managing Landing Page Content"). This selection is currently for informational purposes and not used for role assignment or access control.
 - **Protection:** The main application workflow at `/` is protected. Users are redirected to `/login` if not authenticated.
 - **State Management:** `AuthContext` provides `currentUser` and `loading` state.
 - **UI:** `TopBar` displays user email and "Logout" button if logged in, or "Login"/"Register" links if not.
@@ -346,7 +351,7 @@ graph TD
     - The app primarily handles content configuration.
     - Data entered by users for A/B Hero configs is stored in their browser's Local Storage.
     - Feedback data (if email provided) is currently handled via `mailto:` or console.
-    - User authentication data (email, hashed password) is managed by Firebase Authentication.
+    - User authentication data (email, hashed password) is managed by Firebase Authentication. Role information (like "Primary Interest") is collected during registration but not yet persisted or used for access control.
     - Firebase/Datadog data residency depends on their respective configurations.
     - Any production deployment must adhere to Greenstone's data governance policies.
 - **Legal:** The "free legal will" mentioned in example content is illustrative; actual legal product details are external to this tool's function.
@@ -383,13 +388,15 @@ graph TD
 - Defined in `PLAYBOOK.md`.
 
 ## 8. Future Considerations / Roadmap
-- **Role-Based Access Control (RBAC):**
+- **Role-Based Access Control (RBAC) (`FEATURE_AUTH_ROLES_PAUSED` context):**
     - **Admin Role:** Secure access to the rendered version of `TECHNICAL_SPEC.md` in-app (`/admin/tech-spec`). Potentially other admin functions. (Currently, the link is visible to all logged-in users as an interim step).
     - **Creator Role:** Access to the main 5-step workflow (current default for authenticated users).
-    - Secure role management (e.g., using Firebase custom claims). This is part of the `FEATURE_AUTH_ROLES_PAUSED` context.
+    - Secure role management (e.g., using Firebase custom claims, which would require Admin SDK access on a backend).
+    - The "Primary Interest" field collected during registration is a placeholder for future role assignment.
 - **User-Specific Data Persistence (Firestore):**
     - Store "Managed A/B Hero Configurations" in Firestore, linked to user IDs.
     - Store feedback submissions in Firestore.
+    - Store user role/profile information in Firestore.
 - **Backend for ServiceNow Integration:** Create a Firebase Cloud Function or other backend service to securely create ServiceNow tickets from feedback submissions.
 - **Design System Tokens Integration:** Foundation laid by component structure. Future work could involve defining and consuming brand tokens for multi-brand theming.
 - **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider more conversational AI interaction for content adjustments.

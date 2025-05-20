@@ -8,7 +8,7 @@ This playbook guides you through using the in-app tools to create landing page c
 This application helps you prepare and configure landing page content. To use the main features, you will first need to register an account and log in.
 
 ### 0.1. Account Registration & Login
-- **Registration:** If you are a new user, navigate to the `/register` page (or click "Register" in the top bar) and create an account using your email and a password.
+- **Registration:** If you are a new user, navigate to the `/register` page (or click "Register" in the top bar) and create an account using your email and a password. You will also be asked to select your "Primary Interest" to help tailor future features.
 - **Login:** If you already have an account, navigate to the `/login` page (or click "Login" in the top bar) and sign in.
 - **Access:** Once logged in, you will be directed to the main application workflow.
 
@@ -18,7 +18,7 @@ The application provides a 5-step guided workflow using an accordion interface o
 1.  **Step 1: Review Recommendations:** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections. The Guided Walkthrough can also load a sample blueprint for you.
 2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
 3.  **Step 3: Adjust Content:** Fine-tune the content of your landing page sections (e.g., Hero section text, Benefit descriptions, Testimonial quotes).
-4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions and manage configurations locally.
+4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions (optionally guided by "Campaign Focus / Keywords") and manage configurations locally.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
 
 ### 0.3. Using the Guided Walkthrough (Recommended for First-Time Users)
@@ -78,7 +78,7 @@ Navigate to the root of your application (e.g., `http://localhost:9002/`). You w
 ### 3.1. Step 1: Review Recommendations
 - This is the first panel in the accordion.
 - **If you have a JSON "Page Blueprint" file** from a URL scraping tool or other source with content recommendations:
-    - Click the file input field (often labeled "Choose File" or similar).
+    - Click the "Choose File" button.
     - Select your JSON file.
     - The tool will attempt to parse it. If successful, its content will be used to pre-fill the landing page content in the subsequent steps.
     - You'll see a preview of the loaded JSON content and its name.
@@ -202,7 +202,7 @@ When designing new content variations for your A/B tests, ensure they align with
     *   **Solution:** Ensure `.env.local` is correctly created and populated with all `NEXT_PUBLIC_FIREBASE_*` variables from your Firebase project settings. Restart your Next.js development server after creating/modifying `.env.local`. See section 2.2.
 - **Login/Registration Not Working:**
     *   Ensure you have enabled "Email/Password" as a sign-in method in your Firebase project's Authentication settings.
-    *   Check browser console for specific Firebase Auth error codes.
+    *   Check browser console for specific Firebase Auth error codes (e.g., `auth/configuration-not-found` if `.env.local` is misconfigured or Firebase app is not initialized correctly).
 - **Remote Config Values Not Updating:**
     *   Ensure "Publish changes" in Firebase Remote Config. Note fetch intervals (minimumFetchIntervalMillis).
 - **A/B Test Not Starting/No Data:**
@@ -224,3 +224,4 @@ When designing new content variations for your A/B tests, ensure they align with
     *   Confirm the RUM application is correctly set up in your Datadog account.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
+

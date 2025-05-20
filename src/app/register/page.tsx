@@ -3,20 +3,22 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { createUserWithEmailAndPassword } from 'firebase/auth'; // Re-enabled
-import { authInstance } from '@/lib/firebase'; // Re-enabled
+import { createUserWithEmailAndPassword } from 'firebase/auth';
+import { authInstance } from '@/lib/firebase';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'; // Added
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { UserPlus } from 'lucide-react'; // Removed AlertTriangle
+import { UserPlus } from 'lucide-react';
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [primaryInterest, setPrimaryInterest] = useState(''); // Added
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
@@ -26,17 +28,20 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    // Removed: toast({ title: "Feature Paused", description: "User registration is temporarily unavailable.", variant: "destructive" });
-    // Removed: setLoading(false);
-
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
       toast({ title: "Registration Error", description: "Passwords do not match.", variant: "destructive" });
       setLoading(false);
-      return; 
+      return;
     }
-    
+
+    if (!primaryInterest) { // Added check
+      setError("Please select your primary interest.");
+      toast({ title: "Registration Error", description: "Please select your primary interest.", variant: "destructive" });
+      setLoading(false);
+      return;
+    }
 
     if (!authInstance) {
       setError("Authentication service is not available. Please try again later.");
@@ -45,10 +50,14 @@ export default function RegisterPage() {
       return;
     }
 
+    console.log("Registration attempt with interest:", primaryInterest); // Log selected interest
+
     try {
       await createUserWithEmailAndPassword(authInstance, email, password);
+      // NOTE: The 'primaryInterest' is not saved to Firebase Auth user profile here.
+      // This would require custom claims (server-side) or a separate DB write (e.g., Firestore).
       toast({ title: "Registration Successful!", description: "You can now log in." });
-      router.push('/login'); 
+      router.push('/login');
     } catch (err: any) {
       console.error("Registration error:", err);
       setError(err.message || 'Failed to register. Please try again.');
@@ -67,7 +76,6 @@ export default function RegisterPage() {
           <CardDescription>Join to start building and testing landing pages.</CardDescription>
         </CardHeader>
         <CardContent>
-          {/* Removed Paused Feature Notice */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="email">Email address</Label>
@@ -81,7 +89,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="mt-1"
-                disabled={loading} // Re-enabled
+                disabled={loading}
               />
             </div>
             <div>
@@ -96,10 +104,10 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="•••••••• (min. 6 characters)"
                 className="mt-1"
-                disabled={loading} // Re-enabled
+                disabled={loading}
               />
             </div>
-             <div>
+            <div>
               <Label htmlFor="confirmPassword">Confirm Password</Label>
               <Input
                 id="confirmPassword"
@@ -111,8 +119,26 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1"
-                disabled={loading} // Re-enabled
+                disabled={loading}
               />
+            </div>
+            <div>
+              <Label htmlFor="primaryInterest">Primary Interest</Label>
+              <Select
+                value={primaryInterest}
+                onValueChange={setPrimaryInterest}
+                disabled={loading}
+                required
+              >
+                <SelectTrigger id="primaryInterest" className="w-full mt-1">
+                  <SelectValue placeholder="Select how you'll use this tool..." />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="creator">Creating and Managing Landing Page Content</SelectItem>
+                  <SelectItem value="admin_viewer">Reviewing Technical Specifications & Admin Tasks</SelectItem>
+                  {/* Add other potential roles/interests as needed */}
+                </SelectContent>
+              </Select>
             </div>
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <div>
