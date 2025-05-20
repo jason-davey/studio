@@ -8,12 +8,10 @@ import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
 import Footer from '@/components/landing/Footer';
-import { useSearchParams } from 'next/navigation'; // No longer used for blueprint data
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { PageBlueprint, SectionVisibility } from '@/types/recommendations';
 
-// Define a default blueprint structure to use as fallback
 const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
   pageName: `Default Preview - ${versionLabel}`,
   heroConfig: { 
@@ -63,28 +61,29 @@ export default function LandingPreviewPage() {
       versionLabel: string,
       fallbackBlueprint: PageBlueprint
     ) => {
-      if (bpString) {
+      if (bpString && bpString.length > 10) { // Basic check for non-empty string
         try {
           const parsedBP = JSON.parse(bpString) as PageBlueprint;
-          if (parsedBP.heroConfig && parsedBP.formConfig) {
+          if (parsedBP.heroConfig && parsedBP.formConfig) { // Check for essential parts
             setter({
-              ...fallbackBlueprint,
+              ...fallbackBlueprint, // Ensure all defaults are present
               ...parsedBP,
-              sectionVisibility: {
+              sectionVisibility: { // Deep merge sectionVisibility
                 ...fallbackBlueprint.sectionVisibility,
                 ...(parsedBP.sectionVisibility || {}),
               },
             });
           } else {
-            throw new Error(`${versionLabel} blueprint from sessionStorage is missing required fields (heroConfig or formConfig).`);
+            throw new Error(`${versionLabel} blueprint from localStorage is missing required fields (heroConfig or formConfig).`);
           }
         } catch (e) {
-          console.error(`Error parsing ${versionLabel} from sessionStorage:`, e);
-          setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}.`));
+          console.error(`Error parsing ${versionLabel} from localStorage:`, e);
+          setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}. Displaying fallback.`));
           setter(fallbackBlueprint);
           parseError = true;
         }
       } else {
+        console.log(`${versionLabel} blueprint string not found or empty in localStorage. Using fallback.`);
         setter(fallbackBlueprint); 
       }
     };
@@ -92,13 +91,15 @@ export default function LandingPreviewPage() {
     let blueprintAString: string | null = null;
     let blueprintBString: string | null = null;
 
-    if (typeof window !== 'undefined' && window.sessionStorage) {
-        blueprintAString = sessionStorage.getItem('previewBlueprintA');
-        blueprintBString = sessionStorage.getItem('previewBlueprintB');
+    if (typeof window !== 'undefined' && window.localStorage) { // Changed to localStorage
+        blueprintAString = localStorage.getItem('previewBlueprintA_temp');
+        blueprintBString = localStorage.getItem('previewBlueprintB_temp');
+        console.log('Read blueprintA_temp from localStorage:', blueprintAString ? blueprintAString.substring(0,200) + "..." : null); 
+        console.log('Read blueprintB_temp from localStorage:', blueprintBString ? blueprintBString.substring(0,200) + "..." : null); 
 
-        // Clean up sessionStorage immediately after reading
-        sessionStorage.removeItem('previewBlueprintA');
-        sessionStorage.removeItem('previewBlueprintB');
+        if (blueprintAString) localStorage.removeItem('previewBlueprintA_temp');
+        if (blueprintBString) localStorage.removeItem('previewBlueprintB_temp');
+        console.log('Temporary blueprints removed from localStorage.');
     }
 
 
@@ -106,9 +107,9 @@ export default function LandingPreviewPage() {
     parseAndSetBlueprint(blueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
 
     if (!blueprintAString && !blueprintBString && !parseError) {
-      setError("No blueprint configurations found in session storage. Displaying default fallback versions for A and B.");
+      setError("No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
     } else if (!parseError && (blueprintAString || blueprintBString)) {
-      setError(null);
+      setError(null); // Clear error if at least one blueprint was successfully processed
     }
     setIsLoading(false);
 

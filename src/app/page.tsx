@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation'; // Added for Auth Guard
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -25,7 +25,7 @@ import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { useAuth } from '@/contexts/AuthContext';
+import { useAuth } from '@/contexts/AuthContext'; // Added for Auth Guard
 import { cn } from '@/lib/utils';
 
 
@@ -621,7 +621,7 @@ function LandingPageWorkflowPageContent() {
   useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB, campaignFocusB)); }, [headlineB, subHeadlineB, ctaTextB, campaignFocusB]);
 
   const handleRenderABTestPreview = () => {
-    console.log("handleRenderABTestPreview called");
+    console.log("handleRenderABTestPreview called in page.tsx");
     if (!activePageBlueprint || !activePageBlueprint.pageName) {
       toast({ title: 'No Active Blueprint', description: 'Please load or define a page blueprint in Step 1 & 3 before previewing A/B versions.', variant: 'destructive'});
       console.error("No active blueprint for preview.");
@@ -629,66 +629,70 @@ function LandingPageWorkflowPageContent() {
     }
 
     try {
-      console.log("Current activePageBlueprint:", JSON.parse(JSON.stringify(activePageBlueprint)));
-      console.log("Generated JSON A for Hero:", generatedJsonA);
-      console.log("Generated JSON B for Hero:", generatedJsonB);
+      console.log("Current activePageBlueprint for preview construction:", JSON.parse(JSON.stringify(activePageBlueprint)));
+      console.log("Generated JSON A for Hero (to be used in override):", generatedJsonA);
+      console.log("Generated JSON B for Hero (to be used in override):", generatedJsonB);
 
       const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint)); 
 
-      let heroConfigA: RecommendationHeroConfig = { headline: '', ctaText: '' }; // Default structure
+      let heroConfigAOverride: RecommendationHeroConfig = { headline: '', ctaText: '' }; 
       try {
-        heroConfigA = JSON.parse(generatedJsonA);
+        const parsedA = JSON.parse(generatedJsonA);
+        heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedA };
       } catch (e) {
-        console.error("Error parsing generatedJsonA:", e, "Using default empty hero config for A.");
-        toast({ title: 'Error in Hero A Config', description: 'Version A Hero JSON is invalid. Using defaults for Hero A.', variant: 'destructive'});
+        console.error("Error parsing generatedJsonA for override:", e, "Using base hero config for A.");
+        toast({ title: 'Error in Hero A Config', description: 'Version A Hero JSON is invalid. Using current blueprint hero for A.', variant: 'destructive'});
+        heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
       }
       
-      let heroConfigB: RecommendationHeroConfig = { headline: '', ctaText: ''}; // Default structure
+      let heroConfigBOverride: RecommendationHeroConfig = { headline: '', ctaText: ''}; 
       try {
-        heroConfigB = JSON.parse(generatedJsonB);
+        const parsedB = JSON.parse(generatedJsonB);
+        heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedB };
       } catch (e) {
-        console.error("Error parsing generatedJsonB:", e, "Using default empty hero config for B.");
-        toast({ title: 'Error in Hero B Config', description: 'Version B Hero JSON is invalid. Using defaults for Hero B.', variant: 'destructive'});
+        console.error("Error parsing generatedJsonB for override:", e, "Using base hero config for B.");
+        toast({ title: 'Error in Hero B Config', description: 'Version B Hero JSON is invalid. Using current blueprint hero for B.', variant: 'destructive'});
+         heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
       }
       
       const blueprintAForPreview: PageBlueprint = {
         ...baseBlueprint,
-        heroConfig: { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...heroConfigA },
+        heroConfig: heroConfigAOverride,
       };
   
       const blueprintBForPreview: PageBlueprint = {
         ...baseBlueprint,
-        heroConfig: { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...heroConfigB },
+        heroConfig: heroConfigBOverride,
       };
       
       console.log('Blueprint A for Preview (constructed):', JSON.parse(JSON.stringify(blueprintAForPreview)));
       console.log('Blueprint B for Preview (constructed):', JSON.parse(JSON.stringify(blueprintBForPreview)));
 
-      if (typeof window !== 'undefined' && window.sessionStorage) {
+      if (typeof window !== 'undefined' && window.localStorage) { // Changed to localStorage
         const stringifiedA = JSON.stringify(blueprintAForPreview);
         const stringifiedB = JSON.stringify(blueprintBForPreview);
         
-        console.log("Storing blueprintA in session (stringified):", stringifiedA);
-        console.log("Storing blueprintB in session (stringified):", stringifiedB);
-
-        if (!stringifiedA || stringifiedA === 'null' || stringifiedA === 'undefined') {
-          console.error("Failed to stringify blueprintAForPreview or result is invalid.");
-          throw new Error("Blueprint A could not be serialized for preview.");
+        if (!stringifiedA || stringifiedA === 'null' || stringifiedA === 'undefined' || stringifiedA.length < 10) { // Basic check
+          console.error("Failed to stringify blueprintAForPreview or result is invalid/too short:", stringifiedA);
+          throw new Error("Blueprint A could not be serialized for preview or is empty.");
         }
-        if (!stringifiedB || stringifiedB === 'null' || stringifiedB === 'undefined') {
-          console.error("Failed to stringify blueprintBForPreview or result is invalid.");
-          throw new Error("Blueprint B could not be serialized for preview.");
+        if (!stringifiedB || stringifiedB === 'null' || stringifiedB === 'undefined' || stringifiedB.length < 10) { // Basic check
+          console.error("Failed to stringify blueprintBForPreview or result is invalid/too short:", stringifiedB);
+          throw new Error("Blueprint B could not be serialized for preview or is empty.");
         }
-
-        sessionStorage.setItem('previewBlueprintA', stringifiedA);
-        sessionStorage.setItem('previewBlueprintB', stringifiedB);
         
-        console.log("Value for previewBlueprintA in session (after set):", sessionStorage.getItem('previewBlueprintA'));
-        console.log("Value for previewBlueprintB in session (after set):", sessionStorage.getItem('previewBlueprintB'));
+        console.log("Storing blueprintA in localStorage (stringified):", stringifiedA.substring(0, 200) + "...");
+        console.log("Storing blueprintB in localStorage (stringified):", stringifiedB.substring(0, 200) + "...");
+
+        localStorage.setItem('previewBlueprintA_temp', stringifiedA);
+        localStorage.setItem('previewBlueprintB_temp', stringifiedB);
+        
+        console.log("Value for previewBlueprintA_temp in localStorage (after set):", (localStorage.getItem('previewBlueprintA_temp') || '').substring(0,200) + "..." );
+        console.log("Value for previewBlueprintB_temp in localStorage (after set):", (localStorage.getItem('previewBlueprintB_temp') || '').substring(0,200) + "..." );
         
         window.open('/landing-preview', '_blank'); 
       } else {
-        throw new Error("Session storage is not available.");
+        throw new Error("localStorage is not available.");
       }
     } catch (error) {
       toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare data for the A/B preview. ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive'});
@@ -1359,8 +1363,7 @@ export default function LandingPageWorkflowPage() {
     }, [isMounted, currentUser, authLoading, router]);
     
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
-    const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null); 
-
+    
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
         console.log("Walkthrough requests accordion change to:", value);
         setActiveAccordionItemForWalkthrough(value);
@@ -1371,7 +1374,6 @@ export default function LandingPageWorkflowPage() {
         if (typeof window !== 'undefined') {
             (window as any).__blueprintForWalkthrough = blueprint; 
         }
-        setBlueprintForWalkthrough(blueprint);
     }, []);
     
     if (authLoading || !isMounted) {
