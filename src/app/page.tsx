@@ -17,14 +17,6 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
-import Header from '@/components/landing/Header'; // For preview, not directly used but needed for context
-import HeroSection from '@/components/landing/HeroSection';
-import BenefitsSection from '@/components/landing/BenefitsSection';
-import TestimonialsSection from '@/components/landing/TestimonialsSection';
-import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
-import QuoteFormSection from '@/components/landing/QuoteFormSection';
-import Footer from '@/components/landing/Footer'; // For preview context
-
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig, SectionVisibility } from '@/types/recommendations';
 
 import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
@@ -50,7 +42,7 @@ interface ManagedABTestHeroConfig extends ABTestHeroConfig {
 }
 
 const AB_TEST_LOCAL_STORAGE_KEY = 'heroConfigManager';
-const PAGE_BLUEPRINT_LOCAL_STORAGE_KEY = 'pageBlueprintManager'; // New key
+const PAGE_BLUEPRINT_LOCAL_STORAGE_KEY = 'pageBlueprintManager'; 
 
 interface ManagedPageBlueprint extends PageBlueprint {
   id: string;
@@ -366,12 +358,11 @@ function LandingPageWorkflowPageContent() {
   const walkthrough = useWalkthrough();
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  // Effect to bridge global UIActionContext's showWelcomeModal to WalkthroughContext's startWalkthrough
- useEffect(() => {
-    console.log("page.tsx: uiActions.showWelcomeModal changed to:", uiActions.showWelcomeModal);
-    if (uiActions.showWelcomeModal && walkthrough) { // Ensure walkthrough is defined
-      console.log("page.tsx: Calling walkthrough.startWalkthrough()");
+ 
+  useEffect(() => {
+    console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to:", uiActions.showWelcomeModal);
+    if (uiActions.showWelcomeModal && walkthrough) { 
+      console.log("LandingPageWorkflowPageContent: Calling walkthrough.startWalkthrough()");
       walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
@@ -411,8 +402,12 @@ function LandingPageWorkflowPageContent() {
 
   const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
     const blueprintWithVisibility = {
+      ...initialBlueprintState,
       ...blueprint,
-      sectionVisibility: blueprint.sectionVisibility || { ...defaultSectionVisibility }
+      sectionVisibility: {
+        ...defaultSectionVisibility,
+        ...(blueprint.sectionVisibility || {}),
+      }
     };
     setActivePageBlueprint(blueprintWithVisibility);
     setUploadedBlueprint(blueprintWithVisibility);
@@ -422,8 +417,8 @@ function LandingPageWorkflowPageContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).__blueprintForWalkthrough && !uploadedBlueprint && walkthrough) {
-        walkthrough.autoLoadSampleBlueprint(); // This will call the callback registered with WalkthroughProvider
-        delete (window as any).__blueprintForWalkthrough; // Clean up global flag
+        walkthrough.autoLoadSampleBlueprint(); 
+        delete (window as any).__blueprintForWalkthrough; 
     }
   }, [uploadedBlueprint, walkthrough]);
 
@@ -445,7 +440,6 @@ function LandingPageWorkflowPageContent() {
   const [savedABTestConfigs, setSavedABTestConfigs] = useState<ManagedABTestHeroConfig[]>([]);
   const [isLoadingABTestConfigs, setIsLoadingABTestConfigs] = useState(true);
 
-  // Load saved page blueprints from local storage on mount
   useEffect(() => {
     setIsLoadingPageBlueprints(true);
     try {
@@ -461,7 +455,6 @@ function LandingPageWorkflowPageContent() {
     }
   }, [toast]);
 
-  // Persist saved page blueprints to local storage when they change
   useEffect(() => {
     if (!isLoadingPageBlueprints) {
       try {
@@ -559,7 +552,7 @@ function LandingPageWorkflowPageContent() {
     section: S,
     index: number,
     field: keyof NonNullable<PageBlueprint[S]>[number],
-    value: string | boolean // Allow boolean for potential future fields like 'isFeatured'
+    value: string | boolean 
   ) => {
     setActivePageBlueprint(prev => {
       const newArray = [...(prev[section] || [])] as any[];
@@ -628,35 +621,78 @@ function LandingPageWorkflowPageContent() {
   useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB, campaignFocusB)); }, [headlineB, subHeadlineB, ctaTextB, campaignFocusB]);
 
   const handleRenderABTestPreview = () => {
+    console.log("handleRenderABTestPreview called");
     if (!activePageBlueprint || !activePageBlueprint.pageName) {
       toast({ title: 'No Active Blueprint', description: 'Please load or define a page blueprint in Step 1 & 3 before previewing A/B versions.', variant: 'destructive'});
+      console.error("No active blueprint for preview.");
       return;
     }
 
-    let blueprintAForPreview: PageBlueprint = { ...activePageBlueprint };
-    let blueprintBForPreview: PageBlueprint = { ...activePageBlueprint }; 
-
-    const heroConfigA = JSON.parse(generatedJsonA) as RecommendationHeroConfig;
-    const heroConfigB = JSON.parse(generatedJsonB) as RecommendationHeroConfig;
-
-    if (heroConfigA.headline || heroConfigA.subHeadline || heroConfigA.ctaText) {
-      blueprintAForPreview.heroConfig = { ...blueprintAForPreview.heroConfig, ...heroConfigA };
-    }
-    if (heroConfigB.headline || heroConfigB.subHeadline || heroConfigB.ctaText) {
-      blueprintBForPreview.heroConfig = { ...blueprintBForPreview.heroConfig, ...heroConfigB };
-    }
-    
     try {
-        if (typeof window !== 'undefined' && window.sessionStorage) {
-            sessionStorage.setItem('previewBlueprintA', JSON.stringify(blueprintAForPreview));
-            sessionStorage.setItem('previewBlueprintB', JSON.stringify(blueprintBForPreview));
-            window.open('/landing-preview', '_blank'); 
-        } else {
-            throw new Error("Session storage is not available.");
+      console.log("Current activePageBlueprint:", JSON.parse(JSON.stringify(activePageBlueprint)));
+      console.log("Generated JSON A for Hero:", generatedJsonA);
+      console.log("Generated JSON B for Hero:", generatedJsonB);
+
+      const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint)); 
+
+      let heroConfigA: RecommendationHeroConfig = { headline: '', ctaText: '' }; // Default structure
+      try {
+        heroConfigA = JSON.parse(generatedJsonA);
+      } catch (e) {
+        console.error("Error parsing generatedJsonA:", e, "Using default empty hero config for A.");
+        toast({ title: 'Error in Hero A Config', description: 'Version A Hero JSON is invalid. Using defaults for Hero A.', variant: 'destructive'});
+      }
+      
+      let heroConfigB: RecommendationHeroConfig = { headline: '', ctaText: ''}; // Default structure
+      try {
+        heroConfigB = JSON.parse(generatedJsonB);
+      } catch (e) {
+        console.error("Error parsing generatedJsonB:", e, "Using default empty hero config for B.");
+        toast({ title: 'Error in Hero B Config', description: 'Version B Hero JSON is invalid. Using defaults for Hero B.', variant: 'destructive'});
+      }
+      
+      const blueprintAForPreview: PageBlueprint = {
+        ...baseBlueprint,
+        heroConfig: { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...heroConfigA },
+      };
+  
+      const blueprintBForPreview: PageBlueprint = {
+        ...baseBlueprint,
+        heroConfig: { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...heroConfigB },
+      };
+      
+      console.log('Blueprint A for Preview (constructed):', JSON.parse(JSON.stringify(blueprintAForPreview)));
+      console.log('Blueprint B for Preview (constructed):', JSON.parse(JSON.stringify(blueprintBForPreview)));
+
+      if (typeof window !== 'undefined' && window.sessionStorage) {
+        const stringifiedA = JSON.stringify(blueprintAForPreview);
+        const stringifiedB = JSON.stringify(blueprintBForPreview);
+        
+        console.log("Storing blueprintA in session (stringified):", stringifiedA);
+        console.log("Storing blueprintB in session (stringified):", stringifiedB);
+
+        if (!stringifiedA || stringifiedA === 'null' || stringifiedA === 'undefined') {
+          console.error("Failed to stringify blueprintAForPreview or result is invalid.");
+          throw new Error("Blueprint A could not be serialized for preview.");
         }
+        if (!stringifiedB || stringifiedB === 'null' || stringifiedB === 'undefined') {
+          console.error("Failed to stringify blueprintBForPreview or result is invalid.");
+          throw new Error("Blueprint B could not be serialized for preview.");
+        }
+
+        sessionStorage.setItem('previewBlueprintA', stringifiedA);
+        sessionStorage.setItem('previewBlueprintB', stringifiedB);
+        
+        console.log("Value for previewBlueprintA in session (after set):", sessionStorage.getItem('previewBlueprintA'));
+        console.log("Value for previewBlueprintB in session (after set):", sessionStorage.getItem('previewBlueprintB'));
+        
+        window.open('/landing-preview', '_blank'); 
+      } else {
+        throw new Error("Session storage is not available.");
+      }
     } catch (error) {
-        toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare for the A/B preview page. ${error instanceof Error ? error.message : ''}`, variant: 'destructive'});
-        console.error("Error preparing A/B preview: ", error);
+      toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare data for the A/B preview. ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive'});
+      console.error("Error in handleRenderABTestPreview: ", error);
     }
   };
 
@@ -741,18 +777,18 @@ function LandingPageWorkflowPageContent() {
         return [...prev, newBlueprintToSave];
       }
     });
-    setNameForCurrentBlueprint(''); // Clear input after save
+    setNameForCurrentBlueprint(''); 
   };
 
   const handleLoadPageBlueprint = (blueprintId: string) => {
     const blueprintToLoad = savedPageBlueprints.find(bp => bp.id === blueprintId);
     if (blueprintToLoad) {
       setActivePageBlueprint(blueprintToLoad);
-      setUploadedBlueprint(blueprintToLoad); // Treat as if it was "uploaded"
-      setFileName(blueprintToLoad.name); // Update file name indicator
-      setNameForCurrentBlueprint(blueprintToLoad.name); // Pre-fill save name for convenience
+      setUploadedBlueprint(blueprintToLoad); 
+      setFileName(blueprintToLoad.name); 
+      setNameForCurrentBlueprint(blueprintToLoad.name); 
       toast({ title: 'Page Blueprint Loaded!', description: `Blueprint "${blueprintToLoad.name}" is now active.` });
-      setActiveAccordionItem('step-2'); // Move to preview
+      setActiveAccordionItem('step-2'); 
     } else {
       toast({ title: 'Error Loading Blueprint', description: 'Could not find the selected blueprint.', variant: 'destructive' });
     }
@@ -816,7 +852,7 @@ function LandingPageWorkflowPageContent() {
       value: "step-2",
       title: "Step 2: Build & Preview Page",
       icon: <Palette className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !uploadedBlueprint && !activePageBlueprint.pageName,
+      disabled: !activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint),
       content: (
         <Card id="step-2-card">
           <CardHeader>
@@ -828,29 +864,24 @@ function LandingPageWorkflowPageContent() {
             {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
               <div id="step-2-preview-area" className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
                 {activePageBlueprint.sectionVisibility?.hero && (
-                  <HeroSection
-                    headline={activePageBlueprint.heroConfig?.headline}
-                    subHeadline={activePageBlueprint.heroConfig?.subHeadline}
-                    ctaText={activePageBlueprint.heroConfig?.ctaText}
-                    uniqueValueProposition={activePageBlueprint.heroConfig?.uniqueValueProposition}
-                    heroImageUrl={activePageBlueprint.heroConfig?.heroImageUrl}
-                    heroImageAltText={activePageBlueprint.heroConfig?.heroImageAltText}
-                  />
+                  <Textarea value={JSON.stringify(activePageBlueprint.heroConfig, null, 2)} readOnly className="h-32 font-mono text-xs" />
+                  // <HeroSection {...activePageBlueprint.heroConfig} />
                 )}
                 {activePageBlueprint.sectionVisibility?.benefits && (
-                  <BenefitsSection benefits={activePageBlueprint.benefits} />
+                   <Textarea value={JSON.stringify(activePageBlueprint.benefits, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
+                  // <BenefitsSection benefits={activePageBlueprint.benefits} />
                 )}
                 {activePageBlueprint.sectionVisibility?.testimonials && (
-                  <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
+                  <Textarea value={JSON.stringify(activePageBlueprint.testimonials, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
+                  // <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
                 )}
                 {activePageBlueprint.sectionVisibility?.trustSignals && (
-                  <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
+                  <Textarea value={JSON.stringify(activePageBlueprint.trustSignals, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
+                  // <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
                 )}
                 {activePageBlueprint.sectionVisibility?.form && activePageBlueprint.formConfig && (
-                    <QuoteFormSection 
-                        headline={activePageBlueprint.formConfig.headline} 
-                        ctaText={activePageBlueprint.formConfig.ctaText} 
-                    />
+                  <Textarea value={JSON.stringify(activePageBlueprint.formConfig, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
+                    // <QuoteFormSection {...activePageBlueprint.formConfig} />
                  )}
 
                 <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
@@ -866,7 +897,7 @@ function LandingPageWorkflowPageContent() {
       value: "step-3",
       title: "Step 3: Adjust Content & Manage Blueprints",
       icon: <Edit className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !uploadedBlueprint && !activePageBlueprint.pageName,
+      disabled: !activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint),
       content: (
         <Card id="step-3-card">
           <CardHeader>
@@ -1372,3 +1403,4 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
+
