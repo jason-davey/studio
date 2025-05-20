@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, AlertTriangle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -25,7 +25,7 @@ import QuoteFormSection from '@/components/landing/QuoteFormSection';
 
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig, SectionVisibility } from '@/types/recommendations';
 
-import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
+import { WalkthroughProvider, useWalkthrough, walkthroughStepsDefinition } from '@/contexts/WalkthroughContext';
 import WelcomeModal from '@/components/walkthrough/WelcomeModal';
 import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
@@ -366,10 +366,22 @@ function LandingPageWorkflowPageContent() {
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    if (uiActions.showWelcomeModal && walkthrough) {
+    if (uiActions.showWelcomeModal) {
+      // The walkthrough context now directly handles showing its own welcome modal
+      // This effect ensures that if the global UIActionContext requests it,
+      // the walkthrough starts its process (which begins with its welcome modal).
       walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
+
+  useEffect(() => {
+    // This effect syncs accordion changes driven by the walkthrough
+    if (walkthrough && walkthrough.isWalkthroughActive && walkthrough.accordionToOpen) {
+      if (activeAccordionItem !== walkthrough.accordionToOpen) {
+        setActiveAccordionItem(walkthrough.accordionToOpen);
+      }
+    }
+  }, [walkthrough?.isWalkthroughActive, walkthrough?.accordionToOpen, activeAccordionItem]);
 
 
   const [uploadedBlueprint, setUploadedBlueprint] = useState<PageBlueprint | null>(null);
@@ -398,6 +410,28 @@ function LandingPageWorkflowPageContent() {
     sectionVisibility: { ...defaultSectionVisibility }
   };
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
+
+  useEffect(() => {
+    // This effect handles loading the sample blueprint when requested by the walkthrough
+    if (walkthrough && (window as any).__blueprintForWalkthrough) {
+      console.log("Walkthrough requested blueprint load. Applying sample blueprint.");
+      const sampleBP = (window as any).__blueprintForWalkthrough as PageBlueprint;
+      const blueprintWithVisibility = {
+        ...initialBlueprintState, 
+        ...sampleBP,
+        sectionVisibility: { 
+          ...defaultSectionVisibility,
+          ...(sampleBP.sectionVisibility || {}),
+        }
+      };
+      setActivePageBlueprint(blueprintWithVisibility);
+      setUploadedBlueprint(blueprintWithVisibility); 
+      setFileName("Sample Walkthrough Blueprint"); 
+      delete (window as any).__blueprintForWalkthrough; 
+      toast({ title: "Sample Blueprint Loaded!", description: "You can now explore with sample data."});
+    }
+  }, [walkthrough, toast]);
+
 
   const [nameForCurrentBlueprint, setNameForCurrentBlueprint] = useState<string>('');
   const [savedPageBlueprints, setSavedPageBlueprints] = useState<ManagedPageBlueprint[]>([]);
@@ -516,10 +550,10 @@ function LandingPageWorkflowPageContent() {
     section: S,
     index: number,
     field: keyof NonNullable<PageBlueprint[S]>[number],
-    value: string | boolean
+    value: string | boolean 
   ) => {
     setActivePageBlueprint(prev => {
-      const newArray = [...(prev[section] || [])] as any[];
+      const newArray = [...(prev[section] || [])] as any[]; 
       if (newArray[index]) {
         newArray[index] = {
           ...newArray[index],
@@ -616,7 +650,7 @@ function LandingPageWorkflowPageContent() {
       console.log("Generated JSON A for Hero (to be used in override):", generatedJsonA);
       console.log("Generated JSON B for Hero (to be used in override):", generatedJsonB);
 
-      const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint)); // Deep clone
+      const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint)); 
 
       let heroConfigAOverride: RecommendationHeroConfig = { headline: '', ctaText: '' };
       try {
@@ -654,9 +688,14 @@ function LandingPageWorkflowPageContent() {
       const stringifiedA = JSON.stringify(blueprintAForPreview);
       const stringifiedB = JSON.stringify(blueprintBForPreview);
 
-      if (!stringifiedA || stringifiedA.length < 10 || !stringifiedB || stringifiedB.length < 10) {
-          console.error("Failed to stringify blueprints or result is invalid/too short.");
-          toast({ title: 'Preview Error', description: 'Blueprints could not be prepared correctly for preview. Check console for details.', variant: 'destructive' });
+      if (!stringifiedA || stringifiedA.length < 10) {
+          console.error("Failed to stringify blueprint A or result is invalid/too short.");
+          toast({ title: 'Preview Error', description: 'Blueprint A could not be prepared for preview. Check console.', variant: 'destructive' });
+          return;
+      }
+       if (!stringifiedB || stringifiedB.length < 10) {
+          console.error("Failed to stringify blueprint B or result is invalid/too short.");
+          toast({ title: 'Preview Error', description: 'Blueprint B could not be prepared for preview. Check console.', variant: 'destructive' });
           return;
       }
       
@@ -664,20 +703,25 @@ function LandingPageWorkflowPageContent() {
         console.log("Storing blueprintA_temp in localStorage (stringified):", stringifiedA.substring(0, 200) + "...");
         localStorage.setItem('previewBlueprintA_temp', stringifiedA);
         const verifyA = localStorage.getItem('previewBlueprintA_temp');
-        console.log("VERIFIED blueprintA_temp immediately after setItem:", verifyA ? verifyA.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (A)");
+        console.log("VERIFIED blueprintA_temp in localStorage (after set):", verifyA ? verifyA.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (A)");
 
         console.log("Storing blueprintB_temp in localStorage (stringified):", stringifiedB.substring(0, 200) + "...");
         localStorage.setItem('previewBlueprintB_temp', stringifiedB);
         const verifyB = localStorage.getItem('previewBlueprintB_temp');
-        console.log("VERIFIED blueprintB_temp immediately after setItem:", verifyB ? verifyB.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (B)");
+        console.log("VERIFIED blueprintB_temp in localStorage (after set):", verifyB ? verifyB.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (B)");
 
         if (!verifyA || verifyA.length < 10 || !verifyB || verifyB.length < 10) {
             toast({ title: 'Preview Storage Error', description: 'Failed to verify storage of blueprint data. Preview may fail. Please check console.', variant: 'destructive'});
-            // Optionally, do not open the window if storage verification fails
-            return; 
+             // return; // Uncomment this line to prevent opening window if verification fails
         }
 
         window.open('/landing-preview', '_blank');
+        // Check localStorage in this tab immediately after opening the new tab
+        const checkAAfterOpen = localStorage.getItem('previewBlueprintA_temp');
+        const checkBAfterOpen = localStorage.getItem('previewBlueprintB_temp');
+        console.log("Configurator tab: blueprintA_temp after window.open:", checkAAfterOpen ? 'EXISTS' : 'NULL/GONE');
+        console.log("Configurator tab: blueprintB_temp after window.open:", checkBAfterOpen ? 'EXISTS' : 'NULL/GONE');
+
       } else {
         throw new Error("localStorage is not available.");
       }
@@ -776,11 +820,11 @@ function LandingPageWorkflowPageContent() {
     const blueprintToLoad = savedPageBlueprints.find(bp => bp.id === blueprintId);
     if (blueprintToLoad) {
       setActivePageBlueprint(blueprintToLoad);
-      setUploadedBlueprint(blueprintToLoad); // Consider if this is needed or if setActivePageBlueprint is enough
-      setFileName(blueprintToLoad.name); // Update file name display
-      setNameForCurrentBlueprint(blueprintToLoad.name); // Pre-fill save name
+      setUploadedBlueprint(blueprintToLoad); 
+      setFileName(blueprintToLoad.name); 
+      setNameForCurrentBlueprint(blueprintToLoad.name); 
       toast({ title: 'Page Blueprint Loaded!', description: `Blueprint "${blueprintToLoad.name}" is now active.` });
-      setActiveAccordionItem('step-2'); // Move to preview
+      setActiveAccordionItem('step-2'); 
     } else {
       toast({ title: 'Error Loading Blueprint', description: 'Could not find the selected blueprint.', variant: 'destructive' });
     }
@@ -903,7 +947,6 @@ function LandingPageWorkflowPageContent() {
             {(!activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint)) && <p className="text-muted-foreground">Load a blueprint in Step 1 or from saved blueprints below to begin adjusting.</p>}
             {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
               <>
-                {/* Page Information Section */}
                 <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5" /> Page Information</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
@@ -915,7 +958,6 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                {/* Hero Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center"><ImageIconLucide className="mr-2 h-5 w-5" /> Hero Section</CardTitle>
@@ -938,7 +980,6 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                {/* Benefits Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle>
@@ -966,7 +1007,6 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                 {/* Testimonials Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg flex items-center"><MessageSquareIconLucide className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle>
@@ -997,7 +1037,6 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
-                {/* Trust Signals Section Adjustments */}
                  <Card className="bg-muted/50 p-1">
                     <CardHeader className="flex flex-row items-center justify-between">
                         <CardTitle className="text-lg flex items-center"><AwardIcon className="mr-2 h-5 w-5"/> Trust Signals Section</CardTitle>
@@ -1041,7 +1080,6 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
-                {/* Form Config Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
                   <CardHeader className="flex flex-row items-center justify-between">
                     <CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle>
@@ -1060,7 +1098,6 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                {/* Manage Full Page Blueprints Section */}
                 <Separator className="my-8" />
                 <Card className="mt-6 border-primary">
                   <CardHeader>
@@ -1270,8 +1307,9 @@ function LandingPageWorkflowPageContent() {
     marginTop: `${TOP_BAR_HEIGHT_PX}px`,
   };
 
-  console.log("Current activePageBlueprint (before render):", activePageBlueprint);
-  console.log("Current savedPageBlueprints (before render):", savedPageBlueprints);
+  // console.log("Rendering LandingPageWorkflowPageContent");
+  // console.log("Current activePageBlueprint (before render):", activePageBlueprint);
+  // console.log("Current savedPageBlueprints (before render):", savedPageBlueprints);
 
 
   return (
@@ -1347,30 +1385,26 @@ export default function LandingPageWorkflowPage() {
     }, []);
 
     useEffect(() => {
-      console.log("Auth Guard Effect: isMounted=", isMounted, "authLoading=", authLoading, "currentUser=", !!currentUser);
+      // console.log("Auth Guard Effect: isMounted=", isMounted, "authLoading=", authLoading, "currentUser=", !!currentUser);
       if (!isMounted || authLoading) {
-        return;
+        return; 
       }
       if (!currentUser) {
-        console.log("Redirecting to /login");
+        // console.log("Redirecting to /login");
         router.push('/login');
       }
     }, [isMounted, currentUser, authLoading, router]);
 
 
-    const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
+    const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>(walkthroughStepsDefinition[0]?.requiresAccordionOpen || 'step-1');
 
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
-        console.log("Walkthrough requests accordion change to:", value);
-        setActiveAccordionItemForWalkthrough(value); // This will be used by WalkthroughProvider to control accordion if needed
+        // console.log("Walkthrough requests accordion change to:", value);
+        setActiveAccordionItemForWalkthrough(value);
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
-        console.log("Walkthrough requests blueprint load:", blueprint);
-        // This function needs to be passed to WalkthroughProvider, which will then call it.
-        // The actual update to activePageBlueprint and related states will happen within
-        // LandingPageWorkflowPageContent when this callback is invoked.
-        // For now, we make a "mark" that this blueprint should be loaded by the content component.
+        // console.log("Walkthrough requests blueprint load:", blueprint);
         if (typeof window !== 'undefined') {
             (window as any).__blueprintForWalkthrough = blueprint;
         }
@@ -1386,8 +1420,7 @@ export default function LandingPageWorkflowPage() {
       );
     }
 
-    if (!currentUser && isMounted) { // Ensure isMounted is true before redirecting
-      // No direct rendering, effect handles redirect
+    if (!currentUser && isMounted) { 
       return (
          <div className="flex items-center justify-center min-h-screen bg-background">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1396,7 +1429,6 @@ export default function LandingPageWorkflowPage() {
       );
     }
     
-    // Only render content if authenticated and mounted
     if (!currentUser) return null;
 
 
@@ -1404,8 +1436,11 @@ export default function LandingPageWorkflowPage() {
         <WalkthroughProvider
             onAccordionChange={handleAccordionChangeForWalkthrough}
             onLoadBlueprint={handleLoadBlueprintForWalkthrough}
+            initialAccordionItem={activeAccordionItemForWalkthrough}
         >
           <LandingPageWorkflowPageContent />
         </WalkthroughProvider>
     );
 }
+
+      
