@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
@@ -47,7 +48,7 @@ interface ManagedABTestHeroConfig extends ABTestHeroConfig {
 }
 
 const AB_TEST_LOCAL_STORAGE_KEY = 'heroConfigManager';
-const PAGE_BLUEPRINT_LOCAL_STORAGE_KEY = 'pageBlueprintManager'; 
+const PAGE_BLUEPRINT_LOCAL_STORAGE_KEY = 'pageBlueprintManager';
 
 interface ManagedPageBlueprint extends PageBlueprint {
   id: string;
@@ -363,11 +364,12 @@ function LandingPageWorkflowPageContent() {
   const walkthrough = useWalkthrough();
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
- 
+
+  const { currentUser } = useAuth(); // Get currentUser to check auth status
+
   useEffect(() => {
-    console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to:", uiActions.showWelcomeModal);
-    if (uiActions.showWelcomeModal && walkthrough) { 
-      console.log("LandingPageWorkflowPageContent: Calling walkthrough.startWalkthrough()");
+    // This effect now correctly lives inside the component that's a child of WalkthroughProvider
+    if (uiActions.showWelcomeModal && walkthrough) {
       walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
@@ -399,13 +401,14 @@ function LandingPageWorkflowPageContent() {
     sectionVisibility: { ...defaultSectionVisibility }
   };
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
-  
+
   const [nameForCurrentBlueprint, setNameForCurrentBlueprint] = useState<string>('');
   const [savedPageBlueprints, setSavedPageBlueprints] = useState<ManagedPageBlueprint[]>([]);
   const [isLoadingPageBlueprints, setIsLoadingPageBlueprints] = useState(true);
 
+
   useEffect(() => {
-    if (walkthrough && uiActions.showWelcomeModal) {
+    if (walkthrough && uiActions.showWelcomeModal) { // Kept for safety, though main trigger is above
         walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
@@ -427,8 +430,8 @@ function LandingPageWorkflowPageContent() {
 
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).__blueprintForWalkthrough && !uploadedBlueprint && walkthrough) {
-        walkthrough.autoLoadSampleBlueprint(); 
-        delete (window as any).__blueprintForWalkthrough; 
+        walkthrough.autoLoadSampleBlueprint();
+        delete (window as any).__blueprintForWalkthrough;
     }
   }, [uploadedBlueprint, walkthrough]);
 
@@ -480,7 +483,7 @@ function LandingPageWorkflowPageContent() {
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     setUploadedBlueprint(null);
-    setActivePageBlueprint(initialBlueprintState); 
+    // setActivePageBlueprint(initialBlueprintState); // Keep current active blueprint or user might lose unsaved work
     setFileName('');
 
     const file = event.target.files?.[0];
@@ -494,15 +497,15 @@ function LandingPageWorkflowPageContent() {
             const parsedJson = JSON.parse(content) as PageBlueprint;
             if (parsedJson.pageName && parsedJson.heroConfig) {
               const blueprintWithVisibility = {
-                ...initialBlueprintState, 
+                ...initialBlueprintState,
                 ...parsedJson,
                 sectionVisibility: {
                   ...defaultSectionVisibility,
-                  ...(parsedJson.sectionVisibility || {}), 
+                  ...(parsedJson.sectionVisibility || {}),
                 }
               };
               setUploadedBlueprint(blueprintWithVisibility);
-              setActivePageBlueprint(blueprintWithVisibility);
+              setActivePageBlueprint(blueprintWithVisibility); // Set the uploaded blueprint as active
               toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
               setActiveAccordionItem('step-2');
             } else {
@@ -541,12 +544,12 @@ function LandingPageWorkflowPageContent() {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...(prev[section] as any || {}), 
+        ...(prev[section] as any || {}),
         [field]: value,
       },
     }));
   };
-  
+
   const handleSectionVisibilityChange = (section: keyof SectionVisibility, isVisible: boolean) => {
     setActivePageBlueprint(prev => ({
       ...prev,
@@ -562,7 +565,7 @@ function LandingPageWorkflowPageContent() {
     section: S,
     index: number,
     field: keyof NonNullable<PageBlueprint[S]>[number],
-    value: string | boolean 
+    value: string | boolean
   ) => {
     setActivePageBlueprint(prev => {
       const newArray = [...(prev[section] || [])] as any[];
@@ -643,9 +646,9 @@ function LandingPageWorkflowPageContent() {
       console.log("Generated JSON A for Hero (to be used in override):", generatedJsonA);
       console.log("Generated JSON B for Hero (to be used in override):", generatedJsonB);
 
-      const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint)); 
+      const baseBlueprint = JSON.parse(JSON.stringify(activePageBlueprint));
 
-      let heroConfigAOverride: RecommendationHeroConfig = { headline: '', ctaText: '' }; 
+      let heroConfigAOverride: RecommendationHeroConfig = { headline: '', ctaText: '' };
       try {
         const parsedA = JSON.parse(generatedJsonA);
         heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedA };
@@ -654,8 +657,8 @@ function LandingPageWorkflowPageContent() {
         toast({ title: 'Error in Hero A Config', description: 'Version A Hero JSON is invalid. Using current blueprint hero for A.', variant: 'destructive'});
         heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
       }
-      
-      let heroConfigBOverride: RecommendationHeroConfig = { headline: '', ctaText: ''}; 
+
+      let heroConfigBOverride: RecommendationHeroConfig = { headline: '', ctaText: ''};
       try {
         const parsedB = JSON.parse(generatedJsonB);
         heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedB };
@@ -664,48 +667,52 @@ function LandingPageWorkflowPageContent() {
         toast({ title: 'Error in Hero B Config', description: 'Version B Hero JSON is invalid. Using current blueprint hero for B.', variant: 'destructive'});
          heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
       }
-      
+
       const blueprintAForPreview: PageBlueprint = {
         ...baseBlueprint,
         heroConfig: heroConfigAOverride,
       };
-  
+
       const blueprintBForPreview: PageBlueprint = {
         ...baseBlueprint,
         heroConfig: heroConfigBOverride,
       };
-      
+
       console.log('Blueprint A for Preview (constructed):', JSON.parse(JSON.stringify(blueprintAForPreview)));
       console.log('Blueprint B for Preview (constructed):', JSON.parse(JSON.stringify(blueprintBForPreview)));
 
       if (typeof window !== 'undefined' && window.localStorage) {
         const stringifiedA = JSON.stringify(blueprintAForPreview);
         const stringifiedB = JSON.stringify(blueprintBForPreview);
-        
+
         if (!stringifiedA || stringifiedA === 'null' || stringifiedA === 'undefined' || stringifiedA.length < 10) {
           console.error("Failed to stringify blueprintAForPreview or result is invalid/too short:", stringifiedA);
-          throw new Error("Blueprint A could not be serialized for preview or is empty.");
+          toast({ title: 'Preview Error', description: 'Blueprint A could not be prepared for preview.', variant: 'destructive' });
+          return;
         }
         if (!stringifiedB || stringifiedB === 'null' || stringifiedB === 'undefined' || stringifiedB.length < 10) {
           console.error("Failed to stringify blueprintBForPreview or result is invalid/too short:", stringifiedB);
-          throw new Error("Blueprint B could not be serialized for preview or is empty.");
+          toast({ title: 'Preview Error', description: 'Blueprint B could not be prepared for preview.', variant: 'destructive' });
+          return;
         }
-        
-        console.log("Storing blueprintA in localStorage (stringified):", stringifiedA.substring(0, 200) + "...");
-        console.log("Storing blueprintB in localStorage (stringified):", stringifiedB.substring(0, 200) + "...");
 
+        console.log("Storing blueprintA_temp in localStorage (stringified):", stringifiedA.substring(0, 200) + "...");
         localStorage.setItem('previewBlueprintA_temp', stringifiedA);
+        console.log("Value for previewBlueprintA_temp in localStorage (after setItem):", (localStorage.getItem('previewBlueprintA_temp') || '').substring(0,200) + "..." );
+
+
+        console.log("Storing blueprintB_temp in localStorage (stringified):", stringifiedB.substring(0, 200) + "...");
         localStorage.setItem('previewBlueprintB_temp', stringifiedB);
-        
-        console.log("Value for previewBlueprintA_temp in localStorage (after set):", (localStorage.getItem('previewBlueprintA_temp') || '').substring(0,200) + "..." );
-        console.log("Value for previewBlueprintB_temp in localStorage (after set):", (localStorage.getItem('previewBlueprintB_temp') || '').substring(0,200) + "..." );
-        
-        window.open('/landing-preview', '_blank'); 
+        console.log("Value for previewBlueprintB_temp in localStorage (after setItem):", (localStorage.getItem('previewBlueprintB_temp') || '').substring(0,200) + "..." );
+
+
+        window.open('/landing-preview', '_blank');
       } else {
         throw new Error("localStorage is not available.");
       }
     } catch (error) {
-      toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare data for the A/B preview. ${error instanceof Error ? error.message : 'Unknown error'}`, variant: 'destructive'});
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare data for the A/B preview. ${errorMessage}`, variant: 'destructive'});
       console.error("Error in handleRenderABTestPreview: ", error);
     }
   };
@@ -780,7 +787,7 @@ function LandingPageWorkflowPageContent() {
     setSavedPageBlueprints(prev => {
       const existingIndex = prev.findIndex(bp => bp.name === name);
       const newBlueprintToSave: ManagedPageBlueprint = { ...activePageBlueprint, id: existingIndex !== -1 ? prev[existingIndex].id : Date.now().toString(), name };
-      
+
       if (existingIndex !== -1) {
         const updatedBlueprints = [...prev];
         updatedBlueprints[existingIndex] = newBlueprintToSave;
@@ -791,18 +798,18 @@ function LandingPageWorkflowPageContent() {
         return [...prev, newBlueprintToSave];
       }
     });
-    setNameForCurrentBlueprint(''); 
+    setNameForCurrentBlueprint('');
   };
 
   const handleLoadPageBlueprint = (blueprintId: string) => {
     const blueprintToLoad = savedPageBlueprints.find(bp => bp.id === blueprintId);
     if (blueprintToLoad) {
       setActivePageBlueprint(blueprintToLoad);
-      setUploadedBlueprint(blueprintToLoad); 
-      setFileName(blueprintToLoad.name); 
-      setNameForCurrentBlueprint(blueprintToLoad.name); 
+      setUploadedBlueprint(blueprintToLoad);
+      setFileName(blueprintToLoad.name);
+      setNameForCurrentBlueprint(blueprintToLoad.name);
       toast({ title: 'Page Blueprint Loaded!', description: `Blueprint "${blueprintToLoad.name}" is now active.` });
-      setActiveAccordionItem('step-2'); 
+      setActiveAccordionItem('step-2');
     } else {
       toast({ title: 'Error Loading Blueprint', description: 'Could not find the selected blueprint.', variant: 'destructive' });
     }
@@ -841,7 +848,7 @@ function LandingPageWorkflowPageContent() {
                   type="file"
                   accept=".json"
                   onChange={handleFileUpload}
-                  className="hidden" // Visually hide the default input
+                  className="hidden"
                   ref={fileInputRef}
                 />
                 <span id="blueprint-file-name-indicator" className="text-sm text-muted-foreground">
@@ -874,7 +881,7 @@ function LandingPageWorkflowPageContent() {
             <CardDescription>This is a preview of the landing page based on the loaded or adjusted blueprint. Toggle section visibility in Step 3.</CardDescription>
           </CardHeader>
           <CardContent>
-            {(!activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint)) && 
+            {(!activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint)) &&
               <p className="text-muted-foreground">Load or define a blueprint in Step 1 or Step 3 to see a preview.</p>
             }
             {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
@@ -1105,7 +1112,7 @@ function LandingPageWorkflowPageContent() {
                         </Button>
                       </div>
                     </div>
-                    
+
                     <div>
                       <h4 className="font-semibold text-lg mb-2">Saved Blueprints:</h4>
                       {isLoadingPageBlueprints && <div className="flex items-center justify-center py-3"><Loader2 className="h-5 w-5 animate-spin" /> Loading blueprints...</div>}
@@ -1115,8 +1122,8 @@ function LandingPageWorkflowPageContent() {
                       {!isLoadingPageBlueprints && savedPageBlueprints.length > 0 && (
                         <div className="border rounded-md overflow-hidden">
                           {savedPageBlueprints.map((bp, index) => (
-                            <div 
-                              key={bp.id} 
+                            <div
+                              key={bp.id}
                               className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 gap-2 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/30'} ${index < savedPageBlueprints.length - 1 ? 'border-b' : ''}`}
                             >
                               <p className="font-medium text-foreground flex-grow min-w-0 break-words">{bp.name}</p>
@@ -1189,7 +1196,7 @@ function LandingPageWorkflowPageContent() {
                   <Button
                     id="render-ab-preview-button"
                     onClick={handleRenderABTestPreview}
-                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap" 
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap"
                   >
                     <Eye className="mr-2 h-5 w-5" /> Render A/B Versions for Preview
                   </Button>
@@ -1291,9 +1298,13 @@ function LandingPageWorkflowPageContent() {
   const mainCardMarginTopStyle = {
     marginTop: `${TOP_BAR_HEIGHT_PX}px`,
   };
-  
+
   return (
     <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8" style={mainCardMarginTopStyle}>
+      {/* Console logs for debugging */}
+      {/* <button onClick={() => console.log('Active Blueprint:', activePageBlueprint)}>Log Active BP</button> */}
+      {/* <button onClick={() => console.log('Saved Blueprints:', savedPageBlueprints)}>Log Saved BPs</button> */}
+
       <div id="walkthrough-end-target" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
 
       {walkthrough && <WelcomeModal />}
@@ -1367,29 +1378,29 @@ export default function LandingPageWorkflowPage() {
     useEffect(() => {
       console.log("Auth Guard Effect: isMounted=", isMounted, "authLoading=", authLoading, "currentUser=", !!currentUser);
       if (!isMounted || authLoading) {
-        return; 
+        return;
       }
       if (!currentUser) {
         console.log("Redirecting to /login");
         router.push('/login');
       }
     }, [isMounted, currentUser, authLoading, router]);
-    
-    
+
+
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
-    
+
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
         console.log("Walkthrough requests accordion change to:", value);
-        setActiveAccordionItemForWalkthrough(value); // This will update the state passed to the provider
+        setActiveAccordionItemForWalkthrough(value);
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
         console.log("Walkthrough requests blueprint load:", blueprint);
         if (typeof window !== 'undefined') {
-            (window as any).__blueprintForWalkthrough = blueprint; 
+            (window as any).__blueprintForWalkthrough = blueprint;
         }
     }, []);
-    
+
     if (authLoading || !isMounted) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-background">
@@ -1398,8 +1409,8 @@ export default function LandingPageWorkflowPage() {
         </div>
       );
     }
-    
-    if (!currentUser && isMounted) { 
+
+    if (!currentUser && isMounted) {
       return (
          <div className="flex items-center justify-center min-h-screen bg-background">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1407,8 +1418,8 @@ export default function LandingPageWorkflowPage() {
         </div>
       );
     }
-    
-    if (!currentUser) return null; 
+
+    if (!currentUser) return null;
 
     return (
         <WalkthroughProvider
@@ -1419,3 +1430,4 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
+

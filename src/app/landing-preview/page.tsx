@@ -14,7 +14,7 @@ import type { PageBlueprint, SectionVisibility } from '@/types/recommendations';
 
 const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
   pageName: `Default Preview - ${versionLabel}`,
-  heroConfig: { 
+  heroConfig: {
     headline: `Default: Ensure Your Family's Financial Security (${versionLabel})`,
     subHeadline: `(default: even when you can't be there for them)`,
     ctaText: `Default: Secure My Family's Future`,
@@ -22,14 +22,14 @@ const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
     heroImageUrl: "https://placehold.co/1600x900.png",
     heroImageAltText: "Family enjoying time together"
   },
-  benefits: undefined, 
-  testimonials: undefined, 
-  trustSignals: undefined, 
-  formConfig: { 
+  benefits: undefined,
+  testimonials: undefined,
+  trustSignals: undefined,
+  formConfig: {
     headline: `Default: Get Your Personalized Plan (${versionLabel})`,
     ctaText: `Default: See My Quote Today`
   },
-  sectionVisibility: { 
+  sectionVisibility: {
     hero: true,
     benefits: true,
     testimonials: true,
@@ -51,67 +51,80 @@ export default function LandingPreviewPage() {
 
   useEffect(() => {
     if (!isClient) return;
-    setIsLoading(true);
-    setError(null);
-    let parseError = false;
 
-    const parseAndSetBlueprint = (
-      bpString: string | null,
-      setter: React.Dispatch<React.SetStateAction<PageBlueprint>>,
-      versionLabel: string,
-      fallbackBlueprint: PageBlueprint
-    ) => {
-      if (bpString && bpString.length > 10) { // Basic check for non-empty string
-        try {
-          const parsedBP = JSON.parse(bpString) as PageBlueprint;
-          if (parsedBP.heroConfig && parsedBP.formConfig) { // Check for essential parts
-            setter({
-              ...fallbackBlueprint, // Ensure all defaults are present
-              ...parsedBP,
-              sectionVisibility: { // Deep merge sectionVisibility
-                ...fallbackBlueprint.sectionVisibility,
-                ...(parsedBP.sectionVisibility || {}),
-              },
-            });
-          } else {
-            throw new Error(`${versionLabel} blueprint from localStorage is missing required fields (heroConfig or formConfig).`);
-          }
-        } catch (e) {
-          console.error(`Error parsing ${versionLabel} from localStorage:`, e);
-          setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}. Displaying fallback.`));
-          setter(fallbackBlueprint);
-          parseError = true;
+    const loadBlueprints = () => {
+      setIsLoading(true);
+      setError(null);
+      let parseError = false;
+      let localBlueprintAString: string | null = null;
+      let localBlueprintBString: string | null = null;
+
+      try {
+        if (typeof window !== 'undefined' && window.localStorage) {
+            localBlueprintAString = localStorage.getItem('previewBlueprintA_temp');
+            localBlueprintBString = localStorage.getItem('previewBlueprintB_temp');
+            console.log('Read blueprintA_temp from localStorage:', localBlueprintAString ? localBlueprintAString.substring(0,200) + "..." : 'null');
+            console.log('Read blueprintB_temp from localStorage:', localBlueprintBString ? localBlueprintBString.substring(0,200) + "..." : 'null');
+
+            if (localBlueprintAString) localStorage.removeItem('previewBlueprintA_temp');
+            if (localBlueprintBString) localStorage.removeItem('previewBlueprintB_temp');
+            console.log('Temporary blueprints removed from localStorage.');
         }
-      } else {
-        console.log(`${versionLabel} blueprint string not found or empty in localStorage. Using fallback.`);
-        setter(fallbackBlueprint); 
+      } catch (e) {
+        console.error("Error accessing or removing from localStorage:", e);
+        setError("Could not access local storage. Displaying fallback versions.");
+        parseError = true; // Treat storage access error as a parse error for simplicity
       }
+
+
+      const parseAndSetBlueprint = (
+        bpString: string | null,
+        setter: React.Dispatch<React.SetStateAction<PageBlueprint>>,
+        versionLabel: string,
+        fallbackBlueprint: PageBlueprint
+      ) => {
+        if (bpString && bpString.length > 10) {
+          try {
+            const parsedBP = JSON.parse(bpString) as PageBlueprint;
+            if (parsedBP.pageName && parsedBP.heroConfig && parsedBP.formConfig) { // More robust check
+              setter({
+                ...fallbackBlueprint,
+                ...parsedBP,
+                sectionVisibility: {
+                  ...fallbackBlueprint.sectionVisibility,
+                  ...(parsedBP.sectionVisibility || {}),
+                },
+              });
+            } else {
+              throw new Error(`${versionLabel} blueprint from localStorage is missing required fields (pageName, heroConfig, or formConfig).`);
+            }
+          } catch (e) {
+            console.error(`Error parsing ${versionLabel} from localStorage:`, e);
+            setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}. Displaying fallback.`));
+            setter(fallbackBlueprint);
+            parseError = true;
+          }
+        } else {
+          console.log(`${versionLabel} blueprint string not found or empty in localStorage. Using fallback.`);
+          setter(fallbackBlueprint);
+        }
+      };
+
+      parseAndSetBlueprint(localBlueprintAString, setBlueprintA, 'Version A', createDefaultBlueprint('Version A - Fallback'));
+      parseAndSetBlueprint(localBlueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
+
+      if (!localBlueprintAString && !localBlueprintBString && !parseError) {
+        setError("No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
+      } else if (!parseError && (localBlueprintAString || localBlueprintBString)) {
+        setError(null);
+      }
+      setIsLoading(false);
     };
-    
-    let blueprintAString: string | null = null;
-    let blueprintBString: string | null = null;
 
-    if (typeof window !== 'undefined' && window.localStorage) { // Changed to localStorage
-        blueprintAString = localStorage.getItem('previewBlueprintA_temp');
-        blueprintBString = localStorage.getItem('previewBlueprintB_temp');
-        console.log('Read blueprintA_temp from localStorage:', blueprintAString ? blueprintAString.substring(0,200) + "..." : null); 
-        console.log('Read blueprintB_temp from localStorage:', blueprintBString ? blueprintBString.substring(0,200) + "..." : null); 
+    // Introduce a small delay to potentially help with localStorage timing, especially after a window.open
+    const timerId = setTimeout(loadBlueprints, 100);
 
-        if (blueprintAString) localStorage.removeItem('previewBlueprintA_temp');
-        if (blueprintBString) localStorage.removeItem('previewBlueprintB_temp');
-        console.log('Temporary blueprints removed from localStorage.');
-    }
-
-
-    parseAndSetBlueprint(blueprintAString, setBlueprintA, 'Version A', createDefaultBlueprint('Version A - Fallback'));
-    parseAndSetBlueprint(blueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
-
-    if (!blueprintAString && !blueprintBString && !parseError) {
-      setError("No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
-    } else if (!parseError && (blueprintAString || blueprintBString)) {
-      setError(null); // Clear error if at least one blueprint was successfully processed
-    }
-    setIsLoading(false);
+    return () => clearTimeout(timerId);
 
   }, [isClient]);
 
@@ -142,6 +155,14 @@ export default function LandingPreviewPage() {
       {blueprint.sectionVisibility?.form && blueprint.formConfig && (
          <QuoteFormSection {...blueprint.formConfig} />
       )}
+       {/* Fallback message if all sections are hidden for this blueprint */}
+       {!(blueprint.sectionVisibility?.hero ||
+           blueprint.sectionVisibility?.benefits ||
+           blueprint.sectionVisibility?.testimonials ||
+           blueprint.sectionVisibility?.trustSignals ||
+           blueprint.sectionVisibility?.form) && (
+          <p className="p-6 text-center text-muted-foreground">All sections are hidden for {versionLabel}.</p>
+        )}
     </div>
   );
 
