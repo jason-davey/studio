@@ -36,6 +36,14 @@ export interface RecommendationFormConfig {
   ctaText: string; // e.g., "Secure My Family's Future"
 }
 
+export interface SectionVisibility {
+  hero: boolean;
+  benefits: boolean;
+  testimonials: boolean;
+  trustSignals: boolean;
+  form: boolean;
+}
+
 // Represents the overall structure of the JSON blueprint uploaded in Step 1
 export interface PageBlueprint {
   pageName: string; // A user-friendly name for this set of recommendations/blueprint, e.g., "Life Insurance Landing Page - Variant X"
@@ -49,4 +57,5 @@ export interface PageBlueprint {
   testimonials?: RecommendationTestimonial[];
   trustSignals?: RecommendationTrustSignal[];
   formConfig?: RecommendationFormConfig;
+  sectionVisibility?: SectionVisibility; // Added this line
 }

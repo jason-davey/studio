@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation'; // For App Router
+import { useRouter } from 'next/navigation'; 
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,6 +14,7 @@ import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { Switch } from '@/components/ui/switch'; // Added for section visibility
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
 import HeroSection from '@/components/landing/HeroSection';
@@ -22,7 +23,7 @@ import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
 
-import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig } from '@/types/recommendations';
+import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig, SectionVisibility } from '@/types/recommendations';
 
 import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
 import WelcomeModal from '@/components/walkthrough/WelcomeModal';
@@ -31,6 +32,8 @@ import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { cn } from '@/lib/utils';
+
 
 interface ABTestHeroConfig {
   headline: string;
@@ -60,6 +63,7 @@ const initialAISuggestionState: AISuggestionState = {
   popoverOpen: false,
 };
 
+// Moved ConfigForm outside to prevent focus loss
 const ConfigForm = ({
   version,
   headline, setHeadline,
@@ -348,14 +352,13 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
 
 
 function LandingPageWorkflowPageContent() {
+  console.log("Rendering LandingPageWorkflowPageContent");
   const { toast } = useToast();
   const [activeAccordionItem, setActiveAccordionItem] = useState<string | undefined>('step-1');
 
   const walkthrough = useWalkthrough();
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
-
-  console.log("Rendering LandingPageWorkflowPageContent");
 
   useEffect(() => {
     console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to", uiActions.showWelcomeModal);
@@ -369,6 +372,13 @@ function LandingPageWorkflowPageContent() {
   const [fileError, setFileError] = useState<string | null>(null);
   const [fileName, setFileName] = useState<string>('');
 
+  const defaultSectionVisibility: SectionVisibility = {
+    hero: true,
+    benefits: true,
+    testimonials: true,
+    trustSignals: true,
+    form: true,
+  };
 
   const initialBlueprintState: PageBlueprint = {
     pageName: 'Untitled Page',
@@ -380,13 +390,18 @@ function LandingPageWorkflowPageContent() {
     benefits: [],
     testimonials: [],
     trustSignals: [],
-    formConfig: { headline: '', ctaText: '' }
+    formConfig: { headline: '', ctaText: '' },
+    sectionVisibility: { ...defaultSectionVisibility }
   };
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
 
   const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
-    setActivePageBlueprint(blueprint);
-    setUploadedBlueprint(blueprint);
+    const blueprintWithVisibility = {
+      ...blueprint,
+      sectionVisibility: blueprint.sectionVisibility || { ...defaultSectionVisibility }
+    };
+    setActivePageBlueprint(blueprintWithVisibility);
+    setUploadedBlueprint(blueprintWithVisibility);
     setFileName("sample-blueprint.json");
     toast({ title: 'Sample Blueprint Loaded!', description: 'A sample blueprint has been loaded for the walkthrough.' });
   }, [toast]);
@@ -419,7 +434,7 @@ function LandingPageWorkflowPageContent() {
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     setUploadedBlueprint(null);
-    setActivePageBlueprint(initialBlueprintState);
+    setActivePageBlueprint(initialBlueprintState); // Reset to initial state with default visibility
     setFileName('');
 
     const file = event.target.files?.[0];
@@ -432,19 +447,16 @@ function LandingPageWorkflowPageContent() {
             const content = e.target?.result as string;
             const parsedJson = JSON.parse(content) as PageBlueprint;
             if (parsedJson.pageName && parsedJson.heroConfig) {
-              setUploadedBlueprint(parsedJson);
-              setActivePageBlueprint({
-                pageName: parsedJson.pageName || 'Untitled Page',
-                targetUrl: parsedJson.targetUrl || '',
-                seoTitle: parsedJson.seoTitle || '',
-                executiveSummary: parsedJson.executiveSummary || '',
-                keyRecommendationsSummary: parsedJson.keyRecommendationsSummary || '',
-                heroConfig: parsedJson.heroConfig || initialBlueprintState.heroConfig,
-                benefits: parsedJson.benefits || [],
-                testimonials: parsedJson.testimonials || [],
-                trustSignals: parsedJson.trustSignals || [],
-                formConfig: parsedJson.formConfig || initialBlueprintState.formConfig,
-              });
+              const blueprintWithVisibility = {
+                ...initialBlueprintState, // Start with defaults to ensure all fields exist
+                ...parsedJson,
+                sectionVisibility: {
+                  ...defaultSectionVisibility,
+                  ...(parsedJson.sectionVisibility || {}), // Merge if visibility is in JSON
+                }
+              };
+              setUploadedBlueprint(blueprintWithVisibility);
+              setActivePageBlueprint(blueprintWithVisibility);
               toast({ title: 'Blueprint Loaded!', description: `"${parsedJson.pageName}" recommendations loaded.` });
               setActiveAccordionItem('step-2');
             } else {
@@ -483,11 +495,22 @@ function LandingPageWorkflowPageContent() {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...(prev[section] || {}),
+        ...(prev[section] || {}), // Ensure section exists
         [field]: value,
       },
     }));
   };
+  
+  const handleSectionVisibilityChange = (section: keyof SectionVisibility, isVisible: boolean) => {
+    setActivePageBlueprint(prev => ({
+      ...prev,
+      sectionVisibility: {
+        ...(prev.sectionVisibility || defaultSectionVisibility),
+        [section]: isVisible,
+      }
+    }));
+  };
+
 
   const handleArrayObjectChange = <S extends 'benefits' | 'testimonials' | 'trustSignals'>(
     section: S,
@@ -701,26 +724,36 @@ function LandingPageWorkflowPageContent() {
             {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
             {activePageBlueprint?.pageName && (
               <div id="step-2-preview-area" className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
-                <HeroSection
-                  headline={activePageBlueprint.heroConfig?.headline}
-                  subHeadline={activePageBlueprint.heroConfig?.subHeadline}
-                  ctaText={activePageBlueprint.heroConfig?.ctaText}
-                  uniqueValueProposition={activePageBlueprint.heroConfig?.uniqueValueProposition}
-                  heroImageUrl={activePageBlueprint.heroConfig?.heroImageUrl}
-                  heroImageAltText={activePageBlueprint.heroConfig?.heroImageAltText}
-                />
-                <BenefitsSection benefits={activePageBlueprint.benefits} />
-                <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
-                <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
-                 {activePageBlueprint.formConfig && activePageBlueprint.formConfig.headline && (
+                {activePageBlueprint.sectionVisibility?.hero && (
+                  <HeroSection
+                    headline={activePageBlueprint.heroConfig?.headline}
+                    subHeadline={activePageBlueprint.heroConfig?.subHeadline}
+                    ctaText={activePageBlueprint.heroConfig?.ctaText}
+                    uniqueValueProposition={activePageBlueprint.heroConfig?.uniqueValueProposition}
+                    heroImageUrl={activePageBlueprint.heroConfig?.heroImageUrl}
+                    heroImageAltText={activePageBlueprint.heroConfig?.heroImageAltText}
+                  />
+                )}
+                {activePageBlueprint.sectionVisibility?.benefits && (
+                  <BenefitsSection benefits={activePageBlueprint.benefits} />
+                )}
+                {activePageBlueprint.sectionVisibility?.testimonials && (
+                  <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
+                )}
+                {activePageBlueprint.sectionVisibility?.trustSignals && (
+                  <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
+                )}
+                {activePageBlueprint.sectionVisibility?.form && activePageBlueprint.formConfig?.headline && (
                     <div className="text-center my-4 py-8 bg-background">
                         <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline}</h3>
                     </div>
                  )}
-                <QuoteFormSection
-                    headline={activePageBlueprint.formConfig?.headline}
-                    ctaText={activePageBlueprint.formConfig?.ctaText}
-                />
+                {activePageBlueprint.sectionVisibility?.form && (
+                  <QuoteFormSection
+                      headline={activePageBlueprint.formConfig?.headline}
+                      ctaText={activePageBlueprint.formConfig?.ctaText}
+                  />
+                )}
 
                 <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
                   Proceed to Adjust Content <ChevronRight className="ml-2 h-4 w-4" />
@@ -740,12 +773,13 @@ function LandingPageWorkflowPageContent() {
         <Card id="step-3-card">
           <CardHeader>
             <CardTitle>Adjust Landing Page Content</CardTitle>
-            <CardDescription>Fine-tune the content for each section of your landing page. Changes here update the active blueprint that pre-fills A/B Test Version A.</CardDescription>
+            <CardDescription>Fine-tune the content and visibility for each section of your landing page. Changes here update the active blueprint that pre-fills A/B Test Version A.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
             {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
             {activePageBlueprint?.pageName && (
               <>
+                {/* Page Information Section */}
                 <Card className="bg-muted/50 p-1">
                   <CardHeader><CardTitle className="text-lg flex items-center"><Info className="mr-2 h-5 w-5" /> Page Information</CardTitle></CardHeader>
                   <CardContent className="space-y-3">
@@ -757,9 +791,20 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
+                {/* Hero Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
-                  <CardHeader><CardTitle className="text-lg flex items-center"><ImageIconLucide className="mr-2 h-5 w-5" /> Hero Section</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center"><ImageIconLucide className="mr-2 h-5 w-5" /> Hero Section</CardTitle>
+                    <div className="flex items-center space-x-2">
+                      <Label htmlFor="hero-visible-switch" className="text-sm">Show</Label>
+                      <Switch
+                        id="hero-visible-switch"
+                        checked={activePageBlueprint.sectionVisibility?.hero}
+                        onCheckedChange={(checked) => handleSectionVisibilityChange('hero', checked)}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className={cn("space-y-3", !activePageBlueprint.sectionVisibility?.hero && "opacity-50 pointer-events-none")}>
                     <div><Label htmlFor="heroHeadline-adjust-input">Headline</Label><Input id="heroHeadline-adjust-input" value={activePageBlueprint.heroConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'headline', e.target.value)} /></div>
                     <div><Label htmlFor="heroSubHeadline-adjust-input">Sub-Headline</Label><Input id="heroSubHeadline-adjust-input" value={activePageBlueprint.heroConfig?.subHeadline || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'subHeadline', e.target.value)} /></div>
                     <div><Label htmlFor="heroCtaText-adjust-input">CTA Text</Label><Input id="heroCtaText-adjust-input" value={activePageBlueprint.heroConfig?.ctaText || ''} onChange={(e) => handleNestedObjectChange('heroConfig', 'ctaText', e.target.value)} /></div>
@@ -769,11 +814,22 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
+                {/* Benefits Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
-                  <CardHeader><CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center"><ListChecks className="mr-2 h-5 w-5" /> Benefits Section</CardTitle>
+                     <div className="flex items-center space-x-2">
+                      <Label htmlFor="benefits-visible-switch" className="text-sm">Show</Label>
+                      <Switch
+                        id="benefits-visible-switch"
+                        checked={activePageBlueprint.sectionVisibility?.benefits}
+                        onCheckedChange={(checked) => handleSectionVisibilityChange('benefits', checked)}
+                      />
+                    </div>
+                  </CardHeader>
+                  <CardContent className={cn("space-y-4", !activePageBlueprint.sectionVisibility?.benefits && "opacity-50 pointer-events-none")}>
                     {activePageBlueprint.benefits?.map((benefit, index) => (
-                      <Card key={`benefit-${index}`} className="p-3 bg-card shadow-sm">
+                      <Card key={`benefit-${index}-adjust`} className="p-3 bg-card shadow-sm">
                         <Label className="font-semibold text-md">Benefit {index + 1}</Label>
                         <div className="space-y-2 mt-1">
                           <div><Label htmlFor={`benefitTitle${index}-adjust-input`}>Title</Label><Input id={`benefitTitle${index}-adjust-input`} value={benefit.title} onChange={(e) => handleArrayObjectChange('benefits', index, 'title', e.target.value)} /></div>
@@ -785,11 +841,22 @@ function LandingPageWorkflowPageContent() {
                   </CardContent>
                 </Card>
 
-                 <Card className="bg-muted/50 p-1">
-                    <CardHeader><CardTitle className="text-lg flex items-center"><MessageSquareIconLucide className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
+                 {/* Testimonials Section Adjustments */}
+                <Card className="bg-muted/50 p-1">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg flex items-center"><MessageSquareIconLucide className="mr-2 h-5 w-5"/> Testimonials Section</CardTitle>
+                        <div className="flex items-center space-x-2">
+                          <Label htmlFor="testimonials-visible-switch" className="text-sm">Show</Label>
+                          <Switch
+                            id="testimonials-visible-switch"
+                            checked={activePageBlueprint.sectionVisibility?.testimonials}
+                            onCheckedChange={(checked) => handleSectionVisibilityChange('testimonials', checked)}
+                          />
+                        </div>
+                    </CardHeader>
+                    <CardContent className={cn("space-y-4", !activePageBlueprint.sectionVisibility?.testimonials && "opacity-50 pointer-events-none")}>
                         {activePageBlueprint.testimonials?.map((testimonial, index) => (
-                            <Card key={`testimonial-${index}`} className="p-3 bg-card shadow-sm">
+                            <Card key={`testimonial-${index}-adjust`} className="p-3 bg-card shadow-sm">
                                 <Label className="font-semibold text-md">Testimonial {index + 1}</Label>
                                 <div className="space-y-2 mt-1">
                                     <div><Label htmlFor={`testimonialName${index}-adjust-input`}>Name</Label><Input id={`testimonialName${index}-adjust-input`} value={testimonial.name} onChange={(e) => handleArrayObjectChange('testimonials',index, 'name', e.target.value)} /></div>
@@ -804,11 +871,22 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
+                {/* Trust Signals Section Adjustments */}
                  <Card className="bg-muted/50 p-1">
-                    <CardHeader><CardTitle className="text-lg flex items-center"><AwardIcon className="mr-2 h-5 w-5"/> Trust Signals Section</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
+                    <CardHeader className="flex flex-row items-center justify-between">
+                        <CardTitle className="text-lg flex items-center"><AwardIcon className="mr-2 h-5 w-5"/> Trust Signals Section</CardTitle>
+                         <div className="flex items-center space-x-2">
+                          <Label htmlFor="trustSignals-visible-switch" className="text-sm">Show</Label>
+                          <Switch
+                            id="trustSignals-visible-switch"
+                            checked={activePageBlueprint.sectionVisibility?.trustSignals}
+                            onCheckedChange={(checked) => handleSectionVisibilityChange('trustSignals', checked)}
+                          />
+                        </div>
+                    </CardHeader>
+                    <CardContent className={cn("space-y-4", !activePageBlueprint.sectionVisibility?.trustSignals && "opacity-50 pointer-events-none")}>
                         {activePageBlueprint.trustSignals?.map((signal, index) => (
-                            <Card key={`trust-${index}`} className="p-3 bg-card shadow-sm">
+                            <Card key={`trust-${index}-adjust`} className="p-3 bg-card shadow-sm">
                                 <Label className="font-semibold text-md">Trust Signal {index + 1}</Label>
                                 <div className="space-y-2 mt-1">
                                     <div><Label htmlFor={`trustSignalText${index}-adjust-input`}>Text</Label><Input id={`trustSignalText${index}-adjust-input`} value={signal.text} onChange={(e) => handleArrayObjectChange('trustSignals', index, 'text', e.target.value)} /></div>
@@ -836,9 +914,20 @@ function LandingPageWorkflowPageContent() {
                     </CardContent>
                 </Card>
 
+                {/* Form Config Section Adjustments */}
                 <Card className="bg-muted/50 p-1">
-                  <CardHeader><CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle></CardHeader>
-                  <CardContent className="space-y-3">
+                  <CardHeader className="flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg flex items-center"><Edit3 className="mr-2 h-5 w-5" /> Quote Form Section</CardTitle>
+                    <div className="flex items-center space-x-2">
+                        <Label htmlFor="form-visible-switch" className="text-sm">Show</Label>
+                        <Switch
+                        id="form-visible-switch"
+                        checked={activePageBlueprint.sectionVisibility?.form}
+                        onCheckedChange={(checked) => handleSectionVisibilityChange('form', checked)}
+                        />
+                    </div>
+                  </CardHeader>
+                  <CardContent className={cn("space-y-3", !activePageBlueprint.sectionVisibility?.form && "opacity-50 pointer-events-none")}>
                     <div><Label htmlFor="formHeadline-adjust-input">Form Headline</Label><Input id="formHeadline-adjust-input" value={activePageBlueprint.formConfig?.headline || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'headline', e.target.value)} /></div>
                     <div><Label htmlFor="formCtaText-adjust-input">Form CTA Text</Label><Input id="formCtaText-adjust-input" value={activePageBlueprint.formConfig?.ctaText || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'ctaText', e.target.value)} /></div>
                   </CardContent>
@@ -998,8 +1087,7 @@ function LandingPageWorkflowPageContent() {
   ];
 
   const mainCardMarginTop = `mt-[${TOP_BAR_HEIGHT_PX}px]`;
-  console.log("Rendering LandingPageWorkflowPageContent (inside provider)");
-
+  
   return (
     <div className={`container mx-auto py-8 px-4 md:px-6 lg:px-8 ${mainCardMarginTop}`}>
       <div id="walkthrough-end-target" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
@@ -1061,6 +1149,7 @@ function LandingPageWorkflowPageContent() {
   );
 }
 
+
 export default function LandingPageWorkflowPage() {
     console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
     const router = useRouter();
@@ -1081,7 +1170,6 @@ export default function LandingPageWorkflowPage() {
         router.push('/login');
       }
     }, [isMounted, currentUser, authLoading, router]);
-
 
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
@@ -1109,7 +1197,7 @@ export default function LandingPageWorkflowPage() {
       );
     }
     
-    if (!currentUser) {
+    if (!currentUser && isMounted) { // ensure isMounted is true before redirecting
       // This will be briefly shown before redirect effect kicks in, or if redirect fails.
       // It also ensures that if the redirect fails somehow, we don't render the main content.
       return (
@@ -1120,6 +1208,9 @@ export default function LandingPageWorkflowPage() {
       );
     }
     
+    // Only render the main content if currentUser is available and component is mounted
+    if (!currentUser) return null;
+
     return (
         <WalkthroughProvider
             onAccordionChange={handleAccordionChangeForWalkthrough}

@@ -17,8 +17,8 @@ This application helps you prepare and configure landing page content. To use th
 The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to navigation, user actions (like Logout), admin view switching, and the "Guided Walkthrough" and "Provide Feedback" buttons at all times.
 
 1.  **Step 1: Review Recommendations:** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections. The Guided Walkthrough can also load a sample blueprint for you.
-2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
-3.  **Step 3: Adjust Content:** Fine-tune the content of your landing page sections (e.g., Hero section text, Benefit descriptions, Testimonial quotes).
+2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values. The visibility of sections in the preview depends on settings in Step 3.
+3.  **Step 3: Adjust Content:** Fine-tune the content of your landing page sections (e.g., Hero section text, Benefit descriptions, Testimonial quotes). You can also toggle the visibility of each main section for the preview.
 4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions (optionally guided by "Campaign Focus / Keywords") and manage configurations locally.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
 
@@ -89,12 +89,13 @@ Navigate to the root of your application (e.g., `http://localhost:9002/`). You w
     - If no blueprint is loaded, subsequent steps might use default values or allow you to build content from scratch.
 
 ### 3.2. Step 2: Build & Preview Page
-- This panel shows a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint loaded in Step 1 (or defaults).
+- This panel shows a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint loaded in Step 1 (or defaults). The visibility of each section in this preview is controlled by the "Show this section" toggles in Step 3.
 - Review the preview.
 - Click "Proceed to Adjust Content" or open the Step 3 accordion.
 
 ### 3.3. Step 3: Adjust Content
 - Here, you can edit the content for each section of the landing page (Page Info, Hero, Benefits, Testimonials, Trust Signals, Form Config) using the provided input fields.
+- You can also **toggle the visibility of each main section** using the "Show" switch next to each section's title. If a section is toggled off, it will not appear in the Step 2 preview.
 - These changes will form the basis of "Version A" for the Hero section in your A/B test.
 - When done, click "Configure A/B Test" or open the Step 4 accordion.
 
