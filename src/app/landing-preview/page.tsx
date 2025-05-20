@@ -8,7 +8,7 @@ import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
 import Footer from '@/components/landing/Footer';
-import { useSearchParams } from 'next/navigation';
+import { useSearchParams } from 'next/navigation'; // No longer used for blueprint data
 import { useEffect, useState } from 'react';
 import { AlertTriangle, Loader2 } from 'lucide-react';
 import type { PageBlueprint, SectionVisibility } from '@/types/recommendations';
@@ -16,7 +16,7 @@ import type { PageBlueprint, SectionVisibility } from '@/types/recommendations';
 // Define a default blueprint structure to use as fallback
 const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
   pageName: `Default Preview - ${versionLabel}`,
-  heroConfig: { // Default Hero content from HeroSection component
+  heroConfig: { 
     headline: `Default: Ensure Your Family's Financial Security (${versionLabel})`,
     subHeadline: `(default: even when you can't be there for them)`,
     ctaText: `Default: Secure My Family's Future`,
@@ -24,16 +24,14 @@ const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
     heroImageUrl: "https://placehold.co/1600x900.png",
     heroImageAltText: "Family enjoying time together"
   },
-  // For other sections, their respective components have internal defaults
-  // which will be used if benefits, testimonials, etc. arrays are undefined or empty.
-  benefits: undefined, // Rely on BenefitsSection internal defaults
-  testimonials: undefined, // Rely on TestimonialsSection internal defaults
-  trustSignals: undefined, // Rely on TrustSignalsSection internal defaults
-  formConfig: { // Default Form content
+  benefits: undefined, 
+  testimonials: undefined, 
+  trustSignals: undefined, 
+  formConfig: { 
     headline: `Default: Get Your Personalized Plan (${versionLabel})`,
     ctaText: `Default: See My Quote Today`
   },
-  sectionVisibility: { // Default visibility
+  sectionVisibility: { 
     hero: true,
     benefits: true,
     testimonials: true,
@@ -43,7 +41,6 @@ const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
 });
 
 export default function LandingPreviewPage() {
-  const searchParams = useSearchParams();
   const [blueprintA, setBlueprintA] = useState<PageBlueprint>(() => createDefaultBlueprint('Version A - Fallback'));
   const [blueprintB, setBlueprintB] = useState<PageBlueprint>(() => createDefaultBlueprint('Version B - Fallback'));
   const [error, setError] = useState<string | null>(null);
@@ -58,9 +55,6 @@ export default function LandingPreviewPage() {
     if (!isClient) return;
     setIsLoading(true);
     setError(null);
-
-    const blueprintAString = searchParams.get('blueprintA');
-    const blueprintBString = searchParams.get('blueprintB');
     let parseError = false;
 
     const parseAndSetBlueprint = (
@@ -72,10 +66,9 @@ export default function LandingPreviewPage() {
       if (bpString) {
         try {
           const parsedBP = JSON.parse(bpString) as PageBlueprint;
-          // Basic validation for key structures
           if (parsedBP.heroConfig && parsedBP.formConfig) {
             setter({
-              ...fallbackBlueprint, // Ensure all base fields from fallback exist
+              ...fallbackBlueprint,
               ...parsedBP,
               sectionVisibility: {
                 ...fallbackBlueprint.sectionVisibility,
@@ -83,30 +76,43 @@ export default function LandingPreviewPage() {
               },
             });
           } else {
-            throw new Error(`${versionLabel} blueprint is missing required fields (heroConfig or formConfig).`);
+            throw new Error(`${versionLabel} blueprint from sessionStorage is missing required fields (heroConfig or formConfig).`);
           }
         } catch (e) {
-          console.error(`Error parsing ${versionLabel} from URL:`, e);
+          console.error(`Error parsing ${versionLabel} from sessionStorage:`, e);
           setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}.`));
           setter(fallbackBlueprint);
           parseError = true;
         }
       } else {
-        setter(fallbackBlueprint); // Use fallback if no param
+        setter(fallbackBlueprint); 
       }
     };
+    
+    let blueprintAString: string | null = null;
+    let blueprintBString: string | null = null;
+
+    if (typeof window !== 'undefined' && window.sessionStorage) {
+        blueprintAString = sessionStorage.getItem('previewBlueprintA');
+        blueprintBString = sessionStorage.getItem('previewBlueprintB');
+
+        // Clean up sessionStorage immediately after reading
+        sessionStorage.removeItem('previewBlueprintA');
+        sessionStorage.removeItem('previewBlueprintB');
+    }
+
 
     parseAndSetBlueprint(blueprintAString, setBlueprintA, 'Version A', createDefaultBlueprint('Version A - Fallback'));
     parseAndSetBlueprint(blueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
 
     if (!blueprintAString && !blueprintBString && !parseError) {
-      setError("No blueprint configurations provided in URL. Displaying default fallback versions for A and B.");
+      setError("No blueprint configurations found in session storage. Displaying default fallback versions for A and B.");
     } else if (!parseError && (blueprintAString || blueprintBString)) {
-      setError(null); // Clear error if at least one blueprint was parsed successfully
+      setError(null);
     }
     setIsLoading(false);
 
-  }, [searchParams, isClient]);
+  }, [isClient]);
 
   if (!isClient || isLoading) {
     return (
