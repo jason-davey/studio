@@ -98,7 +98,8 @@ This provides a high-level overview of the development journey:
 - **Phase 5 (Workflow Enhancements - Current):**
     *   Added Section Visibility toggles in Step 3 (Adjust Content) affecting the preview in Step 2.
     *   `/landing-preview` page updated to render two full `PageBlueprint` configurations (if provided via URL).
-    *   *(Next up: Enhancing Step 4 to produce two full blueprints for preview; saving/loading full `PageBlueprint` objects in Step 3).*
+    *   Step 3 enhanced with local storage management for full `PageBlueprint` configurations (save, load, delete).
+    *   *(Next up: Enhancing Step 4 to produce two full blueprints for preview).*
 
 ## 2. Application Architecture
 
@@ -131,8 +132,9 @@ This provides a high-level overview of the development journey:
 - **`AuthContext` (`src/contexts/AuthContext.tsx`):** Globally manages user authentication state (`currentUser`, `loading`), a temporary client-side `userRole` ('admin' or 'creator'), an `isActualAdmin` flag, and view-switching (`viewingAsRole`, `setViewOverride`).
 - **`UIActionContext` (`src/contexts/UIActionContext.tsx`):** Globally manages visibility of `FeedbackModal` and `WelcomeModal` (for walkthrough), triggered by `TopBar`.
 - **`WalkthroughContext` (`src/contexts/WalkthroughContext.tsx`):** Manages the state of the interactive guided tour, including current step and active status. Triggered by `WelcomeModal` via `UIActionContext`.
-- **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds `PageBlueprint` data (including `sectionVisibility`), loaded in Step 1, previewed in Step 2, modified in Step 3.
+- **`activePageBlueprint` (State in `src/app/page.tsx`):** Holds `PageBlueprint` data (including `sectionVisibility`), loaded in Step 1, previewed in Step 2, modified in Step 3. Can be saved to/loaded from Local Storage.
 - **A/B Test Hero Configurations (Step 4 in `src/app/page.tsx`):** Local storage management for A/B Hero variants (headline, sub-headline, CTA, campaignFocus).
+- **Full Page Blueprint Configurations (Step 3 in `src/app/page.tsx`):** Local storage management for entire `PageBlueprint` objects.
 - **Firebase Integration:**
     - Firebase Authentication for user login/registration. The selected "Primary Interest" during registration is not currently saved to the user profile or used for role assignment (backlogged).
     - Prepares JSON for `heroConfig` (Remote Config). Actual A/B test setup in Firebase Console.
@@ -144,8 +146,8 @@ This provides a high-level overview of the development journey:
 - **Prerequisite:** User must be logged in.
 - **1. Step 1: Review Recommendations:** Upload `PageBlueprint` JSON.
 - **2. Step 2: Build & Preview Page:** Renders full landing page preview from `activePageBlueprint`, respecting `sectionVisibility`.
-- **3. Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`. Toggle visibility of each section. (Future: Manage multiple full blueprints locally).
-- **4. Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local hero configs, preview on `/landing-preview`. (Future: Allow configuration of all sections for A/B testing to fully utilize `/landing-preview`'s capabilities).
+- **3. Step 3: Adjust Content & Manage Blueprints:** Edit content for all sections of `activePageBlueprint`. Toggle visibility of each section. Save/Load full `PageBlueprint` configurations to/from local storage.
+- **4. Step 4: Configure A/B Test (Hero Section):** Configure Hero A/B variants, use AI, save/load local hero configs, preview on `/landing-preview`. (Future: Allow configuration of all sections for A/B testing to fully utilize `/landing-preview`'s capabilities).
 - **5. Step 5: Prepare for Deployment:** Guidance for Firebase.
 - **Global Fixed Top Bar:** Provides navigation ("Workflow", "Tech Spec" - for 'admin' role viewing as admin), user auth actions (Login/Register/Logout), admin view-switching toggle, and access to Guided Walkthrough (via `WelcomeModal`), Feedback (via `FeedbackModal`).
 
@@ -184,8 +186,8 @@ graph TD
         App_PageTsx --> App_FeedbackModal
         App_PageTsx --> App_WelcomeModal
         App_PageTsx <--> App_LocalStorage
-        App_PageTsx -- Generates Hero JSON for Remote Config --> FirebaseServices
-        App_PageTsx -- Passes two PageBlueprint JSON strings to --> App_LandingPreviewPage
+        App_PageTsx -- "Generates Hero JSON for Remote Config (Step 4)" --> FirebaseServices
+        App_PageTsx -- "Passes two PageBlueprint JSON strings to (Step 4)" --> App_LandingPreviewPage
         App_PageTsx --> App_GenkitFlow
         
         App_AdminSpecPage -- Reads --> App_TechSpecFile
@@ -195,7 +197,7 @@ graph TD
         App_TopBar --> App_AuthContext
         App_TopBar --> App_UIActionContext
         App_TopBar -- Navigates to --> App_PageTsx
-        App_TopBar -- Navigates to (admin role) --> App_AdminSpecPage
+        App_TopBar -- "Navigates to (admin role)" --> App_AdminSpecPage
         App_TopBar -- Navigates to --> App_LoginRegister
 
         App_WelcomeModal --> App_UIActionContext
@@ -221,7 +223,7 @@ graph TD
     end
 
     UserBrowser -- Firebase SDK Calls --> FB_Auth
-    UserBrowser -- Firebase SDK Calls (indirectly for config values) --> FB_RemoteConfig
+    UserBrowser -- "Firebase SDK Calls (indirectly for config values)" --> FB_RemoteConfig
     App_GenkitFlow -- API Call via Genkit --> FB_AI_Models
     App_DatadogLib -- Sends RUM Data --> DatadogPlatform
 
@@ -286,11 +288,11 @@ graph TD
     - Displays uploaded file name and a preview of the JSON content.
 - **Step 2: Build & Preview Page:**
     - Renders a full preview of the landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on `activePageBlueprint`, respecting `sectionVisibility` settings.
-- **Step 3: Adjust Content:**
+- **Step 3: Adjust Content & Manage Blueprints:**
     - Provides UI (forms with inputs/textareas) to edit content for each section of the `activePageBlueprint`.
     - Allows toggling the visibility of each main section (Hero, Benefits, Testimonials, Trust Signals, Form) via `Switch` controls. These visibility settings affect the preview in Step 2.
     - Sections include: Page Info, Hero, Benefits (list), Testimonials (list), Trust Signals (list), Form Config.
-    - (Future: Manage saving/loading of full `PageBlueprint` objects locally).
+    - **Manage Full Page Blueprints:** Allows users to save the current `activePageBlueprint` (with a name) to local storage, and load or delete previously saved blueprints.
 - **Step 4: Configure A/B Test (Hero Section):**
     - Version A is pre-filled from `activePageBlueprint.heroConfig`.
     - UI to configure Version B content (headline, sub-headline, CTA).
@@ -412,7 +414,7 @@ graph TD
     - **Creator Role:** Access to the main 5-step workflow (current default for authenticated users).
 - **User-Specific Data Persistence (Firestore):**
     - Store "Managed A/B Hero Configurations" (from Step 4) in Firestore, linked to user IDs.
-    - Store "Managed Page Blueprints" (from Step 3 - to be implemented) in Firestore, linked to user IDs.
+    - Store "Managed Page Blueprints" (from Step 3) in Firestore, linked to user IDs.
     - Store feedback submissions in Firestore.
     - Store user role/profile information in Firestore.
 - **Backend for ServiceNow Integration:** Create a Firebase Cloud Function or other backend service to securely create ServiceNow tickets from feedback submissions.
@@ -439,11 +441,11 @@ graph TD
     subgraph GlobalUI [Global UI - Post Authentication]
         MainAppNav --> TopBarComp["TopBar Component (Always Visible)"]
         TopBarComp -- Click Workflow --> MainAppNav
-        TopBarComp -- Click Tech Spec (Admin Role) --> AdminSpecNav["Navigate to /admin/tech-spec"]
+        TopBarComp -- "Click Tech Spec (Admin Role)" --> AdminSpecNav["Navigate to /admin/tech-spec"]
         TopBarComp -- Click Guided Walkthrough --> UIAction_ShowWelcomeModal["UIAction: Show Welcome Modal"]
         TopBarComp -- Click Provide Feedback --> UIAction_ShowFeedbackModal["UIAction: Show Feedback Modal"]
         TopBarComp -- Click Logout --> LogoutAction["Firebase: signOut()"]
-        TopBarComp -- Toggle Admin View Switch (Admin User) --> AuthContextRoleViewChange["AuthContext: Update Effective Role"]
+        TopBarComp -- "Toggle Admin View Switch (Admin User)" --> AuthContextRoleViewChange["AuthContext: Update Effective Role"]
         LogoutAction --> LoginPage
     end
 
@@ -451,21 +453,21 @@ graph TD
         MainAppNav --> AccordionInterface["5-Step Accordion UI (page.tsx)"]
         
         AccordionInterface -- Step 1 --> Step1Panel["Step 1: Review Recommendations Panel"]
-        Step1Panel -- Upload JSON Blueprint / Walkthrough Loads Sample --> BlueprintState["State: activePageBlueprint Updated"]
+        Step1Panel -- "Upload JSON Blueprint / Walkthrough Loads Sample" --> BlueprintState["State: activePageBlueprint Updated"]
         
         BlueprintState --> Step2Panel["Step 2: Build & Preview Panel (Respects Section Visibility)"]
-        Step2Panel -- Display Full Page Preview --> UserReviewsPreview{"User Reviews Preview"}
+        Step2Panel -- "Display Full Page Preview" --> UserReviewsPreview{"User Reviews Preview"}
         
-        UserReviewsPreview --> Step3Panel["Step 3: Adjust Content Panel (Includes Section Visibility Toggles)"]
-        Step3Panel -- User Edits Content Sections & Toggles Visibility --> BlueprintState
+        UserReviewsPreview --> Step3Panel["Step 3: Adjust Content Panel (Includes Section Visibility Toggles & Blueprint Management)"]
+        Step3Panel -- "User Edits Content Sections, Toggles Visibility, Saves/Loads Full Blueprints" --> BlueprintState
         
         BlueprintState --> Step4Panel["Step 4: Configure A/B Test Panel (Hero Focus)"]
-        Step4Panel -- Pre-fill Version A --> UserConfiguresAB{"User Configures Version B, Uses AI, Saves/Loads Local Hero Configs"}
-        UserConfiguresAB -- Render A/B Preview (passes Hero configs) --> PreviewPageNav["Navigate to /landing-preview"]
-        UserConfiguresAB -- Generate/Copy/Download JSON --> Step5Panel["Step 5: Prepare for Deployment Panel"]
+        Step4Panel -- "Pre-fill Version A" --> UserConfiguresAB{"User Configures Version B, Uses AI, Saves/Loads Local Hero Configs"}
+        UserConfiguresAB -- "Render A/B Preview (passes Hero configs for now, future: full blueprints)" --> PreviewPageNav["Navigate to /landing-preview"]
+        UserConfiguresAB -- "Generate/Copy/Download JSON" --> Step5Panel["Step 5: Prepare for Deployment Panel"]
         
-        Step5Panel -- User Takes JSON to Firebase --> FirebaseConsoleSetup["External: Firebase A/B Test Setup"]
-        FirebaseConsoleSetup -- Refer to PLAYBOOK.md --> FirebaseConsoleSetup
+        Step5Panel -- "User Takes JSON to Firebase" --> FirebaseConsoleSetup["External: Firebase A/B Test Setup"]
+        FirebaseConsoleSetup -- "Refer to PLAYBOOK.md" --> FirebaseConsoleSetup
     end
 
     subgraph PreviewPage [Landing Preview at /landing-preview - Public]
@@ -499,3 +501,6 @@ graph TD
     style WalkthroughFlow fill:#fff0f5,stroke:#db7093
     style FeedbackFlow fill:#fffff0,stroke:#ffd700
 ```
+
+
+    

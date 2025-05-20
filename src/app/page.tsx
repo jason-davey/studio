@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation'; 
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,14 +14,16 @@ import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
-import { Switch } from '@/components/ui/switch'; // Added for section visibility
+import { Switch } from '@/components/ui/switch';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
+import Header from '@/components/landing/Header'; // For preview, not directly used but needed for context
 import HeroSection from '@/components/landing/HeroSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
 import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
+import Footer from '@/components/landing/Footer'; // For preview context
 
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig, SectionVisibility } from '@/types/recommendations';
 
@@ -48,6 +50,12 @@ interface ManagedABTestHeroConfig extends ABTestHeroConfig {
 }
 
 const AB_TEST_LOCAL_STORAGE_KEY = 'heroConfigManager';
+const PAGE_BLUEPRINT_LOCAL_STORAGE_KEY = 'pageBlueprintManager'; // New key
+
+interface ManagedPageBlueprint extends PageBlueprint {
+  id: string;
+  name: string;
+}
 
 type AISuggestionState = {
   loading: boolean;
@@ -63,7 +71,6 @@ const initialAISuggestionState: AISuggestionState = {
   popoverOpen: false,
 };
 
-// Moved ConfigForm outside to prevent focus loss
 const ConfigForm = ({
   version,
   headline, setHeadline,
@@ -200,7 +207,7 @@ const ConfigForm = ({
   return (
   <Card className="mt-6">
     <CardHeader>
-      <CardTitle className="text-xl font-semibold text-primary">Version {version} Content</CardTitle>
+      <CardTitle className="text-xl font-semibold text-primary">Version {version} Hero Content</CardTitle>
     </CardHeader>
     <CardContent className="space-y-6">
       <div>
@@ -213,7 +220,7 @@ const ConfigForm = ({
           className="mt-1 text-base"
           rows={2}
         />
-        <p className="text-xs text-muted-foreground mt-1">Helps AI tailor suggestions. Saved with this configuration.</p>
+        <p className="text-xs text-muted-foreground mt-1">Helps AI tailor suggestions. Saved with this Hero configuration.</p>
       </div>
       <Separator />
       <div>
@@ -261,38 +268,38 @@ const ConfigForm = ({
 
       {generatedJson && (JSON.parse(generatedJson).headline !== "" || JSON.parse(generatedJson).subHeadline !== "" || JSON.parse(generatedJson).ctaText !== "") && (
         <div className="mt-6 pt-4 border-t border-border space-y-3">
-          <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version}</Label>
+          <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version} Hero</Label>
           <Textarea
             id={`generatedJson${version}`}
             value={generatedJson}
             readOnly
             rows={6}
             className="font-mono text-sm bg-muted/50 border-border p-3 rounded-md"
-            aria-label={`Generated JSON configuration for Version ${version}`}
+            aria-label={`Generated JSON configuration for Version ${version} Hero`}
           />
           <div className="flex flex-wrap gap-2">
-            <Button onClick={() => handleCopyToClipboard(generatedJson, version, toast)} variant="outline" size="sm">
+            <Button onClick={() => handleCopyToClipboard(generatedJson, `Version ${version} Hero`, toast)} variant="outline" size="sm">
               <ClipboardCopy className="mr-2 h-4 w-4" /> Copy JSON
             </Button>
-            <Button onClick={() => handleDownloadJson(generatedJson, version, toast)} variant="outline" size="sm">
+            <Button onClick={() => handleDownloadJson(generatedJson, `Version ${version} Hero`, toast)} variant="outline" size="sm">
               <Download className="mr-2 h-4 w-4" /> Download JSON
             </Button>
           </div>
         </div>
       )}
       <div className="mt-6 pt-4 border-t border-border space-y-3">
-        <Label htmlFor={`configName${version}-input`} className="text-base font-medium text-foreground">Save Version {version} Content As:</Label>
+        <Label htmlFor={`configName${version}-input`} className="text-base font-medium text-foreground">Save Version {version} Hero Content As:</Label>
         <div className="flex gap-2">
           <Input
             id={`configName${version}-input`}
             type="text"
             value={configName}
             onChange={(e: ChangeEvent<HTMLInputElement>) => setConfigName(e.target.value)}
-            placeholder={`Name for this config (e.g., Spring Promo ${version})`}
+            placeholder={`Name for this Hero config (e.g., Spring Promo ${version})`}
             className="text-base flex-grow"
           />
           <Button onClick={onSave} variant="outline" size="sm" id={`save-config-${version}-button`}>
-            <Save className="mr-2 h-4 w-4" /> Save Content
+            <Save className="mr-2 h-4 w-4" /> Save Hero Content
           </Button>
         </div>
       </div>
@@ -301,11 +308,11 @@ const ConfigForm = ({
   );
 };
 
-const handleCopyToClipboard = async (jsonString: string, version: string, toastFn: Function) => {
-  if (!jsonString || JSON.parse(jsonString).headline === "") {
+const handleCopyToClipboard = async (jsonString: string, configType: string, toastFn: Function) => {
+  if (!jsonString || (configType.includes("Hero") && JSON.parse(jsonString).headline === "")) {
     toastFn({
-      title: `Nothing to Copy for Version ${version}`,
-      description: 'Please fill in the content fields for this version.',
+      title: `Nothing to Copy for ${configType}`,
+      description: 'Please fill in the content fields for this configuration.',
       variant: 'destructive',
     });
     return;
@@ -313,24 +320,24 @@ const handleCopyToClipboard = async (jsonString: string, version: string, toastF
   try {
     await navigator.clipboard.writeText(jsonString);
     toastFn({
-      title: `Copied to Clipboard (Version ${version})!`,
+      title: `Copied to Clipboard (${configType})!`,
       description: 'The JSON configuration has been copied.',
     });
   } catch (err) {
-    console.error(`Failed to copy Version ${version} JSON: `, err);
+    console.error(`Failed to copy ${configType} JSON: `, err);
     toastFn({
-      title: `Copy Failed (Version ${version})`,
+      title: `Copy Failed (${configType})`,
       description: 'Could not copy the JSON to clipboard. Please copy it manually.',
       variant: 'destructive',
     });
   }
 };
 
-const handleDownloadJson = (jsonString: string, version: string, toastFn: Function) => {
-  if (!jsonString || JSON.parse(jsonString).headline === "") {
-    toastFn({
-      title: `Nothing to Download for Version ${version}`,
-      description: 'Please fill in the content fields for this version.',
+const handleDownloadJson = (jsonString: string, configType: string, toastFn: Function) => {
+  if (!jsonString || (configType.includes("Hero") && JSON.parse(jsonString).headline === "")) {
+     toastFn({
+      title: `Nothing to Download for ${configType}`,
+      description: 'Please fill in the content fields for this configuration.',
       variant: 'destructive',
     });
     return;
@@ -339,14 +346,14 @@ const handleDownloadJson = (jsonString: string, version: string, toastFn: Functi
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `heroConfig-Version${version}.json`;
+  a.download = `${configType.toLowerCase().replace(/\s+/g, '-')}-config.json`;
   document.body.appendChild(a);
   a.click();
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
   toastFn({
-    title: `JSON Downloaded (Version ${version})!`,
-    description: `heroConfig-Version${version}.json has been downloaded.`,
+    title: `JSON Downloaded (${configType})!`,
+    description: `${configType.toLowerCase().replace(/\s+/g, '-')}-config.json has been downloaded.`,
   });
 };
 
@@ -360,9 +367,9 @@ function LandingPageWorkflowPageContent() {
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Effect to bridge global UIActionContext's showWelcomeModal to WalkthroughContext's startWalkthrough
   useEffect(() => {
-    console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to", uiActions.showWelcomeModal);
-    if (uiActions.showWelcomeModal) {
+    if (uiActions.showWelcomeModal && walkthrough) {
       walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
@@ -394,6 +401,11 @@ function LandingPageWorkflowPageContent() {
     sectionVisibility: { ...defaultSectionVisibility }
   };
   const [activePageBlueprint, setActivePageBlueprint] = useState<PageBlueprint>(initialBlueprintState);
+  
+  const [nameForCurrentBlueprint, setNameForCurrentBlueprint] = useState<string>('');
+  const [savedPageBlueprints, setSavedPageBlueprints] = useState<ManagedPageBlueprint[]>([]);
+  const [isLoadingPageBlueprints, setIsLoadingPageBlueprints] = useState(true);
+
 
   const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
     const blueprintWithVisibility = {
@@ -407,11 +419,11 @@ function LandingPageWorkflowPageContent() {
   }, [toast]);
 
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).__blueprintForWalkthrough && !uploadedBlueprint) {
-        handleLoadBlueprintFromWalkthrough((window as any).__blueprintForWalkthrough);
-        delete (window as any).__blueprintForWalkthrough;
+    if (typeof window !== 'undefined' && (window as any).__blueprintForWalkthrough && !uploadedBlueprint && walkthrough) {
+        walkthrough.autoLoadSampleBlueprint(); // This will call the callback registered with WalkthroughProvider
+        delete (window as any).__blueprintForWalkthrough; // Clean up global flag
     }
-  }, [uploadedBlueprint, handleLoadBlueprintFromWalkthrough]);
+  }, [uploadedBlueprint, walkthrough]);
 
 
   const [headlineA, setHeadlineA] = useState<string>('');
@@ -431,10 +443,39 @@ function LandingPageWorkflowPageContent() {
   const [savedABTestConfigs, setSavedABTestConfigs] = useState<ManagedABTestHeroConfig[]>([]);
   const [isLoadingABTestConfigs, setIsLoadingABTestConfigs] = useState(true);
 
+  // Load saved page blueprints from local storage on mount
+  useEffect(() => {
+    setIsLoadingPageBlueprints(true);
+    try {
+      const storedBlueprints = localStorage.getItem(PAGE_BLUEPRINT_LOCAL_STORAGE_KEY);
+      if (storedBlueprints) {
+        setSavedPageBlueprints(JSON.parse(storedBlueprints));
+      }
+    } catch (error) {
+      console.error("Error loading page blueprints from localStorage:", error);
+      toast({ title: 'Error Loading Saved Blueprints', description: 'Could not load blueprints from your browser storage.', variant: 'destructive' });
+    } finally {
+      setIsLoadingPageBlueprints(false);
+    }
+  }, [toast]);
+
+  // Persist saved page blueprints to local storage when they change
+  useEffect(() => {
+    if (!isLoadingPageBlueprints) {
+      try {
+        localStorage.setItem(PAGE_BLUEPRINT_LOCAL_STORAGE_KEY, JSON.stringify(savedPageBlueprints));
+      } catch (error) {
+        console.error("Error saving page blueprints to localStorage:", error);
+        toast({ title: 'Error Persisting Blueprints', description: 'Could not save blueprints to your browser storage.', variant: 'destructive'});
+      }
+    }
+  }, [savedPageBlueprints, isLoadingPageBlueprints, toast]);
+
+
   const handleFileUpload = (event: ChangeEvent<HTMLInputElement>) => {
     setFileError(null);
     setUploadedBlueprint(null);
-    setActivePageBlueprint(initialBlueprintState); // Reset to initial state with default visibility
+    setActivePageBlueprint(initialBlueprintState); 
     setFileName('');
 
     const file = event.target.files?.[0];
@@ -448,11 +489,11 @@ function LandingPageWorkflowPageContent() {
             const parsedJson = JSON.parse(content) as PageBlueprint;
             if (parsedJson.pageName && parsedJson.heroConfig) {
               const blueprintWithVisibility = {
-                ...initialBlueprintState, // Start with defaults to ensure all fields exist
+                ...initialBlueprintState, 
                 ...parsedJson,
                 sectionVisibility: {
                   ...defaultSectionVisibility,
-                  ...(parsedJson.sectionVisibility || {}), // Merge if visibility is in JSON
+                  ...(parsedJson.sectionVisibility || {}), 
                 }
               };
               setUploadedBlueprint(blueprintWithVisibility);
@@ -495,7 +536,7 @@ function LandingPageWorkflowPageContent() {
     setActivePageBlueprint(prev => ({
       ...prev,
       [section]: {
-        ...(prev[section] || {}), // Ensure section exists
+        ...(prev[section] as any || {}), 
         [field]: value,
       },
     }));
@@ -516,10 +557,10 @@ function LandingPageWorkflowPageContent() {
     section: S,
     index: number,
     field: keyof NonNullable<PageBlueprint[S]>[number],
-    value: string | boolean
+    value: string | boolean // Allow boolean for potential future fields like 'isFeatured'
   ) => {
     setActivePageBlueprint(prev => {
-      const newArray = [...(prev[section] || [])];
+      const newArray = [...(prev[section] || [])] as any[];
       if (newArray[index]) {
         newArray[index] = {
           ...newArray[index],
@@ -585,20 +626,29 @@ function LandingPageWorkflowPageContent() {
   useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB, campaignFocusB)); }, [headlineB, subHeadlineB, ctaTextB, campaignFocusB]);
 
   const handleRenderABTestPreview = () => {
-    let configAIsValid = false;
-    let configBIsValid = false;
-    try { const d = JSON.parse(generatedJsonA); if(d.headline !==undefined && d.subHeadline !==undefined && d.ctaText !==undefined && (d.headline.trim() || d.subHeadline.trim() || d.ctaText.trim())) configAIsValid = true; } catch (e) {}
-    try { const d = JSON.parse(generatedJsonB); if(d.headline !==undefined && d.subHeadline !==undefined && d.ctaText !==undefined && (d.headline.trim() || d.subHeadline.trim() || d.ctaText.trim())) configBIsValid = true; } catch (e) {}
-
-
-    if (!configAIsValid || !configBIsValid) {
-         toast({ title: 'A/B Config Incomplete for Preview', description: 'Please ensure all fields for both Version A and B Hero sections are filled to generate a preview.', variant: 'destructive'});
-        return;
+    if (!activePageBlueprint || !activePageBlueprint.pageName) {
+      toast({ title: 'No Active Blueprint', description: 'Please load or define a page blueprint in Step 1 & 3 before previewing A/B versions.', variant: 'destructive'});
+      return;
     }
+
+    let blueprintAForPreview: PageBlueprint = { ...activePageBlueprint };
+    let blueprintBForPreview: PageBlueprint = { ...activePageBlueprint }; // Start with a copy of active
+
+    // Override heroConfig for version A and B if they have content
+    const heroConfigA = JSON.parse(generatedJsonA) as RecommendationHeroConfig;
+    const heroConfigB = JSON.parse(generatedJsonB) as RecommendationHeroConfig;
+
+    if (heroConfigA.headline || heroConfigA.subHeadline || heroConfigA.ctaText) {
+      blueprintAForPreview.heroConfig = { ...blueprintAForPreview.heroConfig, ...heroConfigA };
+    }
+    if (heroConfigB.headline || heroConfigB.subHeadline || heroConfigB.ctaText) {
+      blueprintBForPreview.heroConfig = { ...blueprintBForPreview.heroConfig, ...heroConfigB };
+    }
+    
     try {
         const query = new URLSearchParams();
-        query.set('configA', generatedJsonA);
-        query.set('configB', generatedJsonB);
+        query.set('blueprintA', JSON.stringify(blueprintAForPreview));
+        query.set('blueprintB', JSON.stringify(blueprintBForPreview));
         window.open(`/landing-preview?${query.toString()}`, '_blank');
     } catch (error) {
         toast({ title: 'Error Preparing A/B Preview', description: 'Could not prepare the link for the A/B preview page.', variant: 'destructive'});
@@ -606,16 +656,17 @@ function LandingPageWorkflowPageContent() {
     }
   };
 
- const saveConfiguration = (version: 'A' | 'B') => {
+
+ const saveABHeroConfiguration = (version: 'A' | 'B') => {
     const name = (version === 'A' ? nameForConfigA : nameForConfigB).trim();
     const currentHeadline = version === 'A' ? headlineA : headlineB;
     const currentSubHeadline = version === 'A' ? subHeadlineA : subHeadlineB;
     const currentCtaText = version === 'A' ? ctaTextA : ctaTextB;
     const currentCampaignFocus = (version === 'A' ? campaignFocusA : campaignFocusB).trim();
 
-    if (!name) { toast({ title: 'Config Name Missing', description: `Please enter a name for Version ${version} content before saving.`, variant: 'destructive' }); return; }
+    if (!name) { toast({ title: 'Config Name Missing', description: `Please enter a name for Version ${version} Hero content before saving.`, variant: 'destructive' }); return; }
     if (!currentHeadline.trim() && !currentSubHeadline.trim() && !currentCtaText.trim()) {
-      toast({ title: 'Content Missing', description: `Please fill in Headline, Sub-Headline, and CTA Text for Version ${version} before saving.`, variant: 'destructive' }); return;
+      toast({ title: 'Content Missing', description: `Please fill in Headline, Sub-Headline, and CTA Text for Version ${version} Hero before saving.`, variant: 'destructive' }); return;
     }
 
     const newConfigData: Omit<ManagedABTestHeroConfig, 'id' | 'name'> = {
@@ -630,11 +681,11 @@ function LandingPageWorkflowPageContent() {
       if (existingConfigIndex !== -1) {
         const updatedConfigs = [...prev];
         updatedConfigs[existingConfigIndex] = { ...prev[existingConfigIndex], ...newConfigData };
-        toast({ title: 'A/B Config Updated!', description: `Local configuration "${name}" has been updated.` });
+        toast({ title: 'A/B Hero Config Updated!', description: `Local Hero configuration "${name}" has been updated.` });
         return updatedConfigs;
       } else {
         const newConfig: ManagedABTestHeroConfig = { id: Date.now().toString(), name, ...newConfigData };
-        toast({ title: 'A/B Config Saved!', description: `"${newConfig.name}" saved locally.` });
+        toast({ title: 'A/B Hero Config Saved!', description: `Hero configuration "${newConfig.name}" saved locally.` });
         return [...prev, newConfig];
       }
     });
@@ -642,9 +693,9 @@ function LandingPageWorkflowPageContent() {
     if (version === 'A') setNameForConfigA(''); else setNameForConfigB('');
   };
 
-  const loadConfigIntoVersion = (configId: string, versionToLoadInto: 'A' | 'B') => {
+  const loadABHeroConfigIntoVersion = (configId: string, versionToLoadInto: 'A' | 'B') => {
     const configToLoad = savedABTestConfigs.find(c => c.id === configId);
-    if (!configToLoad) { toast({ title: 'Error', description: 'Could not find the selected A/B configuration.', variant: 'destructive'}); return; }
+    if (!configToLoad) { toast({ title: 'Error', description: 'Could not find the selected A/B Hero configuration.', variant: 'destructive'}); return; }
     if (versionToLoadInto === 'A') {
       setHeadlineA(configToLoad.headline); setSubHeadlineA(configToLoad.subHeadline); setCtaTextA(configToLoad.ctaText);
       setCampaignFocusA(configToLoad.campaignFocus || ''); setNameForConfigA(configToLoad.name);
@@ -652,13 +703,61 @@ function LandingPageWorkflowPageContent() {
       setHeadlineB(configToLoad.headline); setSubHeadlineB(configToLoad.subHeadline); setCtaTextB(configToLoad.ctaText);
       setCampaignFocusB(configToLoad.campaignFocus || ''); setNameForConfigB(configToLoad.name);
     }
-    toast({ title: 'A/B Config Loaded', description: `"${configToLoad.name}" loaded into Version ${versionToLoadInto}.` });
+    toast({ title: 'A/B Hero Config Loaded', description: `Hero configuration "${configToLoad.name}" loaded into Version ${versionToLoadInto}.` });
   };
 
   const deleteSavedABTestConfig = (configId: string) => {
     const configToDelete = savedABTestConfigs.find(c => c.id === configId);
     setSavedABTestConfigs(prev => prev.filter(c => c.id !== configId));
-    toast({ title: 'A/B Config Deleted', description: `Local configuration "${configToDelete?.name || 'Config'}" has been deleted.` });
+    toast({ title: 'A/B Hero Config Deleted', description: `Local Hero configuration "${configToDelete?.name || 'Config'}" has been deleted.` });
+  };
+
+  const handleSaveCurrentBlueprint = () => {
+    const name = nameForCurrentBlueprint.trim();
+    if (!name) {
+      toast({ title: 'Blueprint Name Missing', description: 'Please enter a name for the blueprint before saving.', variant: 'destructive' });
+      return;
+    }
+    if (!activePageBlueprint || !activePageBlueprint.pageName) {
+      toast({ title: 'No Active Blueprint', description: 'Please load or define a blueprint before saving.', variant: 'destructive' });
+      return;
+    }
+
+    setSavedPageBlueprints(prev => {
+      const existingIndex = prev.findIndex(bp => bp.name === name);
+      const newBlueprintToSave: ManagedPageBlueprint = { ...activePageBlueprint, id: existingIndex !== -1 ? prev[existingIndex].id : Date.now().toString(), name };
+      
+      if (existingIndex !== -1) {
+        const updatedBlueprints = [...prev];
+        updatedBlueprints[existingIndex] = newBlueprintToSave;
+        toast({ title: 'Page Blueprint Updated!', description: `Blueprint "${name}" has been updated locally.` });
+        return updatedBlueprints;
+      } else {
+        toast({ title: 'Page Blueprint Saved!', description: `Blueprint "${name}" has been saved locally.` });
+        return [...prev, newBlueprintToSave];
+      }
+    });
+    setNameForCurrentBlueprint(''); // Clear input after save
+  };
+
+  const handleLoadPageBlueprint = (blueprintId: string) => {
+    const blueprintToLoad = savedPageBlueprints.find(bp => bp.id === blueprintId);
+    if (blueprintToLoad) {
+      setActivePageBlueprint(blueprintToLoad);
+      setUploadedBlueprint(blueprintToLoad); // Treat as if it was "uploaded"
+      setFileName(blueprintToLoad.name); // Update file name indicator
+      setNameForCurrentBlueprint(blueprintToLoad.name); // Pre-fill save name for convenience
+      toast({ title: 'Page Blueprint Loaded!', description: `Blueprint "${blueprintToLoad.name}" is now active.` });
+      setActiveAccordionItem('step-2'); // Move to preview
+    } else {
+      toast({ title: 'Error Loading Blueprint', description: 'Could not find the selected blueprint.', variant: 'destructive' });
+    }
+  };
+
+  const handleDeletePageBlueprint = (blueprintId: string) => {
+    const blueprintToDelete = savedPageBlueprints.find(bp => bp.id === blueprintId);
+    setSavedPageBlueprints(prev => prev.filter(bp => bp.id !== blueprintId));
+    toast({ title: 'Page Blueprint Deleted', description: `Blueprint "${blueprintToDelete?.name || 'Unnamed'}" has been deleted locally.` });
   };
 
 
@@ -713,16 +812,16 @@ function LandingPageWorkflowPageContent() {
       value: "step-2",
       title: "Step 2: Build & Preview Page",
       icon: <Palette className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !uploadedBlueprint,
+      disabled: !uploadedBlueprint && !activePageBlueprint.pageName,
       content: (
         <Card id="step-2-card">
           <CardHeader>
             <CardTitle>Preview Landing Page</CardTitle>
-            <CardDescription>This is a preview of the landing page based on the loaded blueprint. You can adjust the content in the next step.</CardDescription>
+            <CardDescription>This is a preview of the landing page based on the loaded or adjusted blueprint. Toggle section visibility in Step 3.</CardDescription>
           </CardHeader>
           <CardContent>
-            {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 to see a preview.</p>}
-            {activePageBlueprint?.pageName && (
+            {(!activePageBlueprint?.pageName || activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint) && <p className="text-muted-foreground">Load or define a blueprint in Step 1 or Step 3 to see a preview.</p>}
+            {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
               <div id="step-2-preview-area" className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
                 {activePageBlueprint.sectionVisibility?.hero && (
                   <HeroSection
@@ -743,6 +842,7 @@ function LandingPageWorkflowPageContent() {
                 {activePageBlueprint.sectionVisibility?.trustSignals && (
                   <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
                 )}
+                 {/* Simplified form preview for Step 2 */}
                 {activePageBlueprint.sectionVisibility?.form && activePageBlueprint.formConfig?.headline && (
                     <div className="text-center my-4 py-8 bg-background">
                         <h3 className="text-2xl sm:text-3xl font-bold text-foreground">{activePageBlueprint.formConfig.headline}</h3>
@@ -750,7 +850,7 @@ function LandingPageWorkflowPageContent() {
                  )}
                 {activePageBlueprint.sectionVisibility?.form && (
                   <QuoteFormSection
-                      headline={activePageBlueprint.formConfig?.headline}
+                      headline={activePageBlueprint.formConfig?.headline} // Passed for completeness but form component might manage its own display
                       ctaText={activePageBlueprint.formConfig?.ctaText}
                   />
                 )}
@@ -766,18 +866,18 @@ function LandingPageWorkflowPageContent() {
     },
     {
       value: "step-3",
-      title: "Step 3: Adjust Content",
+      title: "Step 3: Adjust Content & Manage Blueprints",
       icon: <Edit className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !uploadedBlueprint,
+      disabled: !uploadedBlueprint && !activePageBlueprint.pageName,
       content: (
         <Card id="step-3-card">
           <CardHeader>
-            <CardTitle>Adjust Landing Page Content</CardTitle>
-            <CardDescription>Fine-tune the content and visibility for each section of your landing page. Changes here update the active blueprint that pre-fills A/B Test Version A.</CardDescription>
+            <CardTitle>Adjust Content & Manage Full Page Blueprints</CardTitle>
+            <CardDescription>Fine-tune content, toggle section visibility, and save/load full landing page blueprints locally.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {!activePageBlueprint?.pageName && <p className="text-muted-foreground">Load a blueprint in Step 1 and preview in Step 2 before adjusting.</p>}
-            {activePageBlueprint?.pageName && (
+            {(!activePageBlueprint?.pageName || activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint) && <p className="text-muted-foreground">Load a blueprint in Step 1 or from saved blueprints below to begin adjusting.</p>}
+            {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
               <>
                 {/* Page Information Section */}
                 <Card className="bg-muted/50 p-1">
@@ -799,7 +899,7 @@ function LandingPageWorkflowPageContent() {
                       <Label htmlFor="hero-visible-switch" className="text-sm">Show</Label>
                       <Switch
                         id="hero-visible-switch"
-                        checked={activePageBlueprint.sectionVisibility?.hero}
+                        checked={!!activePageBlueprint.sectionVisibility?.hero}
                         onCheckedChange={(checked) => handleSectionVisibilityChange('hero', checked)}
                       />
                     </div>
@@ -822,13 +922,13 @@ function LandingPageWorkflowPageContent() {
                       <Label htmlFor="benefits-visible-switch" className="text-sm">Show</Label>
                       <Switch
                         id="benefits-visible-switch"
-                        checked={activePageBlueprint.sectionVisibility?.benefits}
+                        checked={!!activePageBlueprint.sectionVisibility?.benefits}
                         onCheckedChange={(checked) => handleSectionVisibilityChange('benefits', checked)}
                       />
                     </div>
                   </CardHeader>
                   <CardContent className={cn("space-y-4", !activePageBlueprint.sectionVisibility?.benefits && "opacity-50 pointer-events-none")}>
-                    {activePageBlueprint.benefits?.map((benefit, index) => (
+                    {(activePageBlueprint.benefits || []).map((benefit, index) => (
                       <Card key={`benefit-${index}-adjust`} className="p-3 bg-card shadow-sm">
                         <Label className="font-semibold text-md">Benefit {index + 1}</Label>
                         <div className="space-y-2 mt-1">
@@ -838,6 +938,7 @@ function LandingPageWorkflowPageContent() {
                         </div>
                       </Card>
                     ))}
+                     {(!activePageBlueprint.benefits || activePageBlueprint.benefits.length === 0) && <p className="text-sm text-muted-foreground">No benefits defined in the current blueprint.</p>}
                   </CardContent>
                 </Card>
 
@@ -849,13 +950,13 @@ function LandingPageWorkflowPageContent() {
                           <Label htmlFor="testimonials-visible-switch" className="text-sm">Show</Label>
                           <Switch
                             id="testimonials-visible-switch"
-                            checked={activePageBlueprint.sectionVisibility?.testimonials}
+                            checked={!!activePageBlueprint.sectionVisibility?.testimonials}
                             onCheckedChange={(checked) => handleSectionVisibilityChange('testimonials', checked)}
                           />
                         </div>
                     </CardHeader>
                     <CardContent className={cn("space-y-4", !activePageBlueprint.sectionVisibility?.testimonials && "opacity-50 pointer-events-none")}>
-                        {activePageBlueprint.testimonials?.map((testimonial, index) => (
+                        {(activePageBlueprint.testimonials || []).map((testimonial, index) => (
                             <Card key={`testimonial-${index}-adjust`} className="p-3 bg-card shadow-sm">
                                 <Label className="font-semibold text-md">Testimonial {index + 1}</Label>
                                 <div className="space-y-2 mt-1">
@@ -868,6 +969,7 @@ function LandingPageWorkflowPageContent() {
                                 </div>
                             </Card>
                         ))}
+                         {(!activePageBlueprint.testimonials || activePageBlueprint.testimonials.length === 0) && <p className="text-sm text-muted-foreground">No testimonials defined in the current blueprint.</p>}
                     </CardContent>
                 </Card>
 
@@ -879,13 +981,13 @@ function LandingPageWorkflowPageContent() {
                           <Label htmlFor="trustSignals-visible-switch" className="text-sm">Show</Label>
                           <Switch
                             id="trustSignals-visible-switch"
-                            checked={activePageBlueprint.sectionVisibility?.trustSignals}
+                            checked={!!activePageBlueprint.sectionVisibility?.trustSignals}
                             onCheckedChange={(checked) => handleSectionVisibilityChange('trustSignals', checked)}
                           />
                         </div>
                     </CardHeader>
                     <CardContent className={cn("space-y-4", !activePageBlueprint.sectionVisibility?.trustSignals && "opacity-50 pointer-events-none")}>
-                        {activePageBlueprint.trustSignals?.map((signal, index) => (
+                        {(activePageBlueprint.trustSignals || []).map((signal, index) => (
                             <Card key={`trust-${index}-adjust`} className="p-3 bg-card shadow-sm">
                                 <Label className="font-semibold text-md">Trust Signal {index + 1}</Label>
                                 <div className="space-y-2 mt-1">
@@ -911,6 +1013,7 @@ function LandingPageWorkflowPageContent() {
                                 </div>
                             </Card>
                         ))}
+                        {(!activePageBlueprint.trustSignals || activePageBlueprint.trustSignals.length === 0) && <p className="text-sm text-muted-foreground">No trust signals defined in the current blueprint.</p>}
                     </CardContent>
                 </Card>
 
@@ -922,7 +1025,7 @@ function LandingPageWorkflowPageContent() {
                         <Label htmlFor="form-visible-switch" className="text-sm">Show</Label>
                         <Switch
                         id="form-visible-switch"
-                        checked={activePageBlueprint.sectionVisibility?.form}
+                        checked={!!activePageBlueprint.sectionVisibility?.form}
                         onCheckedChange={(checked) => handleSectionVisibilityChange('form', checked)}
                         />
                     </div>
@@ -932,6 +1035,59 @@ function LandingPageWorkflowPageContent() {
                     <div><Label htmlFor="formCtaText-adjust-input">Form CTA Text</Label><Input id="formCtaText-adjust-input" value={activePageBlueprint.formConfig?.ctaText || ''} onChange={(e) => handleNestedObjectChange('formConfig', 'ctaText', e.target.value)} /></div>
                   </CardContent>
                 </Card>
+
+                {/* Manage Full Page Blueprints Section */}
+                <Separator className="my-8" />
+                <Card className="mt-6 border-primary">
+                  <CardHeader>
+                    <CardTitle className="text-xl font-semibold text-primary flex items-center"><Save className="mr-2 h-5 w-5" /> Manage Full Page Blueprints (Local)</CardTitle>
+                    <CardDescription>Save your current page setup (all content and section visibility) or load a previously saved blueprint.</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="space-y-2">
+                      <Label htmlFor="blueprintName-save-input">Name for Current Blueprint:</Label>
+                      <div className="flex gap-2">
+                        <Input
+                          id="blueprintName-save-input"
+                          value={nameForCurrentBlueprint}
+                          onChange={(e) => setNameForCurrentBlueprint(e.target.value)}
+                          placeholder="e.g., Spring Campaign - Full Draft"
+                          className="flex-grow"
+                        />
+                        <Button onClick={handleSaveCurrentBlueprint} variant="default">
+                          <Save className="mr-2 h-4 w-4" /> Save Current Blueprint
+                        </Button>
+                      </div>
+                    </div>
+                    
+                    <div>
+                      <h4 className="font-semibold text-lg mb-2">Saved Blueprints:</h4>
+                      {isLoadingPageBlueprints && <div className="flex items-center justify-center py-3"><Loader2 className="h-5 w-5 animate-spin" /> Loading blueprints...</div>}
+                      {!isLoadingPageBlueprints && savedPageBlueprints.length === 0 && (
+                        <p className="text-sm text-muted-foreground">No blueprints saved yet.</p>
+                      )}
+                      {!isLoadingPageBlueprints && savedPageBlueprints.length > 0 && (
+                        <div className="border rounded-md overflow-hidden">
+                          {savedPageBlueprints.map((bp, index) => (
+                            <div 
+                              key={bp.id} 
+                              className={`flex flex-col sm:flex-row justify-between items-start sm:items-center p-3 gap-2 ${index % 2 === 0 ? 'bg-card' : 'bg-muted/30'} ${index < savedPageBlueprints.length - 1 ? 'border-b' : ''}`}
+                            >
+                              <p className="font-medium text-foreground flex-grow min-w-0 break-words">{bp.name}</p>
+                              <div className="flex flex-col sm:flex-row gap-2 shrink-0 w-full sm:w-auto">
+                                <Button onClick={() => handleLoadPageBlueprint(bp.id)} variant="outline" size="sm" className="w-full sm:w-auto">Load</Button>
+                                <Button onClick={() => handleDeletePageBlueprint(bp.id)} variant="destructive" size="sm" className="w-full sm:w-auto">
+                                  <Trash2 className="h-4 w-4" /> Delete
+                                </Button>
+                              </div>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+
 
                 <div className="flex justify-between items-center mt-6 pt-4 border-t">
                     <p className="text-sm text-green-600 flex items-center"><CheckCircle className="h-4 w-4 mr-1"/> Blueprint content updated.</p>
@@ -947,9 +1103,9 @@ function LandingPageWorkflowPageContent() {
     },
     {
       value: "step-4",
-      title: "Step 4: Configure A/B Test",
+      title: "Step 4: Configure A/B Test (Hero Section)",
       icon: <Settings className="mr-2 h-5 w-5 text-primary" />,
-      disabled: !uploadedBlueprint,
+      disabled: !activePageBlueprint?.heroConfig,
       content: (
         <Card id="step-4-card">
           <CardHeader>
@@ -960,8 +1116,8 @@ function LandingPageWorkflowPageContent() {
             </CardDescription>
           </CardHeader>
           <CardContent>
-            {!activePageBlueprint?.heroConfig && <p className="text-muted-foreground">Adjust content in Step 3 before configuring A/B tests.</p>}
-            {activePageBlueprint?.heroConfig && (
+            {(!activePageBlueprint?.heroConfig) && <p className="text-muted-foreground">Adjust content in Step 3 before configuring A/B tests.</p>}
+            {(activePageBlueprint?.heroConfig) && (
               <>
                 <ConfigForm
                   version="A"
@@ -971,7 +1127,7 @@ function LandingPageWorkflowPageContent() {
                   campaignFocus={campaignFocusA} setCampaignFocus={setCampaignFocusA}
                   generatedJson={generatedJsonA}
                   configName={nameForConfigA} setConfigName={setNameForConfigA}
-                  onSave={() => saveConfiguration('A')}
+                  onSave={() => saveABHeroConfiguration('A')}
                 />
                 <ConfigForm
                   version="B"
@@ -981,7 +1137,7 @@ function LandingPageWorkflowPageContent() {
                   campaignFocus={campaignFocusB} setCampaignFocus={setCampaignFocusB}
                   generatedJson={generatedJsonB}
                   configName={nameForConfigB} setConfigName={setNameForConfigB}
-                  onSave={() => saveConfiguration('B')}
+                  onSave={() => saveABHeroConfiguration('B')}
                 />
                 <div className="mt-8 pt-6 border-t border-border text-center">
                   <Button
@@ -996,11 +1152,11 @@ function LandingPageWorkflowPageContent() {
                 <Card className="mt-6">
                   <CardHeader>
                     <CardTitle className="text-xl font-semibold">Managed A/B Hero Configurations (Local)</CardTitle>
-                    <CardDescription>Load saved A/B configurations into Version A or B forms, or delete them. Includes campaign focus.</CardDescription>
+                    <CardDescription>Load saved A/B Hero configurations into Version A or B forms, or delete them. Includes campaign focus.</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-0">
                     {isLoadingABTestConfigs && <div className="flex items-center justify-center py-4"><Loader2 className="h-6 w-6 animate-spin" /> Loading...</div>}
-                    {!isLoadingABTestConfigs && savedABTestConfigs.length === 0 && <p className="text-muted-foreground text-center py-4">No A/B configurations saved.</p>}
+                    {!isLoadingABTestConfigs && savedABTestConfigs.length === 0 && <p className="text-muted-foreground text-center py-4">No A/B Hero configurations saved.</p>}
                     {!isLoadingABTestConfigs && savedABTestConfigs.length > 0 && (
                        <div className="border border-border rounded-lg overflow-hidden">
                         {savedABTestConfigs.map((config, index) => (
@@ -1015,8 +1171,8 @@ function LandingPageWorkflowPageContent() {
                               {config.campaignFocus && <p className="text-xs text-muted-foreground mt-1">Focus: {config.campaignFocus}</p>}
                             </div>
                             <div className="w-full sm:w-auto flex flex-col sm:flex-row gap-2 shrink-0">
-                              <Button onClick={() => loadConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
-                              <Button onClick={() => loadConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
+                              <Button onClick={() => loadABHeroConfigIntoVersion(config.id, 'A')} variant="outline" size="sm" className="w-full sm:w-auto">Load to A</Button>
+                              <Button onClick={() => loadABHeroConfigIntoVersion(config.id, 'B')} variant="outline" size="sm" className="w-full sm:w-auto">Load to B</Button>
                               <Button onClick={() => deleteSavedABTestConfig(config.id)} variant="destructive" size="sm" className="w-full sm:w-auto"><Trash2 className="h-4 w-4" /> Delete</Button>
                             </div>
                           </div>
@@ -1056,7 +1212,7 @@ function LandingPageWorkflowPageContent() {
                         </p>
                         <ol className="list-decimal list-inside space-y-2 mb-4">
                             <li>
-                                <strong>Prepare JSON:</strong> Ensure you have copied or downloaded the JSON for both Version A and Version B (from Step 4) using the buttons within each version's card. These JSON strings are what you'll use in Firebase.
+                                <strong>Prepare JSON:</strong> Ensure you have copied or downloaded the JSON for both Version A and Version B (from Step 4) using the buttons within each version's card. These JSON strings are what you'll use in Firebase for the `heroConfig`.
                             </li>
                             <li>
                                 <strong>Go to Firebase:</strong> Click the button below to navigate to the Firebase Console where you will set up and manage your A/B test.
@@ -1086,10 +1242,12 @@ function LandingPageWorkflowPageContent() {
     }
   ];
 
-  const mainCardMarginTop = `mt-[${TOP_BAR_HEIGHT_PX}px]`;
+  const mainCardMarginTopStyle = {
+    marginTop: `${TOP_BAR_HEIGHT_PX}px`,
+  };
   
   return (
-    <div className={`container mx-auto py-8 px-4 md:px-6 lg:px-8 ${mainCardMarginTop}`}>
+    <div className="container mx-auto py-8 px-4 md:px-6 lg:px-8" style={mainCardMarginTopStyle}>
       <div id="walkthrough-end-target" style={{ position: 'absolute', top: '-9999px', left: '-9999px' }} />
 
       <WelcomeModal />
@@ -1163,7 +1321,7 @@ export default function LandingPageWorkflowPage() {
     useEffect(() => {
       console.log("Auth Guard Effect: isMounted=", isMounted, "authLoading=", authLoading, "currentUser=", !!currentUser);
       if (!isMounted || authLoading) {
-        return;
+        return; // Wait until component is mounted and auth state is resolved
       }
       if (!currentUser) {
         console.log("Redirecting to /login");
@@ -1171,21 +1329,28 @@ export default function LandingPageWorkflowPage() {
       }
     }, [isMounted, currentUser, authLoading, router]);
 
+    // Callbacks for WalkthroughProvider
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
-    const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
-
+    const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null); // To satisfy provider, content uses activePageBlueprint
 
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
-        console.log("Walkthrough wants to change accordion to:", value);
-        setActiveAccordionItemForWalkthrough(value);
+        console.log("Walkthrough requests accordion change to:", value);
+        // This will be handled by LandingPageWorkflowPageContent's setActiveAccordionItem
+        // To actually change it, LandingPageWorkflowPageContent needs to expose its setter or
+        // this state needs to be lifted/managed differently if WalkthroughProvider is to control it directly.
+        // For now, this callback logs; actual change happens via user interaction or content's effect.
+        if (value) setActiveAccordionItemForWalkthrough(value); // This will be used by content if needed for initial open
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
-        console.log("Walkthrough wants to load blueprint:", blueprint);
+        console.log("Walkthrough requests blueprint load:", blueprint);
+        // This is tricky. The actual activePageBlueprint is in LandingPageWorkflowPageContent.
+        // We set a global flag or pass it down if LandingPageWorkflowPageContent is a direct child here.
+        // For now, the child component `LandingPageWorkflowPageContent` handles its own blueprint loading via an effect.
         if (typeof window !== 'undefined') {
-            (window as any).__blueprintForWalkthrough = blueprint;
+            (window as any).__blueprintForWalkthrough = blueprint; // Flag for child to pick up
         }
-        setBlueprintForWalkthrough(blueprint); 
+        setBlueprintForWalkthrough(blueprint); // Update state for provider if needed
     }, []);
     
     if (authLoading || !isMounted) {
@@ -1197,9 +1362,7 @@ export default function LandingPageWorkflowPage() {
       );
     }
     
-    if (!currentUser && isMounted) { // ensure isMounted is true before redirecting
-      // This will be briefly shown before redirect effect kicks in, or if redirect fails.
-      // It also ensures that if the redirect fails somehow, we don't render the main content.
+    if (!currentUser && isMounted) { 
       return (
          <div className="flex items-center justify-center min-h-screen bg-background">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1208,8 +1371,7 @@ export default function LandingPageWorkflowPage() {
       );
     }
     
-    // Only render the main content if currentUser is available and component is mounted
-    if (!currentUser) return null;
+    if (!currentUser) return null; // Should be covered by redirect, but good safety
 
     return (
         <WalkthroughProvider
@@ -1220,3 +1382,6 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
+
+
+    
