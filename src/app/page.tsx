@@ -34,10 +34,9 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-
 interface ABTestHeroConfig {
   headline: string;
-  subHeadline: string;
+  subHeadline?: string;
   ctaText: string;
   campaignFocus?: string;
 }
@@ -264,7 +263,7 @@ const ConfigForm = ({
         />
       </div>
 
-      {generatedJson && (JSON.parse(generatedJson).headline !== "" || JSON.parse(generatedJson).subHeadline !== "" || JSON.parse(generatedJson).ctaText !== "") && (
+      {generatedJson && (JSON.parse(generatedJson).headline !== "" || (JSON.parse(generatedJson).subHeadline && JSON.parse(generatedJson).subHeadline !== "") || JSON.parse(generatedJson).ctaText !== "") && (
         <div className="mt-6 pt-4 border-t border-border space-y-3">
           <Label htmlFor={`generatedJson${version}`} className="text-base font-medium text-foreground">Generated JSON for Version {version} Hero</Label>
           <Textarea
@@ -307,7 +306,7 @@ const ConfigForm = ({
 };
 
 const handleCopyToClipboard = async (jsonString: string, configType: string, toastFn: Function) => {
-  if (!jsonString || (configType.includes("Hero") && JSON.parse(jsonString).headline === "")) {
+  if (!jsonString || (configType.includes("Hero") && JSON.parse(jsonString).headline === "" && (!JSON.parse(jsonString).subHeadline || JSON.parse(jsonString).subHeadline === "") && JSON.parse(jsonString).ctaText === "" ) ) {
     toastFn({
       title: `Nothing to Copy for ${configType}`,
       description: 'Please fill in the content fields for this configuration.',
@@ -332,7 +331,7 @@ const handleCopyToClipboard = async (jsonString: string, configType: string, toa
 };
 
 const handleDownloadJson = (jsonString: string, configType: string, toastFn: Function) => {
-  if (!jsonString || (configType.includes("Hero") && JSON.parse(jsonString).headline === "")) {
+  if (!jsonString || (configType.includes("Hero") && JSON.parse(jsonString).headline === "" && (!JSON.parse(jsonString).subHeadline || JSON.parse(jsonString).subHeadline === "") && JSON.parse(jsonString).ctaText === "" )) {
      toastFn({
       title: `Nothing to Download for ${configType}`,
       description: 'Please fill in the content fields for this configuration.',
@@ -364,14 +363,14 @@ function LandingPageWorkflowPageContent() {
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+
   useEffect(() => {
-    if (uiActions.showWelcomeModal && walkthrough) { // Added walkthrough null check
+    if (uiActions.showWelcomeModal && walkthrough) {
       walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
   useEffect(() => {
-    // This effect syncs accordion changes driven by the walkthrough
     if (walkthrough && walkthrough.isWalkthroughActive && walkthrough.steps[walkthrough.currentStepIndex]?.requiresAccordionOpen) {
       if (activeAccordionItem !== walkthrough.steps[walkthrough.currentStepIndex].requiresAccordionOpen) {
         setActiveAccordionItem(walkthrough.steps[walkthrough.currentStepIndex].requiresAccordionOpen);
@@ -613,7 +612,7 @@ function LandingPageWorkflowPageContent() {
     }
   }, [savedABTestConfigs, isLoadingABTestConfigs, toast]);
 
-  const generateABTestJson = (headline: string, subHeadline: string, ctaText: string, campaignFocus: string): string => {
+  const generateABTestHeroJson = (headline: string, subHeadline: string, ctaText: string, campaignFocus: string): string => {
     const config: ABTestHeroConfig = {
         headline: headline.trim(),
         subHeadline: subHeadline.trim(),
@@ -628,118 +627,66 @@ function LandingPageWorkflowPageContent() {
     return JSON.stringify(config, null, 2);
   };
 
-  useEffect(() => { setGeneratedJsonA(generateABTestJson(headlineA, subHeadlineA, ctaTextA, campaignFocusA)); }, [headlineA, subHeadlineA, ctaTextA, campaignFocusA]);
-  useEffect(() => { setGeneratedJsonB(generateABTestJson(headlineB, subHeadlineB, ctaTextB, campaignFocusB)); }, [headlineB, subHeadlineB, ctaTextB, campaignFocusB]);
+  useEffect(() => { setGeneratedJsonA(generateABTestHeroJson(headlineA, subHeadlineA, ctaTextA, campaignFocusA)); }, [headlineA, subHeadlineA, ctaTextA, campaignFocusA]);
+  useEffect(() => { setGeneratedJsonB(generateABTestHeroJson(headlineB, subHeadlineB, ctaTextB, campaignFocusB)); }, [headlineB, subHeadlineB, ctaTextB, campaignFocusB]);
 
  const handleRenderABTestPreview = () => {
-    console.log("handleRenderABTestPreview called in page.tsx");
-    if (!activePageBlueprint || !activePageBlueprint.pageName) {
-      toast({ title: 'No Active Blueprint', description: 'Please load or define a page blueprint in Step 1 & 3 before previewing A/B versions.', variant: 'destructive'});
-      console.error("No active blueprint for preview.");
+    console.log("handleRenderABTestPreview called in page.tsx for Hero-only preview");
+
+    let heroConfigA: RecommendationHeroConfig;
+    let heroConfigB: RecommendationHeroConfig;
+
+    try {
+      heroConfigA = JSON.parse(generatedJsonA);
+      heroConfigB = JSON.parse(generatedJsonB);
+    } catch (e) {
+      toast({ title: 'Preview Error', description: 'Could not parse Hero configurations. Please check content.', variant: 'destructive'});
+      console.error("Error parsing Hero JSON for preview:", e);
       return;
     }
 
-    try {
-      const baseBlueprint: PageBlueprint = JSON.parse(JSON.stringify({
-        ...activePageBlueprint,
-        sectionVisibility: { 
-          hero: activePageBlueprint.sectionVisibility?.hero ?? true,
-          benefits: activePageBlueprint.sectionVisibility?.benefits ?? true,
-          testimonials: activePageBlueprint.sectionVisibility?.testimonials ?? true,
-          trustSignals: activePageBlueprint.sectionVisibility?.trustSignals ?? true,
-          form: activePageBlueprint.sectionVisibility?.form ?? true,
-        },
-      }));
-      console.log("Current activePageBlueprint for preview construction:", baseBlueprint);
-
-      let heroConfigAOverride: RecommendationHeroConfig = { headline: '', ctaText: '' };
+    if (typeof window !== 'undefined' && window.localStorage) {
       try {
-        const parsedA = generatedJsonA ? JSON.parse(generatedJsonA) : {};
-        heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedA };
-      } catch (e) {
-        console.warn("Error parsing generatedJsonA for override, using base hero config for A:", e);
-        heroConfigAOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
-      }
+        const stringifiedHeroA = JSON.stringify(heroConfigA);
+        const stringifiedHeroB = JSON.stringify(heroConfigB);
 
-      let heroConfigBOverride: RecommendationHeroConfig = { headline: '', ctaText: ''};
-      try {
-        const parsedB = generatedJsonB ? JSON.parse(generatedJsonB) : {};
-        heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }), ...parsedB };
-      } catch (e) {
-        console.warn("Error parsing generatedJsonB for override, using base hero config for B:", e);
-         heroConfigBOverride = { ...(baseBlueprint.heroConfig || { headline: '', ctaText: '' }) };
-      }
+        localStorage.setItem('previewHeroConfigA_temp', stringifiedHeroA);
+        localStorage.setItem('previewHeroConfigB_temp', stringifiedHeroB);
 
-      const blueprintAForPreview: PageBlueprint = {
-        ...baseBlueprint,
-        heroConfig: heroConfigAOverride,
-      };
+        console.log('Stored previewHeroConfigA_temp:', stringifiedHeroA.substring(0,100)+"...");
+        console.log('Stored previewHeroConfigB_temp:', stringifiedHeroB.substring(0,100)+"...");
 
-      const blueprintBForPreview: PageBlueprint = {
-        ...baseBlueprint,
-        heroConfig: heroConfigBOverride,
-      };
+        // Verification
+        let verificationSuccessful = true;
+        const verifyA = localStorage.getItem('previewHeroConfigA_temp');
+        const verifyB = localStorage.getItem('previewHeroConfigB_temp');
 
-      console.log('Blueprint A for Preview (constructed):', blueprintAForPreview);
-      console.log('Blueprint B for Preview (constructed):', blueprintBForPreview);
+        if (!verifyA || verifyA.length < 10) {
+          console.error("localStorage verification failed for Hero A.");
+          verificationSuccessful = false;
+        }
+        if (!verifyB || verifyB.length < 10) {
+          console.error("localStorage verification failed for Hero B.");
+          verificationSuccessful = false;
+        }
 
-      const stringifiedA = JSON.stringify(blueprintAForPreview);
-      const stringifiedB = JSON.stringify(blueprintBForPreview);
-
-      if (!stringifiedA || stringifiedA.length < 10) {
-          console.error("Failed to stringify blueprint A or result is invalid/too short.");
-          toast({ title: 'Preview Error', description: 'Blueprint A could not be prepared for preview. Check console.', variant: 'destructive' });
-          return;
-      }
-       if (!stringifiedB || stringifiedB.length < 10) {
-          console.error("Failed to stringify blueprint B or result is invalid/too short.");
-          toast({ title: 'Preview Error', description: 'Blueprint B could not be prepared for preview. Check console.', variant: 'destructive' });
-          return;
-      }
-      
-      let verificationSuccessfulA = false;
-      let verificationSuccessfulB = false;
-
-      if (typeof window !== 'undefined' && window.localStorage) {
-        console.log("Storing blueprintA_temp in localStorage (stringified):", stringifiedA ? stringifiedA.substring(0, 200) + "..." : 'NULL/EMPTY (A)');
-        localStorage.setItem('previewBlueprintA_temp', stringifiedA);
-        const verifyA = localStorage.getItem('previewBlueprintA_temp');
-        console.log("VERIFIED blueprintA_temp in localStorage (after set):", verifyA ? verifyA.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (A)");
-        if (verifyA && verifyA.length > 10) verificationSuccessfulA = true;
-
-
-        console.log("Storing blueprintB_temp in localStorage (stringified):", stringifiedB ? stringifiedB.substring(0, 200) + "..." : 'NULL/EMPTY (B)');
-        localStorage.setItem('previewBlueprintB_temp', stringifiedB);
-        const verifyB = localStorage.getItem('previewBlueprintB_temp');
-        console.log("VERIFIED blueprintB_temp in localStorage (after set):", verifyB ? verifyB.substring(0,100) + "..." : "NULL OR EMPTY AFTER SET (B)");
-        if (verifyB && verifyB.length > 10) verificationSuccessfulB = true;
-
-
-        if (verificationSuccessfulA && verificationSuccessfulB) {
-          console.log("All items verified in localStorage. Opening preview window in 50ms...");
-          setTimeout(() => {
-              window.open('/landing-preview', '_blank');
-              // Check localStorage in this tab immediately after opening the new tab
-              const checkAAfterOpen = localStorage.getItem('previewBlueprintA_temp');
-              const checkBAfterOpen = localStorage.getItem('previewBlueprintB_temp');
-              console.log("Configurator tab: blueprintA_temp after window.open:", checkAAfterOpen ? 'EXISTS' : 'NULL/GONE');
-              console.log("Configurator tab: blueprintB_temp after window.open:", checkBAfterOpen ? 'EXISTS' : 'NULL/GONE');
-          }, 50); 
+        if (verificationSuccessful) {
+          console.log("All hero configs verified in localStorage. Opening preview window...");
+          window.open('/landing-preview', '_blank');
         } else {
-          console.error("Local storage verification failed. Preview window not opened.");
           toast({
               title: 'Preview Storage Error',
-              description: 'Failed to reliably store blueprint data for preview. Please check console and try again.',
+              description: 'Failed to reliably store Hero data for preview. Please check console and try again.',
               variant: 'destructive',
           });
         }
-      } else {
-        throw new Error("localStorage is not available.");
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+        toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare Hero data for the A/B preview. ${errorMessage}`, variant: 'destructive'});
+        console.error("Error in handleRenderABTestPreview (Hero): ", error);
       }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      toast({ title: 'Error Preparing A/B Preview', description: `Could not prepare data for the A/B preview. ${errorMessage}`, variant: 'destructive'});
-      console.error("Error in handleRenderABTestPreview: ", error);
+    } else {
+      toast({ title: 'Preview Error', description: 'Local storage is not available.', variant: 'destructive'});
     }
   };
 
@@ -784,10 +731,10 @@ function LandingPageWorkflowPageContent() {
     const configToLoad = savedABTestConfigs.find(c => c.id === configId);
     if (!configToLoad) { toast({ title: 'Error', description: 'Could not find the selected A/B Hero configuration.', variant: 'destructive'}); return; }
     if (versionToLoadInto === 'A') {
-      setHeadlineA(configToLoad.headline); setSubHeadlineA(configToLoad.subHeadline); setCtaTextA(configToLoad.ctaText);
+      setHeadlineA(configToLoad.headline); setSubHeadlineA(configToLoad.subHeadline || ''); setCtaTextA(configToLoad.ctaText);
       setCampaignFocusA(configToLoad.campaignFocus || ''); setNameForConfigA(configToLoad.name);
     } else {
-      setHeadlineB(configToLoad.headline); setSubHeadlineB(configToLoad.subHeadline); setCtaTextB(configToLoad.ctaText);
+      setHeadlineB(configToLoad.headline); setSubHeadlineB(configToLoad.subHeadline || ''); setCtaTextB(configToLoad.ctaText);
       setCampaignFocusB(configToLoad.campaignFocus || ''); setNameForConfigB(configToLoad.name);
     }
     toast({ title: 'A/B Hero Config Loaded', description: `Hero configuration "${configToLoad.name}" loaded into Version ${versionToLoadInto}.` });
@@ -1322,15 +1269,23 @@ function LandingPageWorkflowPageContent() {
   
   const { currentUser, loading: authLoading } = useAuth(); 
   const router = useRouter(); 
+  const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
-    if (uiActions.showWelcomeModal && walkthrough) {
-      walkthrough.startWalkthrough();
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isMounted || authLoading) {
+      return; 
     }
-  }, [uiActions.showWelcomeModal, walkthrough]);
+    if (!currentUser) {
+      router.push('/login');
+    }
+  }, [isMounted, currentUser, authLoading, router]);
 
 
-    if (authLoading) {
+    if (authLoading || !isMounted) { 
       return (
         <div className="flex items-center justify-center min-h-screen bg-background" style={mainCardMarginTopStyle}>
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1339,14 +1294,16 @@ function LandingPageWorkflowPageContent() {
       );
     }
 
-    if (!currentUser) { 
-      if (typeof window !== 'undefined') router.push('/login');
-      return (
-         <div className="flex items-center justify-center min-h-screen bg-background" style={mainCardMarginTopStyle}>
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="ml-4 text-lg text-foreground">Redirecting to login...</p>
-        </div>
-      );
+    if (!currentUser) {
+        // This should ideally not be reached if the useEffect above works, 
+        // but as a safeguard or for instantaneous checks before useEffect runs.
+        if (typeof window !== 'undefined') router.push('/login');
+        return (
+            <div className="flex items-center justify-center min-h-screen bg-background" style={mainCardMarginTopStyle}>
+                <Loader2 className="h-12 w-12 animate-spin text-primary" />
+                <p className="ml-4 text-lg text-foreground">Redirecting to login...</p>
+            </div>
+        );
     }
     
 
@@ -1424,32 +1381,6 @@ export default function LandingPageWorkflowPage() {
             (window as any).__blueprintForWalkthrough = blueprint;
         }
     }, []);
-
-    const router = useRouter(); 
-    const { currentUser, loading: authLoading } = useAuth();
-    const [isMounted, setIsMounted] = useState(false);
-
-    useEffect(() => {
-      setIsMounted(true);
-    }, []);
-
-    useEffect(() => {
-      if (!isMounted || authLoading) {
-        return; 
-      }
-      if (!currentUser) {
-        router.push('/login');
-      }
-    }, [isMounted, currentUser, authLoading, router]);
-
-    if (authLoading || !isMounted || !currentUser) { 
-      return (
-        <div className="flex items-center justify-center min-h-screen bg-background">
-          <Loader2 className="h-12 w-12 animate-spin text-primary" />
-          <p className="ml-4 text-lg text-foreground">Loading Application...</p>
-        </div>
-      );
-    }
     
     return (
         <WalkthroughProvider
@@ -1461,3 +1392,6 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
+
+
+    

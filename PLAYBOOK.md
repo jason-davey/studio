@@ -22,7 +22,7 @@ The application provides a 5-step guided workflow using an accordion interface o
     - Fine-tune the content of your landing page sections (e.g., Hero section text, Benefit descriptions, Testimonial quotes).
     - Toggle the visibility of each main section for the preview.
     - **Save/Load Full Blueprints:** You can save your entire `PageBlueprint` (all content and section visibility settings) with a custom name to your browser's local storage. You can also load previously saved blueprints or delete them. This is useful for managing different versions or states of your landing page.
-4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions (optionally guided by "Campaign Focus / Keywords") and manage configurations locally. The preview button currently passes Hero configs; `/landing-preview` page can show full page A/B if full blueprints are provided.
+4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions (optionally guided by "Campaign Focus / Keywords") and manage configurations locally. The preview button currently passes Hero configurations to the `/landing-preview` page; the preview page has been temporarily simplified to only show Hero sections due to data transfer issues being diagnosed. The goal is for this preview to show full page A/B versions.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
 
 ### 0.3. Using the Guided Walkthrough (Recommended for First-Time Users)
@@ -118,7 +118,7 @@ This panel is where you define two versions (A and B) of Hero section content fo
     - Saved configurations appear in the "Managed A/B Hero Configurations" list, allowing you to load them back into the forms or delete them.
 - **JSON Generation:** The tool automatically generates the JSON string for `heroConfig` for Version A and B. You can **Copy** or **Download** this JSON from within each Version's card. This is what you'll use in Firebase.
 - **Preview A/B Versions:** Click "Render A/B Versions for Preview". This opens the `/landing-preview` page.
-    - Currently, this button passes Hero configurations from Step 4 to create two page blueprints for the preview. The `/landing-preview` page is capable of showing two full landing page versions (all sections) if two complete `PageBlueprint` JSON objects are passed via URL. Future updates to Step 4 will enable sending full blueprint configurations.
+    - Currently, this button passes Hero configurations (via localStorage) to the `/landing-preview` page, which is **temporarily simplified to show only Hero sections** due to ongoing diagnosis of data transfer issues for full blueprints. The intent is for this preview to eventually show two full landing page versions.
 - Once satisfied, click "Proceed to Deployment Steps" or open the Step 5 accordion.
 
 ### 3.5. Step 5: Prepare for Deployment
@@ -188,7 +188,7 @@ You will define your variations when creating an A/B test (see Section 6). The A
     *   Adjust content in Step 3 as needed for your overall landing page. This will update what pre-fills "Version A" of the Hero.
     *   In Step 4, configure "Version A" (new baseline for Hero) and "Version B" (new experimental Hero).
     *   Use AI suggestions and Campaign Focus as needed. The campaign focus is saved with your configurations.
-    *   Preview on `/landing-preview`.
+    *   Preview on `/landing-preview` (currently Hero-only).
 3.  **Download/Copy JSON:** For the version you want to use as your new experimental variant in Firebase, copy or download its JSON from Step 4.
 4.  **A/B Test Setup:** In Firebase A/B Testing, create a new experiment or edit an existing one, pasting the new JSON for the relevant variant.
 
@@ -218,7 +218,7 @@ When designing new content variations for your A/B tests, ensure they align with
 - **A/B Test Not Starting/No Data:**
     *   Check activation event in Firebase A/B Testing. Verify Firebase Analytics is correctly set up and receiving events.
 - **Preview Page (`/landing-preview`) Not Showing Correct Content:**
-    *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `blueprintA` and `blueprintB` query parameters. The preview page is designed to show two full landing page blueprints. Step 4 currently only sends Hero configurations; it needs to be updated to send full blueprints for the preview to work as intended with custom A/B content.
+    *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check `localStorage` in your browser's developer tools for `previewHeroConfigA_temp` and `previewHeroConfigB_temp` if issues persist. The preview page is currently simplified to show Hero sections only.
 - **AI Suggestions Not Working:**
     *   Check browser console for errors. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus / Keywords" in Step 4 for better results.
 - **JSON Blueprint Upload Error (Step 1):**
@@ -234,6 +234,5 @@ When designing new content variations for your A/B tests, ensure they align with
     *   Confirm the RUM application is correctly set up in your Datadog account.
 
 This playbook should provide a solid foundation for using the in-app tools and Firebase for A/B testing. Good luck!
-
 
     
