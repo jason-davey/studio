@@ -9,7 +9,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { useToast } from '@/hooks/use-toast';
-import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle, MessageSquare as GlobalMessageSquareIcon } from 'lucide-react';
+import { ClipboardCopy, Info, Download, Eye, ExternalLink, BookOpen, Save, Trash2, Loader2, Sparkles, RefreshCcw, UploadCloud, ChevronRight, CheckCircle, Edit3, Settings, Rocket, Image as ImageIconLucide, Type, MessageSquare as MessageSquareIconLucide, ListChecks, Palette, Edit, Award as AwardIcon, BarChart3 as StatisticIcon, BadgeCent, HelpCircle } from 'lucide-react';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
@@ -29,8 +29,8 @@ import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
-// Removed: import { useAuth } from '@/contexts/AuthContext';
-// Removed: import { useRouter } from 'next/navigation';
+import { useAuth } from '@/contexts/AuthContext'; // Added
+import { useRouter } from 'next/navigation'; // Added
 
 interface ABTestHeroConfig {
   headline: string;
@@ -60,7 +60,7 @@ const initialAISuggestionState: AISuggestionState = {
   popoverOpen: false,
 };
 
-const ABTestConfigForm = ({
+const ConfigForm = ({ // Renamed from ABTestConfigForm for clarity
   version,
   headline, setHeadline,
   subHeadline, setSubHeadline,
@@ -355,10 +355,12 @@ function LandingPageWorkflowPageContent() {
   const uiActions = useUIActions();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  console.log("Rendering LandingPageWorkflowPageContent");
+
   useEffect(() => {
     console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to", uiActions.showWelcomeModal);
     if (uiActions.showWelcomeModal) {
-      walkthrough.startWalkthrough();
+      walkthrough.startWalkthrough(); // This will set walkthrough's internal showWelcomeModal
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
@@ -872,7 +874,7 @@ function LandingPageWorkflowPageContent() {
             {!activePageBlueprint?.heroConfig && <p className="text-muted-foreground">Adjust content in Step 3 before configuring A/B tests.</p>}
             {activePageBlueprint?.heroConfig && (
               <>
-                <ABTestConfigForm
+                <ConfigForm
                   version="A"
                   headline={headlineA} setHeadline={setHeadlineA}
                   subHeadline={subHeadlineA} setSubHeadline={setSubHeadlineA}
@@ -882,7 +884,7 @@ function LandingPageWorkflowPageContent() {
                   configName={nameForConfigA} setConfigName={setNameForConfigA}
                   onSave={() => saveConfiguration('A')}
                 />
-                <ABTestConfigForm
+                <ConfigForm
                   version="B"
                   headline={headlineB} setHeadline={setHeadlineB}
                   subHeadline={subHeadlineB} setSubHeadline={setSubHeadlineB}
@@ -896,7 +898,7 @@ function LandingPageWorkflowPageContent() {
                   <Button
                     id="render-ab-preview-button"
                     onClick={handleRenderABTestPreview}
-                    className="bg-green-600 hover:bg-green-700 text-white px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground px-3 py-2 text-sm sm:px-4 sm:py-2 md:text-base text-wrap"
                   >
                     <Eye className="mr-2 h-5 w-5" /> Render A/B Versions for Preview
                   </Button>
@@ -1061,8 +1063,8 @@ function LandingPageWorkflowPageContent() {
 
 export default function LandingPageWorkflowPage() {
     console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
-    // Removed: const router = useRouter();
-    // Removed auth-related states and effects
+    const { currentUser, loading: authLoading } = useAuth(); // Added
+    const router = useRouter(); // Added
 
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
@@ -1078,10 +1080,34 @@ export default function LandingPageWorkflowPage() {
         if (typeof window !== 'undefined') {
             (window as any).__blueprintForWalkthrough = blueprint;
         }
-        setBlueprintForWalkthrough(blueprint); // This state seems unused now, activePageBlueprint is in Content
+        setBlueprintForWalkthrough(blueprint); 
     }, []);
     
-    // Removed auth loading check, directly render content for now
+    useEffect(() => {
+      if (!authLoading && !currentUser) {
+        router.push('/login');
+      }
+    }, [currentUser, authLoading, router]);
+
+    if (authLoading) {
+      return (
+        <div className="flex items-center justify-center min-h-screen bg-background">
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-foreground">Loading Application...</p>
+        </div>
+      );
+    }
+    
+    if (!currentUser) {
+      // This will be briefly shown before redirect effect kicks in, or if redirect fails.
+      // Or, you could return null here to prevent flicker.
+      return (
+         <div className="flex items-center justify-center min-h-screen bg-background">
+          <p className="text-lg text-foreground">Redirecting to login...</p>
+        </div>
+      );
+    }
+    
     return (
         <WalkthroughProvider
             onAccordionChange={handleAccordionChangeForWalkthrough}

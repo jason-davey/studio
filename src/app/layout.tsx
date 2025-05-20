@@ -3,7 +3,7 @@ import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
 import { UIActionProvider } from '@/contexts/UIActionContext';
-// Removed: import { AuthProvider } from '@/contexts/AuthContext'; 
+import { AuthProvider } from '@/contexts/AuthContext'; // Re-added
 import TopBar from '@/components/layout/TopBar';
 
 export const metadata: Metadata = {
@@ -27,12 +27,13 @@ export default function RootLayout({
         */}
       </head>
       <body className="font-sans antialiased">
-        {/* Removed AuthProvider wrapping UIActionProvider */}
-        <UIActionProvider>
-          <TopBar />
-          {children}
-          <Toaster />
-        </UIActionProvider>
+        <AuthProvider> {/* Re-added AuthProvider wrapping UIActionProvider */}
+          <UIActionProvider>
+            <TopBar />
+            {children}
+            <Toaster />
+          </UIActionProvider>
+        </AuthProvider>
       </body>
     </html>
   );

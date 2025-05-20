@@ -3,15 +3,15 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-// import { createUserWithEmailAndPassword } from 'firebase/auth';
-// import { authInstance } from '@/lib/firebase';
+import { createUserWithEmailAndPassword } from 'firebase/auth'; // Re-enabled
+import { authInstance } from '@/lib/firebase'; // Re-enabled
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { UserPlus, AlertTriangle } from 'lucide-react';
+import { UserPlus } from 'lucide-react'; // Removed AlertTriangle
 
 export default function RegisterPage() {
   const [email, setEmail] = useState('');
@@ -26,35 +26,36 @@ export default function RegisterPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    toast({ title: "Feature Paused", description: "User registration is temporarily unavailable.", variant: "destructive" });
-    setLoading(false);
+    // Removed: toast({ title: "Feature Paused", description: "User registration is temporarily unavailable.", variant: "destructive" });
+    // Removed: setLoading(false);
 
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
-      // toast({ title: "Registration Error", description: "Passwords do not match.", variant: "destructive" });
-      // return; // Still allow form submission to show the "Feature Paused" toast
+      toast({ title: "Registration Error", description: "Passwords do not match.", variant: "destructive" });
+      setLoading(false);
+      return; 
     }
-    // setLoading(true);
+    
 
-    // if (!authInstance) {
-    //   setError("Authentication service is not available. Please try again later.");
-    //   setLoading(false);
-    //   toast({ title: "Registration Error", description: "Authentication service unavailable.", variant: "destructive" });
-    //   return;
-    // }
+    if (!authInstance) {
+      setError("Authentication service is not available. Please try again later.");
+      setLoading(false);
+      toast({ title: "Registration Error", description: "Authentication service unavailable.", variant: "destructive" });
+      return;
+    }
 
-    // try {
-    //   await createUserWithEmailAndPassword(authInstance, email, password);
-    //   toast({ title: "Registration Successful!", description: "You can now log in." });
-    //   router.push('/login'); // Redirect to login page after registration
-    // } catch (err: any) {
-    //   console.error("Registration error:", err);
-    //   setError(err.message || 'Failed to register. Please try again.');
-    //   toast({ title: "Registration Failed", description: err.message || "Please try again.", variant: "destructive" });
-    // } finally {
-    //   setLoading(false);
-    // }
+    try {
+      await createUserWithEmailAndPassword(authInstance, email, password);
+      toast({ title: "Registration Successful!", description: "You can now log in." });
+      router.push('/login'); 
+    } catch (err: any) {
+      console.error("Registration error:", err);
+      setError(err.message || 'Failed to register. Please try again.');
+      toast({ title: "Registration Failed", description: err.message || "Please try again.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -66,10 +67,7 @@ export default function RegisterPage() {
           <CardDescription>Join to start building and testing landing pages.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 text-yellow-700 rounded-md text-sm flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2 shrink-0" />
-            <div>User registration is currently paused. This form is non-functional.</div>
-          </div>
+          {/* Removed Paused Feature Notice */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="email">Email address</Label>
@@ -83,7 +81,7 @@ export default function RegisterPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="mt-1"
-                disabled // Feature paused
+                disabled={loading} // Re-enabled
               />
             </div>
             <div>
@@ -98,7 +96,7 @@ export default function RegisterPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="•••••••• (min. 6 characters)"
                 className="mt-1"
-                disabled // Feature paused
+                disabled={loading} // Re-enabled
               />
             </div>
              <div>
@@ -113,12 +111,12 @@ export default function RegisterPage() {
                 onChange={(e) => setConfirmPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1"
-                disabled // Feature paused
+                disabled={loading} // Re-enabled
               />
             </div>
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <div>
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={true || loading}>
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
                 {loading ? 'Creating account...' : 'Create Account'}
               </Button>
             </div>

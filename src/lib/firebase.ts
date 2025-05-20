@@ -1,6 +1,6 @@
 
 import { initializeApp, getApp, getApps, type FirebaseOptions, type FirebaseApp } from 'firebase/app';
-// Removed: import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth, type Auth } from 'firebase/auth'; // Re-added
 import { getRemoteConfig, fetchAndActivate, getValue } from 'firebase/remote-config';
 import type { RemoteConfig } from 'firebase/remote-config';
 
@@ -46,12 +46,17 @@ function createFirebaseApp(config: FirebaseOptions): FirebaseApp | null {
 }
 
 const app = createFirebaseApp(firebaseConfig);
-// Removed: let authInstance: Auth | null = null;
+let authInstance: Auth | null = null; // Re-added
 let remoteConfigInstance: RemoteConfig | null = null;
 
 if (app && app.options && app.options.projectId) {
-  if (typeof window !== 'undefined') { // Ensure client-side for Firebase services that need it
-    // Removed authInstance initialization block
+  if (typeof window !== 'undefined') { 
+    try {
+      authInstance = getAuth(app); // Re-added
+    } catch (error) {
+      console.error("Failed to initialize Firebase Auth:", error);
+    }
+
     try {
       remoteConfigInstance = getRemoteConfig(app);
       remoteConfigInstance.settings.minimumFetchIntervalMillis = process.env.NODE_ENV === 'development' ? 10000 : 3600000;
@@ -74,6 +79,4 @@ if (app && app.options && app.options.projectId) {
   );
 }
 
-// Removed authInstance from export
-export { app, remoteConfigInstance, fetchAndActivate, getValue };
-
+export { app, authInstance, remoteConfigInstance, fetchAndActivate, getValue }; // authInstance re-added to export

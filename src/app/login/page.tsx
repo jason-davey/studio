@@ -3,15 +3,15 @@
 
 import { useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-// import { signInWithEmailAndPassword } from 'firebase/auth';
-// import { authInstance } from '@/lib/firebase';
+import { signInWithEmailAndPassword } from 'firebase/auth'; // Re-enabled
+import { authInstance } from '@/lib/firebase'; // Re-enabled
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
 import Link from 'next/link';
-import { LogIn, AlertTriangle } from 'lucide-react';
+import { LogIn } from 'lucide-react'; // Removed AlertTriangle
 
 export default function LoginPage() {
   const [email, setEmail] = useState('');
@@ -25,27 +25,27 @@ export default function LoginPage() {
     e.preventDefault();
     setError(null);
     setLoading(true);
-    toast({ title: "Feature Paused", description: "User authentication is temporarily unavailable.", variant: "destructive" });
-    setLoading(false);
+    // Removed: toast({ title: "Feature Paused", description: "User authentication is temporarily unavailable.", variant: "destructive" });
+    // Removed: setLoading(false);
 
-    // if (!authInstance) {
-    //   setError("Authentication service is not available. Please try again later.");
-    //   setLoading(false);
-    //   toast({ title: "Login Error", description: "Authentication service unavailable.", variant: "destructive" });
-    //   return;
-    // }
+    if (!authInstance) {
+      setError("Authentication service is not available. Please try again later.");
+      setLoading(false);
+      toast({ title: "Login Error", description: "Authentication service unavailable.", variant: "destructive" });
+      return;
+    }
 
-    // try {
-    //   await signInWithEmailAndPassword(authInstance, email, password);
-    //   toast({ title: "Login Successful!", description: "Welcome back!" });
-    //   router.push('/'); // Redirect to home page after login
-    // } catch (err: any) {
-    //   console.error("Login error:", err);
-    //   setError(err.message || 'Failed to login. Please check your credentials.');
-    //   toast({ title: "Login Failed", description: err.message || "Please check your credentials.", variant: "destructive" });
-    // } finally {
-    //   setLoading(false);
-    // }
+    try {
+      await signInWithEmailAndPassword(authInstance, email, password);
+      toast({ title: "Login Successful!", description: "Welcome back!" });
+      router.push('/'); 
+    } catch (err: any) {
+      console.error("Login error:", err);
+      setError(err.message || 'Failed to login. Please check your credentials.');
+      toast({ title: "Login Failed", description: err.message || "Please check your credentials.", variant: "destructive" });
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -57,10 +57,7 @@ export default function LoginPage() {
           <CardDescription>Sign in to access your landing page tools.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="mb-4 p-3 bg-yellow-100 border border-yellow-300 text-yellow-700 rounded-md text-sm flex items-center">
-            <AlertTriangle className="h-5 w-5 mr-2 shrink-0" />
-            <div>User authentication is currently paused. This form is non-functional.</div>
-          </div>
+          {/* Removed Paused Feature Notice */}
           <form onSubmit={handleSubmit} className="space-y-6">
             <div>
               <Label htmlFor="email">Email address</Label>
@@ -74,7 +71,7 @@ export default function LoginPage() {
                 onChange={(e) => setEmail(e.target.value)}
                 placeholder="you@example.com"
                 className="mt-1"
-                disabled // Feature paused
+                disabled={loading} // Re-enabled
               />
             </div>
             <div>
@@ -89,12 +86,12 @@ export default function LoginPage() {
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
                 className="mt-1"
-                disabled // Feature paused
+                disabled={loading} // Re-enabled
               />
             </div>
             {error && <p className="text-sm text-destructive text-center">{error}</p>}
             <div>
-              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={true || loading}>
+              <Button type="submit" className="w-full bg-primary hover:bg-primary/90" disabled={loading}>
                 {loading ? 'Signing in...' : 'Sign In'}
               </Button>
             </div>

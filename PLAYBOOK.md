@@ -5,10 +5,15 @@ This playbook guides you through using the in-app tools to create landing page c
 
 ## 0. Getting Started & Overview
 
-This application helps you prepare and configure landing page content.
+This application helps you prepare and configure landing page content. To use the main features, you will first need to register an account and log in.
 
-### 0.1. Overview of the In-App Workflow
-The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to the "Guided Walkthrough" and "Provide Feedback" buttons at all times.
+### 0.1. Account Registration & Login
+- **Registration:** If you are a new user, navigate to the `/register` page (or click "Register" in the top bar) and create an account using your email and a password.
+- **Login:** If you already have an account, navigate to the `/login` page (or click "Login" in the top bar) and sign in.
+- **Access:** Once logged in, you will be directed to the main application workflow.
+
+### 0.2. Overview of the In-App Workflow
+The application provides a 5-step guided workflow using an accordion interface on the main page (`/`). A fixed top bar provides access to navigation, user actions (like Logout), and the "Guided Walkthrough" and "Provide Feedback" buttons at all times.
 
 1.  **Step 1: Review Recommendations:** Upload a JSON "Page Blueprint" file if you have one from an external recommendations tool. This can pre-fill content for all sections. The Guided Walkthrough can also load a sample blueprint for you.
 2.  **Step 2: Build & Preview Page:** See a preview of your entire landing page (Hero, Benefits, Testimonials, Trust Signals, Form) based on the blueprint or default values.
@@ -16,7 +21,7 @@ The application provides a 5-step guided workflow using an accordion interface o
 4.  **Step 4: Configure A/B Test:** Create "Version A" and "Version B" for A/B testing specific elements (like the Hero section). Version A will be pre-filled from your work in Step 3. Use AI suggestions and manage configurations locally.
 5.  **Step 5: Prepare for Deployment:** Get instructions and links to take your A/B test configurations to Firebase.
 
-### 0.2. Using the Guided Walkthrough (Recommended for First-Time Users)
+### 0.3. Using the Guided Walkthrough (Recommended for First-Time Users)
 The application includes a Guided Walkthrough to help you learn its features.
 - **Starting the Walkthrough:** Click the **"Guided Walkthrough" button** (with HelpCircle icon and text label) located in the **fixed top bar** of the application.
 - **Welcome Modal:** A welcome message will appear. Click "Start Tour" to begin.
@@ -24,7 +29,7 @@ The application includes a Guided Walkthrough to help you learn its features.
 - **Interactive Learning:** The walkthrough will guide you through each of the 5 steps, highlighting key buttons and input fields. It can also auto-load a sample "Page Blueprint" so you can see the tool in action with real data.
 - **Re-accessing:** You can start the walkthrough again at any time by clicking the "Guided Walkthrough" button in the top bar.
 
-### 0.3. Providing Feedback or Reporting Issues
+### 0.4. Providing Feedback or Reporting Issues
 If you encounter any issues, have suggestions, or want to provide general feedback:
 - Click the **"Provide Feedback" button** (with MessageSquare icon and text label) located in the **fixed top bar** of the application.
 - A modal dialog will appear.
@@ -50,6 +55,7 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 
 ### 2.1. Firebase Project Setup
 - Ensure you have a Firebase project created. If not, create one at [https://console.firebase.google.com/](https://console.firebase.google.com/).
+- **Enable Authentication:** In your Firebase project, navigate to "Authentication" (under "Build") and enable the "Email/Password" sign-in method on the "Sign-in method" tab.
 - Your project should have Billing enabled if you plan to use Firebase A/B Testing features extensively.
 - Ensure Genkit AI models (like Gemini via Google AI plugin) are configured if you intend to use the AI suggestion features and are outside any free quotas or need specific project billing.
 
@@ -67,7 +73,7 @@ A/B testing (or split testing) is a method of comparing two versions of a webpag
 
 ## 3. Using the In-App Landing Page Workflow Tool (Root `/` path)
 
-Navigate to the root of your application (e.g., `http://localhost:9002/`). This is the main tool, organized into 5 accordion steps. The "Guided Walkthrough" and "Provide Feedback" buttons are always available in the top bar.
+Navigate to the root of your application (e.g., `http://localhost:9002/`). You will be prompted to log in or register if you haven't already. The main tool is organized into 5 accordion steps. The "Guided Walkthrough" and "Provide Feedback" buttons are always available in the top bar.
 
 ### 3.1. Step 1: Review Recommendations
 - This is the first panel in the accordion.
@@ -192,16 +198,19 @@ When designing new content variations for your A/B tests, ensure they align with
 
 ## 9. Troubleshooting
 
-- **Error: `FirebaseError: Installations: Missing App configuration value: "projectId"`**
-    *   **Solution:** Ensure `.env.local` is correct and restart dev server. See 2.2.
+- **Error: `FirebaseError: Installations: Missing App configuration value: "projectId"` or other Firebase initialization errors:**
+    *   **Solution:** Ensure `.env.local` is correctly created and populated with all `NEXT_PUBLIC_FIREBASE_*` variables from your Firebase project settings. Restart your Next.js development server after creating/modifying `.env.local`. See section 2.2.
+- **Login/Registration Not Working:**
+    *   Ensure you have enabled "Email/Password" as a sign-in method in your Firebase project's Authentication settings.
+    *   Check browser console for specific Firebase Auth error codes.
 - **Remote Config Values Not Updating:**
-    *   Ensure "Publish changes" in Firebase Remote Config. Note fetch intervals.
+    *   Ensure "Publish changes" in Firebase Remote Config. Note fetch intervals (minimumFetchIntervalMillis).
 - **A/B Test Not Starting/No Data:**
-    *   Check activation event. Verify Firebase Analytics.
+    *   Check activation event in Firebase A/B Testing. Verify Firebase Analytics is correctly set up and receiving events.
 - **Preview Page (`/landing-preview`) Not Showing Correct Content:**
     *   Ensure you clicked "Render A/B Versions for Preview" from Step 4. Check URL for `configA` and `configB`. The preview page currently only shows Hero section variations by default (other sections are based on a default or static blueprint).
 - **AI Suggestions Not Working:**
-    *   Check browser console. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus / Keywords" in Step 4 for better results.
+    *   Check browser console for errors. Ensure Genkit dev server (`npm run genkit:dev`) is running if testing locally. Verify Firebase/Google Cloud project setup for Genkit. Try using "Campaign Focus / Keywords" in Step 4 for better results.
 - **JSON Blueprint Upload Error (Step 1):**
     *   Ensure the file is valid JSON and matches the expected `PageBlueprint` structure (see `src/types/recommendations.ts`). Key fields like `pageName` and `heroConfig` are usually expected.
 - **Guided Walkthrough Issues:**

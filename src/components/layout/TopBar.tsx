@@ -3,13 +3,31 @@
 
 import { Button } from '@/components/ui/button';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { MessageSquare, HelpCircle, LayoutDashboard, FileText } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext'; // Added
+import { authInstance } from '@/lib/firebase'; // Added
+import { signOut } from 'firebase/auth'; // Added
+import { MessageSquare, HelpCircle, LayoutDashboard, FileText, LogOut, LogIn, UserPlus } from 'lucide-react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation'; // Added
 
 export const TOP_BAR_HEIGHT_PX = 60; 
 
 export default function TopBar() {
   const { setIsFeedbackModalOpen, setShowWelcomeModal } = useUIActions();
+  const { currentUser, loading: authLoading } = useAuth(); // Added
+  const router = useRouter(); // Added
+
+  const handleLogout = async () => {
+    if (authInstance) {
+      try {
+        await signOut(authInstance);
+        router.push('/login'); // Redirect to login after logout
+      } catch (error) {
+        console.error("Error signing out: ", error);
+        // Optionally show a toast message for logout error
+      }
+    }
+  };
 
   return (
     <div
@@ -23,12 +41,14 @@ export default function TopBar() {
             Workflow
           </Link>
         </Button>
-        <Button variant="ghost" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
-          <Link href="/admin/tech-spec">
-            <FileText className="mr-1.5 h-4 w-4" />
-            Tech Spec
-          </Link>
-        </Button>
+        {currentUser && ( // Conditionally render Tech Spec link for logged-in users
+          <Button variant="ghost" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
+            <Link href="/admin/tech-spec">
+              <FileText className="mr-1.5 h-4 w-4" />
+              Tech Spec
+            </Link>
+          </Button>
+        )}
       </div>
       <div className="flex items-center gap-2">
         <Button
@@ -49,6 +69,32 @@ export default function TopBar() {
           <HelpCircle className="mr-1.5 h-4 w-4" />
           Guided Walkthrough
         </Button>
+        {!authLoading && currentUser && (
+          <Button
+            variant="outline"
+            onClick={handleLogout}
+            className="h-auto py-1.5 px-3 text-xs sm:text-sm"
+          >
+            <LogOut className="mr-1.5 h-4 w-4" />
+            Logout ({currentUser.email?.split('@')[0]})
+          </Button>
+        )}
+        {!authLoading && !currentUser && (
+          <>
+            <Button variant="outline" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
+              <Link href="/login">
+                <LogIn className="mr-1.5 h-4 w-4" />
+                Login
+              </Link>
+            </Button>
+            <Button variant="default" size="sm" asChild className="h-auto py-1.5 px-2 text-xs sm:text-sm">
+              <Link href="/register">
+                <UserPlus className="mr-1.5 h-4 w-4" />
+                Register
+              </Link>
+            </Button>
+          </>
+        )}
       </div>
     </div>
   );

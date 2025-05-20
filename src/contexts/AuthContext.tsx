@@ -3,7 +3,7 @@
 
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { authInstance } from '@/lib/firebase'; // Ensure authInstance is exported from firebase.ts
+import { authInstance } from '@/lib/firebase'; 
 import { Loader2 } from 'lucide-react';
 
 interface AuthContextType {
@@ -26,14 +26,14 @@ export const AuthProvider: React.FC<AuthProviderProps> = ({ children }) => {
     if (!authInstance) {
       console.warn("Firebase Auth instance not available. User authentication will not work.");
       setLoading(false);
-      return () => {}; // No cleanup needed if authInstance is null
+      return () => {}; 
     }
     const unsubscribe = onAuthStateChanged(authInstance, (user) => {
       setCurrentUser(user);
       setLoading(false);
     });
 
-    return unsubscribe; // Unsubscribe on unmount
+    return unsubscribe; 
   }, []);
 
   if (loading) {
