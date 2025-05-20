@@ -1,149 +1,160 @@
 
-'use client'; 
+'use client';
 
 import Header from '@/components/landing/Header';
 import HeroSection from '@/components/landing/HeroSection';
 import BenefitsSection from '@/components/landing/BenefitsSection';
 import TestimonialsSection from '@/components/landing/TestimonialsSection';
-import AwardsSection from '@/components/landing/AwardsSection';
+import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
 import QuoteFormSection from '@/components/landing/QuoteFormSection';
 import Footer from '@/components/landing/Footer';
-import type { ComponentProps } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { AlertTriangle } from 'lucide-react';
+import { AlertTriangle, Loader2 } from 'lucide-react';
+import type { PageBlueprint, SectionVisibility } from '@/types/recommendations';
 
-
-type HeroConfig = ComponentProps<typeof HeroSection>;
-
-// Define the baseline (control) configuration as a fallback
-const fallbackHeroConfigA: HeroConfig = {
-  headline: "Default: Ensure Your Family's Financial Security",
-  subHeadline: "(default: even when you can't be there for them)",
-  ctaText: "Default: Secure My Family's Future",
-};
-
-// Define a sample variant configuration (Variant A) as a fallback
-const fallbackHeroConfigB: HeroConfig = {
-  headline: "Default: Unlock Financial Peace of Mind",
-  subHeadline: "(default: protecting your loved ones, always)",
-  ctaText: "Default: Get Protected Today",
-};
+// Define a default blueprint structure to use as fallback
+const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
+  pageName: `Default Preview - ${versionLabel}`,
+  heroConfig: { // Default Hero content from HeroSection component
+    headline: `Default: Ensure Your Family's Financial Security (${versionLabel})`,
+    subHeadline: `(default: even when you can't be there for them)`,
+    ctaText: `Default: Secure My Family's Future`,
+    uniqueValueProposition: "Only Real Insurance gives you The Real Reward™: 10% cash back after your first year, plus a free legal will valued at $160.",
+    heroImageUrl: "https://placehold.co/1600x900.png",
+    heroImageAltText: "Family enjoying time together"
+  },
+  // For other sections, their respective components have internal defaults
+  // which will be used if benefits, testimonials, etc. arrays are undefined or empty.
+  benefits: undefined, // Rely on BenefitsSection internal defaults
+  testimonials: undefined, // Rely on TestimonialsSection internal defaults
+  trustSignals: undefined, // Rely on TrustSignalsSection internal defaults
+  formConfig: { // Default Form content
+    headline: `Default: Get Your Personalized Plan (${versionLabel})`,
+    ctaText: `Default: See My Quote Today`
+  },
+  sectionVisibility: { // Default visibility
+    hero: true,
+    benefits: true,
+    testimonials: true,
+    trustSignals: true,
+    form: true,
+  },
+});
 
 export default function LandingPreviewPage() {
   const searchParams = useSearchParams();
-  const [heroConfigA, setHeroConfigA] = useState<HeroConfig>(fallbackHeroConfigA);
-  const [heroConfigB, setHeroConfigB] = useState<HeroConfig>(fallbackHeroConfigB);
+  const [blueprintA, setBlueprintA] = useState<PageBlueprint>(() => createDefaultBlueprint('Version A - Fallback'));
+  const [blueprintB, setBlueprintB] = useState<PageBlueprint>(() => createDefaultBlueprint('Version B - Fallback'));
   const [error, setError] = useState<string | null>(null);
   const [isClient, setIsClient] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    setIsClient(true); // Component has mounted, safe to use searchParams
+    setIsClient(true);
   }, []);
 
   useEffect(() => {
-    if (!isClient) return; // Don't run on server or before hydration
+    if (!isClient) return;
+    setIsLoading(true);
+    setError(null);
 
-    const configAString = searchParams.get('configA');
-    const configBString = searchParams.get('configB');
+    const blueprintAString = searchParams.get('blueprintA');
+    const blueprintBString = searchParams.get('blueprintB');
     let parseError = false;
 
-    if (configAString) {
-      try {
-        const parsedConfigA = JSON.parse(configAString) as HeroConfig;
-        // Basic validation
-        if (parsedConfigA.headline !== undefined && parsedConfigA.subHeadline !== undefined && parsedConfigA.ctaText !== undefined) {
-            setHeroConfigA(parsedConfigA);
-        } else {
-            throw new Error("Version A config is missing required fields.");
+    const parseAndSetBlueprint = (
+      bpString: string | null,
+      setter: React.Dispatch<React.SetStateAction<PageBlueprint>>,
+      versionLabel: string,
+      fallbackBlueprint: PageBlueprint
+    ) => {
+      if (bpString) {
+        try {
+          const parsedBP = JSON.parse(bpString) as PageBlueprint;
+          // Basic validation for key structures
+          if (parsedBP.heroConfig && parsedBP.formConfig) {
+            setter({
+              ...fallbackBlueprint, // Ensure all base fields from fallback exist
+              ...parsedBP,
+              sectionVisibility: {
+                ...fallbackBlueprint.sectionVisibility,
+                ...(parsedBP.sectionVisibility || {}),
+              },
+            });
+          } else {
+            throw new Error(`${versionLabel} blueprint is missing required fields (heroConfig or formConfig).`);
+          }
+        } catch (e) {
+          console.error(`Error parsing ${versionLabel} from URL:`, e);
+          setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}.`));
+          setter(fallbackBlueprint);
+          parseError = true;
         }
-      } catch (e) {
-        console.error("Error parsing configA from URL:", e);
-        setError(prev => prev ? `${prev} Error parsing Version A.` : "Error parsing Version A.");
-        setHeroConfigA(fallbackHeroConfigA); // Fallback on error
-        parseError = true;
+      } else {
+        setter(fallbackBlueprint); // Use fallback if no param
       }
-    } else {
-        // If no configA in URL, use fallback (already set by useState)
-        // Potentially set a specific message if desired
-    }
+    };
 
-    if (configBString) {
-      try {
-        const parsedConfigB = JSON.parse(configBString) as HeroConfig;
-         if (parsedConfigB.headline !== undefined && parsedConfigB.subHeadline !== undefined && parsedConfigB.ctaText !== undefined) {
-            setHeroConfigB(parsedConfigB);
-        } else {
-            throw new Error("Version B config is missing required fields.");
-        }
-      } catch (e) {
-        console.error("Error parsing configB from URL:", e);
-        setError(prev => prev ? `${prev} Error parsing Version B.` : "Error parsing Version B.");
-        setHeroConfigB(fallbackHeroConfigB); // Fallback on error
-        parseError = true;
-      }
-    } else {
-        // If no configB in URL, use fallback
-    }
+    parseAndSetBlueprint(blueprintAString, setBlueprintA, 'Version A', createDefaultBlueprint('Version A - Fallback'));
+    parseAndSetBlueprint(blueprintBString, setBlueprintB, 'Version B', createDefaultBlueprint('Version B - Fallback'));
 
-    if (!configAString && !configBString && !parseError) {
-        setError("No configurations provided in URL. Displaying default fallback versions.");
-    } else if (!parseError) {
-        setError(null); // Clear error if parsing was successful or no params initially
+    if (!blueprintAString && !blueprintBString && !parseError) {
+      setError("No blueprint configurations provided in URL. Displaying default fallback versions for A and B.");
+    } else if (!parseError && (blueprintAString || blueprintBString)) {
+      setError(null); // Clear error if at least one blueprint was parsed successfully
     }
+    setIsLoading(false);
 
   }, [searchParams, isClient]);
 
-  if (!isClient) {
-    // Render a loading state or null during SSR/pre-hydration
+  if (!isClient || isLoading) {
     return (
       <div className="flex flex-col min-h-screen bg-background justify-center items-center">
-        <p className="text-lg text-foreground">Loading preview...</p>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-lg text-foreground mt-4">Loading preview configurations...</p>
       </div>
     );
   }
 
+  const renderPageSections = (blueprint: PageBlueprint, versionLabel: string) => (
+    <div className="flex-1 border border-border rounded-lg p-0 shadow-lg overflow-hidden">
+      <h3 className="text-xl font-semibold text-center my-4 text-primary">{versionLabel}</h3>
+      {blueprint.sectionVisibility?.hero && blueprint.heroConfig && (
+        <HeroSection {...blueprint.heroConfig} />
+      )}
+      {blueprint.sectionVisibility?.benefits && (
+        <BenefitsSection benefits={blueprint.benefits} />
+      )}
+      {blueprint.sectionVisibility?.testimonials && (
+        <TestimonialsSection testimonials={blueprint.testimonials} />
+      )}
+      {blueprint.sectionVisibility?.trustSignals && (
+        <TrustSignalsSection trustSignals={blueprint.trustSignals} />
+      )}
+      {blueprint.sectionVisibility?.form && blueprint.formConfig && (
+         <QuoteFormSection {...blueprint.formConfig} />
+      )}
+    </div>
+  );
+
   return (
     <div className="flex flex-col min-h-screen bg-background">
       <Header />
-      <main className="flex-grow">
-        <div className="p-4 md:p-8">
-          <h2 className="text-2xl font-bold text-center mb-2 text-foreground">Landing Page Preview</h2>
-          {error && (
-            <div className="mb-4 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-md flex items-center justify-center max-w-2xl mx-auto">
-              <AlertTriangle className="h-5 w-5 mr-2" />
-              <p className="text-sm">{error}</p>
-            </div>
-          )}
-          <div className="flex flex-col lg:flex-row gap-8">
-            <div className="flex-1 border border-border rounded-lg p-4 shadow-lg">
-              <h3 className="text-xl font-semibold text-center mb-4 text-primary">Version A</h3>
-              <HeroSection 
-                headline={heroConfigA.headline}
-                subHeadline={heroConfigA.subHeadline}
-                ctaText={heroConfigA.ctaText}
-              />
-            </div>
-
-            <div className="flex-1 border border-border rounded-lg p-4 shadow-lg">
-              <h3 className="text-xl font-semibold text-center mb-4 text-primary">Version B</h3>
-              <HeroSection 
-                headline={heroConfigB.headline}
-                subHeadline={heroConfigB.subHeadline}
-                ctaText={heroConfigB.ctaText}
-              />
-            </div>
+      <main className="flex-grow container mx-auto py-8 px-4">
+        <h2 className="text-2xl font-bold text-center mb-2 text-foreground">Landing Page A/B Preview</h2>
+        {error && (
+          <div className="mb-4 p-4 bg-destructive/10 border border-destructive/30 text-destructive rounded-md flex items-center justify-center max-w-3xl mx-auto">
+            <AlertTriangle className="h-5 w-5 mr-2" />
+            <p className="text-sm">{error}</p>
           </div>
+        )}
+        <div className="flex flex-col lg:flex-row gap-8 mt-6">
+          {renderPageSections(blueprintA, "Version A")}
+          {renderPageSections(blueprintB, "Version B")}
         </div>
-
-        <BenefitsSection />
-        <TestimonialsSection />
-        <AwardsSection />
-        <QuoteFormSection />
       </main>
       <Footer />
     </div>
   );
 }
-
-    

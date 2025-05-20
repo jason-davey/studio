@@ -1,10 +1,11 @@
 
+
 # Technical Specification & Release Guide: SecureTomorrow Landing Page A/B Testing Platform
 
 ## 1. Introduction
 
 ### 1.1. Purpose of the Application
-This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page, adjusting content (including section visibility), configuring A/B test variations (primarily for the Hero Section), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords) and includes a guided walkthrough for new users. It also integrates Datadog RUM for performance monitoring and includes a client-side feedback mechanism, both accessible via a fixed top navigation bar. Users are required to authenticate to access the main application workflow.
+This Next.js application serves as a comprehensive platform for creating, configuring, and previewing content variations for the SecureTomorrow landing page. It follows a guided 5-step workflow: ingesting page recommendations, building/previewing the page (respecting section visibility), adjusting content (including section visibility toggles and local blueprint management), configuring A/B test variations (primarily for the Hero Section, with AI assistance and local configuration management), and preparing for deployment via Firebase. It leverages AI for content suggestions (optionally guided by user-provided campaign themes/keywords) and includes a guided walkthrough for new users. It also integrates Datadog RUM for performance monitoring and includes a client-side feedback mechanism, both accessible via a fixed top navigation bar. Users are required to authenticate to access the main application workflow. Admin users have a slightly differentiated UI (e.g., access to this Tech Spec via TopBar and a view-switching capability).
 
 The application is designed with a UX-AI collaborative development approach, aiming for rapid prototyping and iterative feature enhancement to quickly deliver value.
 
@@ -17,12 +18,15 @@ The application is designed with a UX-AI collaborative development approach, aim
 - **Guided Workflow:** A 5-step accordion interface (Review, Build, Adjust, A/B Configure, Deploy) on the main page (`/`).
 - **Recommendation Ingestion (Step 1):** Allows users to upload a JSON file (`PageBlueprint`) containing recommendations for landing page content.
 - **Page Preview (Step 2):** Displays a preview of the entire landing page (Hero, Benefits, Testimonials, Trust Signals, Quote Form) based on the ingested or adjusted blueprint, respecting section visibility settings.
-- **Content Adjustment (Step 3):** Enables users to fine-tune the content of the landing page blueprint for all major sections via input fields. Also allows users to toggle the visibility of each landing page section.
+- **Content Adjustment & Blueprint Management (Step 3):**
+    - Enables users to fine-tune the content of the `activePageBlueprint` for all major sections via input fields.
+    - Allows users to toggle the visibility of each landing page section (Hero, Benefits, Testimonials, Trust Signals, Form), affecting the preview in Step 2.
+    - Provides local storage management (save, load, delete) for full `PageBlueprint` configurations.
 - **A/B Test Content Configuration (Step 4):** Allows users to define two text versions for A/B testing (e.g., Hero Section headline, sub-headline, CTA). Version A is pre-filled from Step 3.
 - **AI-Assisted Content Generation (Step 4):** Provides AI-powered suggestions for A/B test copy using Genkit and Google's Gemini model. Users can provide an optional "Campaign Focus / Keywords" to further tailor these suggestions.
-- **JSON Generation (Step 4):** Automatically generates JSON output compatible with Firebase Remote Config for each A/B test content variation. Allows copying or downloading of JSON.
-- **Local Configuration Management (Step 4):** Enables users to save, load, and manage different A/B test content configurations (including campaign focus) directly in their browser's local storage.
-- **Side-by-Side A/B Preview (Step 4):** Renders two selected A/B content variations on a dedicated preview page (`/landing-preview`) for visual comparison.
+- **JSON Generation (Step 4):** Automatically generates JSON output compatible with Firebase Remote Config for each A/B test content variation (currently Hero focused). Allows copying or downloading of JSON.
+- **Local Configuration Management for A/B Hero Variants (Step 4):** Enables users to save, load, and manage different A/B test Hero content configurations (including campaign focus) directly in their browser's local storage.
+- **Side-by-Side Full Page A/B Preview (Step 4 output to `/landing-preview`):** Renders two full page versions (Version A and Version B, based on two `PageBlueprint` objects) on a dedicated preview page (`/landing-preview`) for visual comparison. Step 4 currently only passes Hero configs to this page; future work is needed in Step 4 to send full blueprints.
 - **Deployment Guidance (Step 5):** Provides instructions for using the generated JSON in Firebase.
 - **Guided Walkthrough:** An interactive, step-by-step tour of the application's features, highlighting key UI elements and explaining their purpose. Includes a welcome modal and can auto-load sample data. Triggered from the fixed top bar.
 - **Firebase Integration (Indirect):** Prepares content for A/B tests run via Firebase Remote Config and Firebase A/B Testing. Firebase Authentication is used for user management.
@@ -93,14 +97,15 @@ This provides a high-level overview of the development journey:
     - *Value:* Secure access to the application, foundation for user-specific data and roles. The Tech Spec page is now conditionally accessible as a step towards Admin role functionality. The admin user can switch views for testing.
 - **Phase 5 (Workflow Enhancements - Current):**
     *   Added Section Visibility toggles in Step 3 (Adjust Content) affecting the preview in Step 2.
-    *   *(Next up: Saving/Loading full `PageBlueprint` objects in Step 3).*
+    *   `/landing-preview` page updated to render two full `PageBlueprint` configurations (if provided via URL).
+    *   *(Next up: Enhancing Step 4 to produce two full blueprints for preview; saving/loading full `PageBlueprint` objects in Step 3).*
 
 ## 2. Application Architecture
 
 ### 2.1. Frontend Structure
 - **Next.js App Router:**
     - `/`: Main 5-step workflow application (`src/app/page.tsx`). Requires authentication.
-    - `/landing-preview`: Side-by-side A/B test preview page. Publicly accessible.
+    - `/landing-preview`: Side-by-side A/B test preview page. Expects two full `PageBlueprint` objects via URL query parameters. Publicly accessible.
     - `/admin/tech-spec`: Page to render `TECHNICAL_SPEC.md` (including dynamic Mermaid diagrams). Accessible to users with the temporary 'admin' role via the TopBar.
     - `/login`, `/register`: User authentication pages.
 - **Key Directories:**
@@ -139,8 +144,8 @@ This provides a high-level overview of the development journey:
 - **Prerequisite:** User must be logged in.
 - **1. Step 1: Review Recommendations:** Upload `PageBlueprint` JSON.
 - **2. Step 2: Build & Preview Page:** Renders full landing page preview from `activePageBlueprint`, respecting `sectionVisibility`.
-- **3. Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`. Toggle visibility of each section.
-- **4. Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local hero configs, preview on `/landing-preview`.
+- **3. Step 3: Adjust Content:** Edit content for all sections of `activePageBlueprint`. Toggle visibility of each section. (Future: Manage multiple full blueprints locally).
+- **4. Step 4: Configure A/B Test:** Configure Hero A/B variants, use AI, save/load local hero configs, preview on `/landing-preview`. (Future: Allow configuration of all sections for A/B testing to fully utilize `/landing-preview`'s capabilities).
 - **5. Step 5: Prepare for Deployment:** Guidance for Firebase.
 - **Global Fixed Top Bar:** Provides navigation ("Workflow", "Tech Spec" - for 'admin' role viewing as admin), user auth actions (Login/Register/Logout), admin view-switching toggle, and access to Guided Walkthrough (via `WelcomeModal`), Feedback (via `FeedbackModal`).
 
@@ -153,6 +158,7 @@ graph TD
     subgraph UserBrowser [User's Browser - Next.js App]
         App[Landing Page Workflow App]
         App_PageTsx["src/app/page.tsx (Main Workflow)"]
+        App_LandingPreviewPage["src/app/landing-preview/page.tsx (A/B Full Page Preview)"]
         App_AdminSpecPage["src/app/admin/tech-spec/page.tsx (Tech Spec View with Mermaid)"]
         App_LayoutTsx["src/app/layout.tsx (Global Layout)"]
         App_AuthContext["AuthContext (Firebase Auth State, Temp Roles & Admin View Switch)"]
@@ -162,7 +168,7 @@ graph TD
         App_FeedbackModal["FeedbackModal Component"]
         App_WelcomeModal["WelcomeModal Component"]
         App_GenkitFlow["Genkit: suggestHeroCopyFlow (Client Call)"]
-        App_LocalStorage["Browser Local Storage (A/B Hero Configs)"]
+        App_LocalStorage["Browser Local Storage (A/B Hero Configs, Full Blueprints)"]
         App_DatadogLib["Datadog RUM SDK"]
         App_TechSpecFile["TECHNICAL_SPEC.md (File System - Read by Server Component)"]
         App_MermaidLib["Mermaid.js Library (Client-side rendering)"]
@@ -178,6 +184,8 @@ graph TD
         App_PageTsx --> App_FeedbackModal
         App_PageTsx --> App_WelcomeModal
         App_PageTsx <--> App_LocalStorage
+        App_PageTsx -- Generates Hero JSON for Remote Config --> FirebaseServices
+        App_PageTsx -- Passes two PageBlueprint JSON strings to --> App_LandingPreviewPage
         App_PageTsx --> App_GenkitFlow
         
         App_AdminSpecPage -- Reads --> App_TechSpecFile
@@ -201,7 +209,7 @@ graph TD
         FB_ABTesting["Firebase A/B Testing (via Console)"]
         FB_Hosting["Firebase Hosting (Next.js App Deployed)"]
         FB_AI_Models["Google AI Models (via GoogleAI Plugin for Genkit)"]
-        %% FB_Firestore["Firebase Firestore (Future for user data/roles)"]
+        %% FB_Firestore["Firebase Firestore (Future for user data/roles/blueprints)"]
     end
 
     subgraph ExternalSystems [External Systems & Tools]
@@ -213,7 +221,7 @@ graph TD
     end
 
     UserBrowser -- Firebase SDK Calls --> FB_Auth
-    UserBrowser -- Firebase SDK Calls --> FB_RemoteConfig
+    UserBrowser -- Firebase SDK Calls (indirectly for config values) --> FB_RemoteConfig
     App_GenkitFlow -- API Call via Genkit --> FB_AI_Models
     App_DatadogLib -- Sends RUM Data --> DatadogPlatform
 
@@ -282,6 +290,7 @@ graph TD
     - Provides UI (forms with inputs/textareas) to edit content for each section of the `activePageBlueprint`.
     - Allows toggling the visibility of each main section (Hero, Benefits, Testimonials, Trust Signals, Form) via `Switch` controls. These visibility settings affect the preview in Step 2.
     - Sections include: Page Info, Hero, Benefits (list), Testimonials (list), Trust Signals (list), Form Config.
+    - (Future: Manage saving/loading of full `PageBlueprint` objects locally).
 - **Step 4: Configure A/B Test (Hero Section):**
     - Version A is pre-filled from `activePageBlueprint.heroConfig`.
     - UI to configure Version B content (headline, sub-headline, CTA).
@@ -289,15 +298,16 @@ graph TD
     - AI content suggestions (✨) for headline, sub-headline, CTA.
     - Local storage management to save/load/delete named A/B Hero configurations (including campaign focus).
     - Generates JSON for Version A and B; allows copy/download.
-    - "Render A/B Versions for Preview" button (links to `/landing-preview` with configs).
+    - "Render A/B Versions for Preview" button (links to `/landing-preview` with configs). Currently passes Hero configs; needs update to pass full blueprints.
 - **Step 5: Prepare for Deployment:**
     - Instructions for using generated JSON in Firebase.
     - Link to Firebase Console.
     - Reference to `PLAYBOOK.md`.
 
 ### 3.6. Landing Page Preview (`/landing-preview`)
-- Displays two Hero sections side-by-side based on `configA` and `configB` JSON passed in URL query parameters.
-- Shows other sections (Benefits, Testimonials etc.) with default or static content.
+- Displays two full landing page versions side-by-side based on `blueprintA` and `blueprintB` JSON (representing `PageBlueprint` objects) passed in URL query parameters.
+- Each version renders Hero, Benefits, Testimonials, Trust Signals, and Form sections based on its respective blueprint, including respecting section visibility.
+- Falls back to default content if URL parameters are missing or invalid.
 
 ### 3.7. AI Content Suggestions (`src/ai/flows/suggest-hero-copy-flow.ts`)
 - Genkit flow that suggests hero copy (headline, sub-headline, CTA).
@@ -349,7 +359,7 @@ graph TD
 ### 4.5. Considerations for Scalability, Risk, Compliance, & Data
 - **Scalability:**
     - Client-side focus with reliance on scalable cloud services (Firebase, Datadog).
-    - User-specific data (A/B Hero configs) stored in browser Local Storage. (Future: Migrating this to Firestore per user would enhance scalability when authentication is active).
+    - User-specific data (A/B Hero configs, full blueprints) stored in browser Local Storage. (Future: Migrating this to Firestore per user would enhance scalability when authentication is active).
     - Future token-based design system could aid multi-brand scalability.
 - **Risk Mitigation:**
     - No direct client-side modification of Firebase A/B tests or sensitive Remote Config parameters. Users are guided to the secure Firebase Console.
@@ -357,7 +367,7 @@ graph TD
     - Firebase Authentication handles secure user authentication.
 - **Compliance & Data Sovereignty:**
     - The app primarily handles content configuration.
-    - Data entered by users for A/B Hero configs is stored in their browser's Local Storage.
+    - Data entered by users for A/B Hero configs and full blueprints is stored in their browser's Local Storage.
     - Feedback data (if email provided) is currently handled via `mailto:` or console.
     - User authentication data (email, hashed password) is managed by Firebase Authentication. Role information (like "Primary Interest") is collected during registration but not yet persisted or used for access control (backlogged as part of `FEATURE_AUTH_ROLES_PAUSED`).
     - Firebase/Datadog data residency depends on their respective configurations.
@@ -408,12 +418,12 @@ graph TD
 - **Backend for ServiceNow Integration:** Create a Firebase Cloud Function or other backend service to securely create ServiceNow tickets from feedback submissions.
 - **Design System Tokens Integration:** Foundation laid by component structure. Future work could involve defining and consuming brand tokens for multi-brand theming.
 - **Advanced AI - Gemini Chat for UI/Content (Step 3):** Consider more conversational AI interaction for content adjustments.
-- **Full Blueprint Editing (Step 3):** Allow adding/deleting items in lists (Benefits, Testimonials, Trust Signals).
+- **Step 3 A/B Blueprint Management:** Evolve Step 3 to manage two full `PageBlueprint` versions (A and B) for comprehensive A/B testing.
+- **Step 4 Full Page A/B Configuration:** Enhance Step 4 to allow defining variations for all sections of a `PageBlueprint` for Version B, enabling full utilization of the `/landing-preview` page.
 - **AI Theme Generation:** AI to suggest campaign themes.
 - **Direct Integration with Keyword Platforms (Backend Task):** For fetching keywords to pre-fill `campaignFocus`.
 - **Advanced UX Analysis AI (External Tool - Recommendations Engine):** The external "Recommendations Engine" (which produces the `PageBlueprint`) is responsible for incorporating analysis based on Usability Heuristics (Nielsen), Accessibility (WCAG), and behavioral models like COM-B, as detailed by UX. This application consumes the resulting content recommendations from the `PageBlueprint`.
 - **Enhanced Reporting Tool Integration:** The external "Recommendations Engine" could be enhanced with AI-led UX evaluation using frameworks like Nielsen's Heuristics, WCAG, and COM-B to generate more refined `PageBlueprint` data for this application.
-- **Step 3 A/B Blueprint Management:** Evolve Step 3 to manage two full `PageBlueprint` versions (A and B) for comprehensive A/B testing, making Step 4 primarily a deployment preparation step.
 
 ## 9. User Flow Diagram (Conceptual for 5-Step Workflow with Top Bar)
 
@@ -451,11 +461,15 @@ graph TD
         
         BlueprintState --> Step4Panel["Step 4: Configure A/B Test Panel (Hero Focus)"]
         Step4Panel -- Pre-fill Version A --> UserConfiguresAB{"User Configures Version B, Uses AI, Saves/Loads Local Hero Configs"}
-        UserConfiguresAB -- Render A/B Preview --> PreviewPage["/landing-preview Page (Hero A/B)"]
+        UserConfiguresAB -- Render A/B Preview (passes Hero configs) --> PreviewPageNav["Navigate to /landing-preview"]
         UserConfiguresAB -- Generate/Copy/Download JSON --> Step5Panel["Step 5: Prepare for Deployment Panel"]
         
         Step5Panel -- User Takes JSON to Firebase --> FirebaseConsoleSetup["External: Firebase A/B Test Setup"]
         FirebaseConsoleSetup -- Refer to PLAYBOOK.md --> FirebaseConsoleSetup
+    end
+
+    subgraph PreviewPage [Landing Preview at /landing-preview - Public]
+        PreviewPageNav --> RenderFullPageAB["Render Two Full PageBlueprints (from URL params if provided)"]
     end
     
     subgraph AdminSpecView [Admin Tech Spec View at /admin/tech-spec - Authenticated 'admin' role]
@@ -480,8 +494,8 @@ graph TD
 
     style GlobalUI fill:#f0f8ff,stroke:#4682b4
     style MainApp fill:#e6ffe6,stroke:#2e8b57
+    style PreviewPage fill:#fff8dc,stroke:#b8860b
     style AdminSpecView fill:#fffacd,stroke:#ffd700
     style WalkthroughFlow fill:#fff0f5,stroke:#db7093
     style FeedbackFlow fill:#fffff0,stroke:#ffd700
 ```
-
