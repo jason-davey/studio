@@ -2,6 +2,7 @@
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
+import { useRouter } from 'next/navigation'; // For App Router
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -29,8 +30,7 @@ import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { useAuth } from '@/contexts/AuthContext'; // Added
-import { useRouter } from 'next/navigation'; // Added
+import { useAuth } from '@/contexts/AuthContext';
 
 interface ABTestHeroConfig {
   headline: string;
@@ -60,7 +60,7 @@ const initialAISuggestionState: AISuggestionState = {
   popoverOpen: false,
 };
 
-const ConfigForm = ({ // Renamed from ABTestConfigForm for clarity
+const ConfigForm = ({
   version,
   headline, setHeadline,
   subHeadline, setSubHeadline,
@@ -360,7 +360,7 @@ function LandingPageWorkflowPageContent() {
   useEffect(() => {
     console.log("LandingPageWorkflowPageContent: uiActions.showWelcomeModal changed to", uiActions.showWelcomeModal);
     if (uiActions.showWelcomeModal) {
-      walkthrough.startWalkthrough(); // This will set walkthrough's internal showWelcomeModal
+      walkthrough.startWalkthrough();
     }
   }, [uiActions.showWelcomeModal, walkthrough]);
 
@@ -1063,8 +1063,25 @@ function LandingPageWorkflowPageContent() {
 
 export default function LandingPageWorkflowPage() {
     console.log("Rendering LandingPageWorkflowPage (default export wrapper)");
-    const { currentUser, loading: authLoading } = useAuth(); // Added
-    const router = useRouter(); // Added
+    const router = useRouter();
+    const { currentUser, loading: authLoading } = useAuth();
+    const [isMounted, setIsMounted] = useState(false);
+
+    useEffect(() => {
+      setIsMounted(true);
+    }, []);
+
+    useEffect(() => {
+      console.log("Auth Guard Effect: isMounted=", isMounted, "authLoading=", authLoading, "currentUser=", !!currentUser);
+      if (!isMounted || authLoading) {
+        return;
+      }
+      if (!currentUser) {
+        console.log("Redirecting to /login");
+        router.push('/login');
+      }
+    }, [isMounted, currentUser, authLoading, router]);
+
 
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     const [blueprintForWalkthrough, setBlueprintForWalkthrough] = useState<PageBlueprint | null>(null);
@@ -1083,13 +1100,7 @@ export default function LandingPageWorkflowPage() {
         setBlueprintForWalkthrough(blueprint); 
     }, []);
     
-    useEffect(() => {
-      if (!authLoading && !currentUser) {
-        router.push('/login');
-      }
-    }, [currentUser, authLoading, router]);
-
-    if (authLoading) {
+    if (authLoading || !isMounted) {
       return (
         <div className="flex items-center justify-center min-h-screen bg-background">
           <Loader2 className="h-12 w-12 animate-spin text-primary" />
@@ -1100,10 +1111,11 @@ export default function LandingPageWorkflowPage() {
     
     if (!currentUser) {
       // This will be briefly shown before redirect effect kicks in, or if redirect fails.
-      // Or, you could return null here to prevent flicker.
+      // It also ensures that if the redirect fails somehow, we don't render the main content.
       return (
          <div className="flex items-center justify-center min-h-screen bg-background">
-          <p className="text-lg text-foreground">Redirecting to login...</p>
+          <Loader2 className="h-12 w-12 animate-spin text-primary" />
+          <p className="ml-4 text-lg text-foreground">Redirecting to login...</p>
         </div>
       );
     }
