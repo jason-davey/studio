@@ -22,14 +22,14 @@ const createDefaultBlueprint = (versionLabel: string): PageBlueprint => ({
     heroImageUrl: "https://placehold.co/1600x900.png",
     heroImageAltText: "Family enjoying time together"
   },
-  benefits: undefined,
-  testimonials: undefined,
-  trustSignals: undefined,
+  benefits: undefined, // Will use defaultBenefits from component
+  testimonials: undefined, // Will use defaultTestimonials from component
+  trustSignals: undefined, // Will use defaultTrustSignals from component
   formConfig: {
     headline: `Default: Get Your Personalized Plan (${versionLabel})`,
     ctaText: `Default: See My Quote Today`
   },
-  sectionVisibility: {
+  sectionVisibility: { // Default visibility for all sections
     hero: true,
     benefits: true,
     testimonials: true,
@@ -50,9 +50,10 @@ export default function LandingPreviewPage() {
   }, []);
 
   useEffect(() => {
-    if (!isClient) return;
+    if (!isClient) return; // Guard against running on server or before client mount
 
-    const loadBlueprints = () => {
+    // Diagnostic: Add a small delay to ensure localStorage might be ready if it's a race condition
+    const timerId = setTimeout(() => {
       setIsLoading(true);
       setError(null);
       let parseError = false;
@@ -66,6 +67,7 @@ export default function LandingPreviewPage() {
             console.log('Read blueprintA_temp from localStorage:', localBlueprintAString ? localBlueprintAString.substring(0,200) + "..." : 'null');
             console.log('Read blueprintB_temp from localStorage:', localBlueprintBString ? localBlueprintBString.substring(0,200) + "..." : 'null');
 
+            // Cleanup: Remove the items from localStorage after reading
             if (localBlueprintAString) localStorage.removeItem('previewBlueprintA_temp');
             if (localBlueprintBString) localStorage.removeItem('previewBlueprintB_temp');
             console.log('Temporary blueprints removed from localStorage.');
@@ -83,16 +85,17 @@ export default function LandingPreviewPage() {
         versionLabel: string,
         fallbackBlueprint: PageBlueprint
       ) => {
-        if (bpString && bpString.length > 10) {
+        if (bpString && bpString.length > 10) { // Check if string is not null/empty and has some length
           try {
             const parsedBP = JSON.parse(bpString) as PageBlueprint;
-            if (parsedBP.pageName && parsedBP.heroConfig && parsedBP.formConfig) { // More robust check
+            // Basic validation: ensure core objects are present
+            if (parsedBP.pageName && parsedBP.heroConfig && parsedBP.formConfig) {
               setter({
-                ...fallbackBlueprint,
-                ...parsedBP,
-                sectionVisibility: {
+                ...fallbackBlueprint, // Start with fallback to ensure all fields exist
+                ...parsedBP, // Override with parsed data
+                sectionVisibility: { // Explicitly merge sectionVisibility
                   ...fallbackBlueprint.sectionVisibility,
-                  ...(parsedBP.sectionVisibility || {}),
+                  ...(parsedBP.sectionVisibility || {}), // Overlay with parsed visibility if present
                 },
               });
             } else {
@@ -101,12 +104,12 @@ export default function LandingPreviewPage() {
           } catch (e) {
             console.error(`Error parsing ${versionLabel} from localStorage:`, e);
             setError(prev => (prev ? `${prev} Error parsing ${versionLabel}.` : `Error parsing ${versionLabel}. Displaying fallback.`));
-            setter(fallbackBlueprint);
+            setter(fallbackBlueprint); // Use the full fallback
             parseError = true;
           }
         } else {
           console.log(`${versionLabel} blueprint string not found or empty in localStorage. Using fallback.`);
-          setter(fallbackBlueprint);
+          setter(fallbackBlueprint); // Use the full fallback
         }
       };
 
@@ -116,17 +119,14 @@ export default function LandingPreviewPage() {
       if (!localBlueprintAString && !localBlueprintBString && !parseError) {
         setError("No blueprint configurations found in local storage. Displaying default fallback versions for A and B.");
       } else if (!parseError && (localBlueprintAString || localBlueprintBString)) {
-        setError(null);
+        setError(null); // Clear error if at least one blueprint was processed without parse errors
       }
       setIsLoading(false);
-    };
+    }, 100); // 100ms delay
 
-    // Introduce a small delay to potentially help with localStorage timing, especially after a window.open
-    const timerId = setTimeout(loadBlueprints, 100);
+    return () => clearTimeout(timerId); // Cleanup the timeout
 
-    return () => clearTimeout(timerId);
-
-  }, [isClient]);
+  }, [isClient]); // Runs when isClient becomes true
 
   if (!isClient || isLoading) {
     return (
@@ -139,7 +139,7 @@ export default function LandingPreviewPage() {
 
   const renderPageSections = (blueprint: PageBlueprint, versionLabel: string) => (
     <div className="flex-1 border border-border rounded-lg p-0 shadow-lg overflow-hidden">
-      <h3 className="text-xl font-semibold text-center my-4 text-primary">{versionLabel}</h3>
+      <h3 className="text-xl font-semibold text-center my-4 text-primary">{versionLabel} - {blueprint.pageName}</h3>
       {blueprint.sectionVisibility?.hero && blueprint.heroConfig && (
         <HeroSection {...blueprint.heroConfig} />
       )}
