@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, type ChangeEvent, useEffect, useCallback, useRef } from 'react';
-import { useRouter } from 'next/navigation'; // Added for Auth Guard
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -17,6 +16,12 @@ import { Separator } from '@/components/ui/separator';
 import { Switch } from '@/components/ui/switch';
 import { suggestHeroCopy, type SuggestHeroCopyInput } from '@/ai/flows/suggest-hero-copy-flow';
 
+import HeroSection from '@/components/landing/HeroSection';
+import BenefitsSection from '@/components/landing/BenefitsSection';
+import TestimonialsSection from '@/components/landing/TestimonialsSection';
+import TrustSignalsSection from '@/components/landing/TrustSignalsSection';
+import QuoteFormSection from '@/components/landing/QuoteFormSection';
+
 import type { PageBlueprint, RecommendationHeroConfig, RecommendationBenefit, RecommendationTestimonial, RecommendationTrustSignal, RecommendationFormConfig, SectionVisibility } from '@/types/recommendations';
 
 import { WalkthroughProvider, useWalkthrough } from '@/contexts/WalkthroughContext';
@@ -25,7 +30,7 @@ import HighlightCallout from '@/components/walkthrough/HighlightCallout';
 import FeedbackModal from '@/components/shared/FeedbackModal';
 import { TOP_BAR_HEIGHT_PX } from '@/components/layout/TopBar';
 import { useUIActions } from '@/contexts/UIActionContext';
-import { useAuth } from '@/contexts/AuthContext'; // Added for Auth Guard
+import { useAuth } from '@/contexts/AuthContext';
 import { cn } from '@/lib/utils';
 
 
@@ -399,6 +404,11 @@ function LandingPageWorkflowPageContent() {
   const [savedPageBlueprints, setSavedPageBlueprints] = useState<ManagedPageBlueprint[]>([]);
   const [isLoadingPageBlueprints, setIsLoadingPageBlueprints] = useState(true);
 
+  useEffect(() => {
+    if (walkthrough && uiActions.showWelcomeModal) {
+        walkthrough.startWalkthrough();
+    }
+  }, [uiActions.showWelcomeModal, walkthrough]);
 
   const handleLoadBlueprintFromWalkthrough = useCallback((blueprint: PageBlueprint) => {
     const blueprintWithVisibility = {
@@ -668,15 +678,15 @@ function LandingPageWorkflowPageContent() {
       console.log('Blueprint A for Preview (constructed):', JSON.parse(JSON.stringify(blueprintAForPreview)));
       console.log('Blueprint B for Preview (constructed):', JSON.parse(JSON.stringify(blueprintBForPreview)));
 
-      if (typeof window !== 'undefined' && window.localStorage) { // Changed to localStorage
+      if (typeof window !== 'undefined' && window.localStorage) {
         const stringifiedA = JSON.stringify(blueprintAForPreview);
         const stringifiedB = JSON.stringify(blueprintBForPreview);
         
-        if (!stringifiedA || stringifiedA === 'null' || stringifiedA === 'undefined' || stringifiedA.length < 10) { // Basic check
+        if (!stringifiedA || stringifiedA === 'null' || stringifiedA === 'undefined' || stringifiedA.length < 10) {
           console.error("Failed to stringify blueprintAForPreview or result is invalid/too short:", stringifiedA);
           throw new Error("Blueprint A could not be serialized for preview or is empty.");
         }
-        if (!stringifiedB || stringifiedB === 'null' || stringifiedB === 'undefined' || stringifiedB.length < 10) { // Basic check
+        if (!stringifiedB || stringifiedB === 'null' || stringifiedB === 'undefined' || stringifiedB.length < 10) {
           console.error("Failed to stringify blueprintBForPreview or result is invalid/too short:", stringifiedB);
           throw new Error("Blueprint B could not be serialized for preview or is empty.");
         }
@@ -818,14 +828,6 @@ function LandingPageWorkflowPageContent() {
           </CardHeader>
           <CardContent className="space-y-4">
              <div className="flex items-center space-x-3">
-                <Input
-                  id="blueprint-upload-input"
-                  type="file"
-                  accept=".json"
-                  onChange={handleFileUpload}
-                  className="hidden"
-                  ref={fileInputRef}
-                />
                 <Button
                   type="button"
                   variant="outline"
@@ -834,6 +836,14 @@ function LandingPageWorkflowPageContent() {
                 >
                   <UploadCloud className="mr-2 h-4 w-4" /> Choose File
                 </Button>
+                <Input
+                  id="blueprint-upload-input"
+                  type="file"
+                  accept=".json"
+                  onChange={handleFileUpload}
+                  className="hidden" // Visually hide the default input
+                  ref={fileInputRef}
+                />
                 <span id="blueprint-file-name-indicator" className="text-sm text-muted-foreground">
                   {fileName || "No file chosen"}
                 </span>
@@ -854,7 +864,7 @@ function LandingPageWorkflowPageContent() {
     },
     {
       value: "step-2",
-      title: "Step 2: Build & Preview Page",
+      title: "Step 2: Build &amp; Preview Page",
       icon: <Palette className="mr-2 h-5 w-5 text-primary" />,
       disabled: !activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint),
       content: (
@@ -864,30 +874,33 @@ function LandingPageWorkflowPageContent() {
             <CardDescription>This is a preview of the landing page based on the loaded or adjusted blueprint. Toggle section visibility in Step 3.</CardDescription>
           </CardHeader>
           <CardContent>
-            {(!activePageBlueprint?.pageName || activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint) && <p className="text-muted-foreground">Load or define a blueprint in Step 1 or Step 3 to see a preview.</p>}
+            {(!activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint)) && 
+              <p className="text-muted-foreground">Load or define a blueprint in Step 1 or Step 3 to see a preview.</p>
+            }
             {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
               <div id="step-2-preview-area" className="space-y-0 border border-border p-0 rounded-lg shadow-inner bg-background overflow-hidden">
-                {activePageBlueprint.sectionVisibility?.hero && (
-                  <Textarea value={JSON.stringify(activePageBlueprint.heroConfig, null, 2)} readOnly className="h-32 font-mono text-xs" />
-                  // <HeroSection {...activePageBlueprint.heroConfig} />
+                {activePageBlueprint.sectionVisibility?.hero && activePageBlueprint.heroConfig && (
+                  <HeroSection {...activePageBlueprint.heroConfig} />
                 )}
                 {activePageBlueprint.sectionVisibility?.benefits && (
-                   <Textarea value={JSON.stringify(activePageBlueprint.benefits, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
-                  // <BenefitsSection benefits={activePageBlueprint.benefits} />
+                  <BenefitsSection benefits={activePageBlueprint.benefits} />
                 )}
                 {activePageBlueprint.sectionVisibility?.testimonials && (
-                  <Textarea value={JSON.stringify(activePageBlueprint.testimonials, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
-                  // <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
+                  <TestimonialsSection testimonials={activePageBlueprint.testimonials} />
                 )}
                 {activePageBlueprint.sectionVisibility?.trustSignals && (
-                  <Textarea value={JSON.stringify(activePageBlueprint.trustSignals, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
-                  // <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
+                  <TrustSignalsSection trustSignals={activePageBlueprint.trustSignals} />
                 )}
                 {activePageBlueprint.sectionVisibility?.form && activePageBlueprint.formConfig && (
-                  <Textarea value={JSON.stringify(activePageBlueprint.formConfig, null, 2)} readOnly className="h-32 font-mono text-xs mt-2" />
-                    // <QuoteFormSection {...activePageBlueprint.formConfig} />
+                   <QuoteFormSection {...activePageBlueprint.formConfig} />
                  )}
-
+                {!activePageBlueprint.sectionVisibility?.hero &&
+                 !activePageBlueprint.sectionVisibility?.benefits &&
+                 !activePageBlueprint.sectionVisibility?.testimonials &&
+                 !activePageBlueprint.sectionVisibility?.trustSignals &&
+                 !activePageBlueprint.sectionVisibility?.form && (
+                  <p className="p-6 text-center text-muted-foreground">All sections are currently hidden. Toggle their visibility in Step 3 to preview.</p>
+                )}
                 <Button onClick={() => setActiveAccordionItem('step-3')} className="mt-6 w-full rounded-none">
                   Proceed to Adjust Content <ChevronRight className="ml-2 h-4 w-4" />
                 </Button>
@@ -899,17 +912,17 @@ function LandingPageWorkflowPageContent() {
     },
     {
       value: "step-3",
-      title: "Step 3: Adjust Content & Manage Blueprints",
+      title: "Step 3: Adjust Content &amp; Manage Blueprints",
       icon: <Edit className="mr-2 h-5 w-5 text-primary" />,
       disabled: !activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint),
       content: (
         <Card id="step-3-card">
           <CardHeader>
-            <CardTitle>Adjust Content & Manage Full Page Blueprints</CardTitle>
+            <CardTitle>Adjust Content &amp; Manage Full Page Blueprints</CardTitle>
             <CardDescription>Fine-tune content, toggle section visibility, and save/load full landing page blueprints locally.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-            {(!activePageBlueprint?.pageName || activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint) && <p className="text-muted-foreground">Load a blueprint in Step 1 or from saved blueprints below to begin adjusting.</p>}
+            {(!activePageBlueprint?.pageName || (activePageBlueprint.pageName === 'Untitled Page' && !uploadedBlueprint)) && <p className="text-muted-foreground">Load a blueprint in Step 1 or from saved blueprints below to begin adjusting.</p>}
             {(activePageBlueprint?.pageName && activePageBlueprint.pageName !== 'Untitled Page' || uploadedBlueprint) && (
               <>
                 {/* Page Information Section */}
@@ -1301,7 +1314,7 @@ function LandingPageWorkflowPageContent() {
 
       <Card className="w-full max-w-4xl mx-auto shadow-xl rounded-lg">
         <CardHeader className="px-6 pt-14 pb-6 text-center">
-          <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation & A/B Testing Workflow</CardTitle>
+          <CardTitle className="text-3xl font-bold text-primary">Landing Page Creation &amp; A/B Testing Workflow</CardTitle>
           <CardDescription className="text-muted-foreground mt-2">
             Follow these steps to ingest recommendations, build, adjust, and A/B test your landing page content.
           </CardDescription>
@@ -1362,11 +1375,12 @@ export default function LandingPageWorkflowPage() {
       }
     }, [isMounted, currentUser, authLoading, router]);
     
+    
     const [activeAccordionItemForWalkthrough, setActiveAccordionItemForWalkthrough] = useState<string | undefined>('step-1');
     
     const handleAccordionChangeForWalkthrough = useCallback((value: string | undefined) => {
         console.log("Walkthrough requests accordion change to:", value);
-        setActiveAccordionItemForWalkthrough(value);
+        setActiveAccordionItemForWalkthrough(value); // This will update the state passed to the provider
     }, []);
 
     const handleLoadBlueprintForWalkthrough = useCallback((blueprint: PageBlueprint) => {
@@ -1405,4 +1419,3 @@ export default function LandingPageWorkflowPage() {
         </WalkthroughProvider>
     );
 }
-
